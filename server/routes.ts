@@ -227,11 +227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audit log routes (for Success Manager only)
+  // Audit log routes (for Success Manager and Admin only)
   app.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'Success Manager') {
+      if (user?.role !== 'Success Manager' && user?.role !== 'Admin') {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       
@@ -241,6 +241,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching audit logs:", error);
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Admin setup endpoint - sets galindo243@live.com as admin
+  app.post('/api/setup-admin', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      
+      // Only allow this if the user is galindo243@live.com or already an admin
+      if (currentUser?.email !== 'galindo243@live.com' && currentUser?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only galindo243@live.com can set up admin privileges" });
+      }
+      
+      const updatedUser = await storage.updateUserRole('galindo243@live.com', 'Admin');
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: updatedUser.id,
+        changes: { role: 'Admin' },
+      });
+
+      res.json({ message: "Admin role successfully assigned to galindo243@live.com", user: updatedUser });
+    } catch (error) {
+      console.error("Error setting up admin:", error);
+      res.status(500).json({ message: "Failed to set up admin" });
     }
   });
 
