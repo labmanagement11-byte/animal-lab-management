@@ -33,8 +33,13 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
     { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
   ];
 
-  if ((user as any)?.role === 'Success Manager') {
+  if ((user as any)?.role === 'Success Manager' || (user as any)?.role === 'Admin') {
     menuItems.push({ id: 'users', label: 'User Management', icon: Users, path: '/users' });
+  }
+
+  // Admin-only features - full access to everything
+  if ((user as any)?.role === 'Admin') {
+    menuItems.push({ id: 'admin', label: 'Admin Panel', icon: Settings, path: '/admin' });
   }
 
   return (
