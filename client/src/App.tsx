@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import Animals from "@/pages/animals";
 import QrScanner from "@/pages/qr-scanner";
 import Admin from "@/pages/admin";
+import Users from "@/pages/users";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/sidebar";
 import { useLocation } from "wouter";
@@ -42,6 +43,7 @@ function AppContent() {
           <Route path="/animals" component={Animals} />
           <Route path="/qr-scanner" component={QrScanner} />
           <Route path="/admin" component={Admin} />
+          <Route path="/users" component={Users} />
           <Route component={NotFound} />
         </Switch>
       </div>

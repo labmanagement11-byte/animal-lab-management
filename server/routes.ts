@@ -244,6 +244,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all users endpoint (for Admin and Success Manager only)
+  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Success Manager' && user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role endpoint (for Admin and Success Manager only)
+  app.put('/api/users/:email/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Success Manager' && user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { role } = req.body;
+      const targetEmail = req.params.email;
+
+      // Only admins can assign admin role
+      if (role === 'Admin' && user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only admins can assign admin role" });
+      }
+
+      const updatedUser = await storage.updateUserRole(targetEmail, role);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: updatedUser.id,
+        changes: { role },
+      });
+
+      res.json({ message: "User role updated successfully", user: updatedUser });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
   // Admin setup endpoint - sets galindo243@live.com as admin
   app.post('/api/setup-admin', isAuthenticated, async (req: any, res) => {
     try {
