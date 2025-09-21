@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { QrCode, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface ScannedAnimalData {
   animalId: string;
@@ -20,6 +21,7 @@ interface ScannedAnimalData {
 
 export default function QrScanner() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedAnimalData | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -240,7 +242,10 @@ export default function QrScanner() {
                   <Button variant="outline" onClick={() => setScannedData(null)} data-testid="button-clear-data">
                     Clear Data
                   </Button>
-                  <Button data-testid="button-view-full-record">
+                  <Button 
+                    onClick={() => setLocation(`/animals`)}
+                    data-testid="button-view-full-record"
+                  >
                     View Full Record
                   </Button>
                 </div>

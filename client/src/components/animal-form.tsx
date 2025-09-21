@@ -45,7 +45,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
     resolver: zodResolver(animalFormSchema),
     defaultValues: {
       animalNumber: animal?.animalNumber || "",
-      cageId: animal?.cageId || "",
+      cageId: animal?.cageId || "none",
       breed: animal?.breed || "",
       age: animal?.age?.toString() || "",
       weight: animal?.weight || "",
@@ -60,6 +60,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
     mutationFn: async (data: AnimalFormData) => {
       const payload = {
         ...data,
+        cageId: data.cageId === "none" ? undefined : data.cageId,
         age: data.age ? parseInt(data.age) : undefined,
         weight: data.weight || undefined,
       };
@@ -97,6 +98,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
     mutationFn: async (data: AnimalFormData) => {
       const payload = {
         ...data,
+        cageId: data.cageId === "none" ? undefined : data.cageId,
         age: data.age ? parseInt(data.age) : undefined,
         weight: data.weight || undefined,
       };
@@ -171,7 +173,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                 <SelectValue placeholder="Select cage" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No cage assigned</SelectItem>
+                <SelectItem value="none">No cage assigned</SelectItem>
                 {cages?.map((cage) => (
                   <SelectItem key={cage.id} value={cage.id}>
                     {cage.cageNumber} - {cage.location}
