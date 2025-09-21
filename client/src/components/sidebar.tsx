@@ -57,13 +57,13 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
             </Avatar>
             <div>
               <p className="font-medium text-foreground" data-testid="text-user-name">
-                {(user as any).firstName || (user as any).lastName 
+                {((user as any).firstName || (user as any).lastName)
                   ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
                   : (user as any).email || 'User'
                 }
               </p>
               <p className="text-sm text-muted-foreground" data-testid="text-user-role">
-                {(user as any).role}
+                {(user as any).role || 'Employee'}
               </p>
             </div>
           </div>
