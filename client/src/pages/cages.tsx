@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit, Trash2, Home, MapPin } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
@@ -16,6 +16,7 @@ import type { Cage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
+import CageQrCodeGenerator from "@/components/cage-qr-code-generator";
 
 const cageFormSchema = z.object({
   cageNumber: z.string().min(1, "Cage number is required"),
@@ -31,7 +32,9 @@ export default function Cages() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCageForm, setShowCageForm] = useState(false);
+  const [showQrGenerator, setShowQrGenerator] = useState(false);
   const [editingCage, setEditingCage] = useState<Cage | null>(null);
+  const [selectedCage, setSelectedCage] = useState<Cage | null>(null);
 
   const { data: cages, isLoading } = useQuery<Cage[]>({
     queryKey: searchTerm ? ['/api/cages/search', searchTerm] : ['/api/cages'],
@@ -186,6 +189,11 @@ export default function Cages() {
     setShowCageForm(true);
   };
 
+  const handleGenerateQr = (cage: Cage) => {
+    setSelectedCage(cage);
+    setShowQrGenerator(true);
+  };
+
   const handleCloseForm = () => {
     setShowCageForm(false);
     setEditingCage(null);
@@ -302,6 +310,14 @@ export default function Cages() {
                     data-testid={`button-edit-${cage.id}`}
                   >
                     <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => handleGenerateQr(cage)}
+                    data-testid={`button-qr-${cage.id}`}
+                  >
+                    <QrCode className="w-4 h-4" />
                   </Button>
                   <Button 
                     size="sm" 
@@ -423,6 +439,18 @@ export default function Cages() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cage QR Code Generator Modal */}
+      <Dialog open={showQrGenerator} onOpenChange={setShowQrGenerator}>
+        <DialogContent className="max-w-2xl">
+          {selectedCage && (
+            <CageQrCodeGenerator 
+              cage={selectedCage}
+              onClose={() => setShowQrGenerator(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

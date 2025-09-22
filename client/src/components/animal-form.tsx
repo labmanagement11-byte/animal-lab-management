@@ -103,7 +103,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       animalNumber: animal?.animalNumber || "",
       cageId: animal?.cageId || "none",
       breed: animal?.breed || "",
-      genotype: animal?.genotype || "",
+      genotype: animal?.genotype || "none",
       dateOfBirth: animal?.dateOfBirth ? new Date(animal.dateOfBirth).toISOString().split('T')[0] : "",
       weight: animal?.weight || "",
       gender: animal?.gender || undefined,
@@ -132,6 +132,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
         dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
         genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
+        genotype: data.genotype === "none" ? undefined : data.genotype,
       };
       await apiRequest("POST", "/api/animals", payload);
     },
@@ -179,6 +180,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
         dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
         genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
+        genotype: data.genotype === "none" ? undefined : data.genotype,
       };
       await apiRequest("PUT", `/api/animals/${animal!.id}`, payload);
     },
@@ -306,7 +308,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                   <SelectValue placeholder="Select genotype" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No genotype</SelectItem>
+                  <SelectItem value="none">No genotype</SelectItem>
                   {genotypes?.map((genotype) => (
                     <SelectItem key={genotype.id} value={genotype.name}>
                       {genotype.name}
