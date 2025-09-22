@@ -24,7 +24,6 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
     animalNumber: animal.animalNumber,
     cageId: animal.cageId,
     breed: animal.breed,
-    age: animal.age,
     weight: animal.weight,
     gender: animal.gender,
     healthStatus: animal.healthStatus,

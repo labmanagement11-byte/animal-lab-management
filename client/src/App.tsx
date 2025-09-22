@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Animals from "@/pages/animals";
+import Cages from "@/pages/cages";
 import QrScanner from "@/pages/qr-scanner";
 import Admin from "@/pages/admin";
 import Users from "@/pages/users";
@@ -41,6 +42,7 @@ function AppContent() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/animals" component={Animals} />
+          <Route path="/cages" component={Cages} />
           <Route path="/qr-scanner" component={QrScanner} />
           <Route path="/admin" component={Admin} />
           <Route path="/users" component={Users} />
