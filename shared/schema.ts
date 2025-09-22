@@ -45,8 +45,9 @@ export const cages = pgTable("cages", {
   capacity: integer("capacity").default(5),
   isActive: boolean("is_active").default(true),
   status: varchar("status", {
-    enum: ['Active', 'Reserved', 'Transferred', 'Sacrificed', 'Breeding', 'Replaced']
+    enum: ['Active', 'Breeding', 'Holding']
   }).default('Active'),
+  strainId: varchar("strain_id").references(() => strains.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -143,10 +144,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   genotypedAnimals: many(animals),
 }));
 
-export const cagesRelations = relations(cages, ({ many }) => ({
+export const cagesRelations = relations(cages, ({ one, many }) => ({
   animals: many(animals),
   qrCodes: many(qrCodes),
   attachments: many(fileAttachments),
+  strain: one(strains, {
+    fields: [cages.strainId],
+    references: [strains.id],
+  }),
 }));
 
 export const fileAttachmentsRelations = relations(fileAttachments, ({ one }) => ({

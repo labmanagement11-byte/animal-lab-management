@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Cage, Animal } from "@shared/schema";
+import type { Cage, Animal, Strain } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,8 @@ const cageFormSchema = z.object({
   roomNumber: z.string().min(1, "Room number is required"),
   location: z.string().min(1, "Location is required"),
   capacity: z.string().min(1, "Capacity is required"),
+  status: z.enum(['Active', 'Breeding', 'Holding']).default('Active'),
+  strainId: z.string().optional(),
 });
 
 type CageFormData = z.infer<typeof cageFormSchema>;
@@ -55,6 +57,10 @@ export default function Cages() {
     queryKey: ['/api/animals'],
   });
 
+  const { data: strains } = useQuery<Strain[]>({
+    queryKey: ['/api/strains'],
+  });
+
   const form = useForm<CageFormData>({
     resolver: zodResolver(cageFormSchema),
     defaultValues: {
@@ -62,6 +68,8 @@ export default function Cages() {
       roomNumber: editingCage?.roomNumber || "",
       location: editingCage?.location || "",
       capacity: editingCage?.capacity?.toString() || "",
+      status: editingCage?.status || "Active",
+      strainId: editingCage?.strainId || undefined,
     },
   });
 
@@ -70,6 +78,7 @@ export default function Cages() {
       const payload = {
         ...data,
         capacity: parseInt(data.capacity),
+        strainId: data.strainId === "" ? undefined : data.strainId,
       };
       await apiRequest("POST", "/api/cages", payload);
     },
@@ -111,6 +120,7 @@ export default function Cages() {
       const payload = {
         ...data,
         capacity: parseInt(data.capacity),
+        strainId: data.strainId === "" ? undefined : data.strainId,
       };
       await apiRequest("PUT", `/api/cages/${editingCage!.id}`, payload);
     },
@@ -190,6 +200,8 @@ export default function Cages() {
       roomNumber: cage.roomNumber,
       location: cage.location,
       capacity: cage.capacity?.toString() || "",
+      status: cage.status || "Active",
+      strainId: cage.strainId || undefined,
     });
     setShowCageForm(true);
   };
@@ -207,6 +219,8 @@ export default function Cages() {
       roomNumber: "",
       location: "",
       capacity: "",
+      status: "Active",
+      strainId: undefined,
     });
   };
 
@@ -218,11 +232,17 @@ export default function Cages() {
     }
   };
 
-  const getStatusColor = (isActive: boolean | null) => {
-    if (isActive === null || isActive) {
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Active':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200';
+      case 'Breeding':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200';
+      case 'Holding':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 border-gray-200';
     }
-    return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
   };
 
   const getHealthStatusColor = (status: string) => {
@@ -313,8 +333,8 @@ export default function Cages() {
                   <Home className="w-5 h-5 mr-2" />
                   Cage {cage.cageNumber}
                 </CardTitle>
-                <Badge className={getStatusColor(cage.isActive)}>
-                  {cage.isActive === null || cage.isActive ? 'Active' : 'Inactive'}
+                <Badge className={getStatusColor(cage.status || 'Active')}>
+                  {cage.status || 'Active'}
                 </Badge>
               </div>
             </CardHeader>
@@ -366,22 +386,23 @@ export default function Cages() {
                       )}
                     </div>
 
-                    {/* Expanded Animal List */}
+                    {/* Expanded Animal List with Detailed Information */}
                     {expandedCages.has(cage.id) && getAnimalsInCage(cage.id).length > 0 && (
                       <div className="space-y-2 bg-muted/30 rounded-lg p-3">
                         <h4 className="text-sm font-medium text-muted-foreground mb-2">
                           Animals in this cage:
                         </h4>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {getAnimalsInCage(cage.id).map((animal) => (
                             <div
                               key={animal.id}
-                              className="flex items-center justify-between bg-background rounded p-2 text-sm"
+                              className="bg-background rounded-lg p-3 border border-border shadow-sm"
                               data-testid={`animal-in-cage-${animal.id}`}
                             >
-                              <div className="flex-1">
+                              {/* Animal Header */}
+                              <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium" data-testid={`animal-number-${animal.id}`}>
+                                  <span className="font-medium text-base" data-testid={`animal-number-${animal.id}`}>
                                     {animal.animalNumber}
                                   </span>
                                   <Badge className={getHealthStatusColor(animal.healthStatus || 'Healthy')}>
@@ -393,12 +414,79 @@ export default function Cages() {
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  <span>Strain: {animal.breed}</span>
-                                  {animal.gender && <span> • Gender: {animal.gender}</span>}
-                                  {animal.weight && <span> • Weight: {animal.weight}g</span>}
+                              </div>
+
+                              {/* Animal Details Grid */}
+                              <div className="grid grid-cols-2 gap-3 text-xs">
+                                {/* Basic Information */}
+                                <div className="space-y-1">
+                                  <div className="text-muted-foreground font-medium">Basic Info</div>
+                                  <div><span className="text-muted-foreground">Strain:</span> {animal.breed}</div>
+                                  {animal.gender && <div><span className="text-muted-foreground">Gender:</span> {animal.gender}</div>}
+                                  {animal.weight && <div><span className="text-muted-foreground">Weight:</span> {animal.weight}g</div>}
+                                  {animal.color && <div><span className="text-muted-foreground">Color:</span> {animal.color}</div>}
+                                  {animal.generation && <div><span className="text-muted-foreground">Generation:</span> {animal.generation}</div>}
+                                </div>
+
+                                {/* Dates and Times */}
+                                <div className="space-y-1">
+                                  <div className="text-muted-foreground font-medium">Dates & Times</div>
+                                  {animal.dateOfBirth && (
+                                    <div><span className="text-muted-foreground">Birth Date:</span> {new Date(animal.dateOfBirth).toLocaleDateString()}</div>
+                                  )}
+                                  {animal.age && (
+                                    <div><span className="text-muted-foreground">Age:</span> {animal.age} weeks</div>
+                                  )}
+                                  {animal.breedingStartDate && (
+                                    <div><span className="text-muted-foreground">Breeding Start:</span> {new Date(animal.breedingStartDate).toLocaleDateString()}</div>
+                                  )}
+                                  {animal.dateOfGenotyping && (
+                                    <div><span className="text-muted-foreground">Genotyping Date:</span> {new Date(animal.dateOfGenotyping).toLocaleDateString()}</div>
+                                  )}
+                                  {animal.createdAt && (
+                                    <div><span className="text-muted-foreground">Added:</span> {new Date(animal.createdAt).toLocaleDateString()}</div>
+                                  )}
                                 </div>
                               </div>
+
+                              {/* Health and Disease Information */}
+                              {(animal.diseases || animal.notes) && (
+                                <div className="mt-3 pt-2 border-t border-border space-y-2">
+                                  {animal.diseases && (
+                                    <div>
+                                      <div className="text-xs font-medium text-muted-foreground mb-1">Diseases/Conditions:</div>
+                                      <div className="text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-2 rounded">
+                                        {animal.diseases}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {animal.notes && (
+                                    <div>
+                                      <div className="text-xs font-medium text-muted-foreground mb-1">Notes:</div>
+                                      <div className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-2 rounded">
+                                        {animal.notes}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Additional Information */}
+                              {(animal.genotype || animal.protocol) && (
+                                <div className="mt-2 pt-2 border-t border-border">
+                                  <div className="text-xs space-y-1">
+                                    {animal.genotype && (
+                                      <div><span className="text-muted-foreground">Genotype:</span> {animal.genotype}</div>
+                                    )}
+                                    {animal.protocol && (
+                                      <div><span className="text-muted-foreground">Protocol:</span> {animal.protocol}</div>
+                                    )}
+                                    {animal.probes && (
+                                      <div><span className="text-muted-foreground">Probes:</span> Yes</div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -535,6 +623,56 @@ export default function Cages() {
                     <FormControl>
                       <Input type="number" placeholder="5" {...field} data-testid="input-capacity" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} data-testid="select-cage-status">
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Active">Active (Green)</SelectItem>
+                        <SelectItem value="Breeding">Breeding (Blue)</SelectItem>
+                        <SelectItem value="Holding">Holding (Purple)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="strainId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Strain (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""} data-testid="select-cage-strain">
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select strain" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">No strain selected</SelectItem>
+                        {strains?.map((strain) => (
+                          <SelectItem key={strain.id} value={strain.id}>
+                            {strain.name}
+                            {strain.category && <span className="text-muted-foreground"> ({strain.category})</span>}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
