@@ -297,6 +297,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all users endpoint (for Admin and Success Manager only)
+  // Strain routes
+  app.get('/api/strains', isAuthenticated, async (req, res) => {
+    try {
+      const strains = await storage.getStrains();
+      res.json(strains);
+    } catch (error) {
+      console.error("Error fetching strains:", error);
+      res.status(500).json({ message: "Failed to fetch strains" });
+    }
+  });
+
+  app.post('/api/strains', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertStrainSchema.parse(req.body);
+      const strain = await storage.createStrain(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CREATE',
+        tableName: 'strains',
+        recordId: strain.id,
+        changes: validatedData,
+      });
+
+      res.status(201).json(strain);
+    } catch (error) {
+      console.error("Error creating strain:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      res.status(500).json({ message: "Failed to create strain" });
+    }
+  });
+
+  // Genotype routes
+  app.get('/api/genotypes', isAuthenticated, async (req, res) => {
+    try {
+      const genotypes = await storage.getGenotypes();
+      res.json(genotypes);
+    } catch (error) {
+      console.error("Error fetching genotypes:", error);
+      res.status(500).json({ message: "Failed to fetch genotypes" });
+    }
+  });
+
+  app.post('/api/genotypes', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertGenotypeSchema.parse(req.body);
+      const genotype = await storage.createGenotype(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CREATE',
+        tableName: 'genotypes',
+        recordId: genotype.id,
+        changes: validatedData,
+      });
+
+      res.status(201).json(genotype);
+    } catch (error) {
+      console.error("Error creating genotype:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      res.status(500).json({ message: "Failed to create genotype" });
+    }
+  });
+
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
