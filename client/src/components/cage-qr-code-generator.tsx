@@ -36,28 +36,8 @@ export default function CageQrCodeGenerator({ cage, onClose }: CageQrCodeGenerat
     },
   });
 
-  const qrData = JSON.stringify({
-    type: 'cage',
-    cageId: cage.id,
-    cageNumber: cage.cageNumber,
-    roomNumber: cage.roomNumber,
-    location: cage.location,
-    capacity: cage.capacity,
-    status: cage.status,
-    animalCount: cageAnimals?.length || 0,
-    animals: cageAnimals?.map(animal => ({
-      id: animal.id,
-      animalNumber: animal.animalNumber,
-      breed: animal.breed,
-      genotype: animal.genotype,
-      gender: animal.gender,
-      healthStatus: animal.healthStatus,
-      weight: animal.weight,
-      age: calculateAge(animal.dateOfBirth),
-      dateOfBirth: animal.dateOfBirth,
-    })) || [],
-    generatedAt: new Date().toISOString(),
-  });
+  // Generate URL for QR code that links to cage detail page
+  const qrData = `${window.location.origin}/qr/cage/${cage.id}`;
 
   const createQrCodeMutation = useMutation({
     mutationFn: async () => {
@@ -156,12 +136,12 @@ export default function CageQrCodeGenerator({ cage, onClose }: CageQrCodeGenerat
       await navigator.clipboard.writeText(qrData);
       toast({
         title: "Copied",
-        description: "Cage QR data copied to clipboard",
+        description: "Cage QR link copied to clipboard",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to copy data",
+        description: "Failed to copy link",
         variant: "destructive",
       });
     }
@@ -290,7 +270,7 @@ export default function CageQrCodeGenerator({ cage, onClose }: CageQrCodeGenerat
             data-testid="button-copy-cage-data"
           >
             <Copy className="w-4 h-4 mr-2" />
-            Copy Data
+            Copy Link
           </Button>
           <Button
             onClick={handleSave}

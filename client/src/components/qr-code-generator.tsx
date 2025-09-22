@@ -21,17 +21,8 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
-  const qrData = JSON.stringify({
-    animalId: animal.id,
-    animalNumber: animal.animalNumber,
-    cageId: animal.cageId,
-    breed: animal.breed,
-    weight: animal.weight,
-    gender: animal.gender,
-    healthStatus: animal.healthStatus,
-    diseases: animal.diseases,
-    notes: animal.notes,
-  });
+  // Generate URL for QR code that links to animal detail page
+  const qrData = `${window.location.origin}/qr/animal/${animal.id}`;
 
   const createQrCodeMutation = useMutation({
     mutationFn: async () => {
@@ -116,12 +107,12 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
       await navigator.clipboard.writeText(qrData);
       toast({
         title: "Copied",
-        description: "QR data copied to clipboard",
+        description: "Animal QR link copied to clipboard",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to copy data",
+        description: "Failed to copy link",
         variant: "destructive",
       });
     }
@@ -192,7 +183,7 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
             data-testid="button-copy-data"
           >
             <Copy className="w-4 h-4 mr-2" />
-            Copy Data
+            Copy Link
           </Button>
           <PrintQrCode animal={animal} qrDataUrl={qrDataUrl} />
           <Button
