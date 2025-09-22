@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,7 +26,7 @@ const cageFormSchema = z.object({
   location: z.string().min(1, "Location is required"),
   capacity: z.string().min(1, "Capacity is required"),
   status: z.enum(['Active', 'Breeding', 'Holding', 'Deactivated']).default('Active'),
-  strainId: z.string().optional(),
+  strainInput: z.string().optional(),
 });
 
 type CageFormData = z.infer<typeof cageFormSchema>;
@@ -38,6 +40,7 @@ export default function Cages() {
   const [editingCage, setEditingCage] = useState<Cage | null>(null);
   const [selectedCage, setSelectedCage] = useState<Cage | null>(null);
   const [expandedCages, setExpandedCages] = useState<Set<string>>(new Set());
+  const [strainComboOpen, setStrainComboOpen] = useState(false);
 
   const { data: cages, isLoading } = useQuery<Cage[]>({
     queryKey: searchTerm ? ['/api/cages/search', searchTerm] : ['/api/cages'],
@@ -69,16 +72,35 @@ export default function Cages() {
       location: editingCage?.location || "",
       capacity: editingCage?.capacity?.toString() || "",
       status: editingCage?.status || "Active",
-      strainId: editingCage?.strainId || undefined,
+      strainInput: "",
     },
   });
 
   const createCageMutation = useMutation({
     mutationFn: async (data: CageFormData) => {
+      let strainId = undefined;
+      
+      // If strain input is provided, check if it's an existing strain ID or create new strain
+      if (data.strainInput && data.strainInput.trim() !== "") {
+        const existingStrain = strains?.find(s => s.id === data.strainInput || s.name === data.strainInput);
+        
+        if (existingStrain) {
+          strainId = existingStrain.id;
+        } else {
+          // Create new strain
+          const response = await apiRequest("POST", "/api/strains", { name: data.strainInput.trim() });
+          const newStrain = await response.json();
+          strainId = newStrain.id;
+        }
+      }
+      
       const payload = {
-        ...data,
+        cageNumber: data.cageNumber,
+        roomNumber: data.roomNumber,
+        location: data.location,
         capacity: parseInt(data.capacity),
-        strainId: data.strainId === "" || data.strainId === "none" ? undefined : data.strainId,
+        status: data.status,
+        strainId,
       };
       await apiRequest("POST", "/api/cages", payload);
     },
@@ -117,10 +139,29 @@ export default function Cages() {
 
   const updateCageMutation = useMutation({
     mutationFn: async (data: CageFormData) => {
+      let strainId = undefined;
+      
+      // If strain input is provided, check if it's an existing strain ID or create new strain
+      if (data.strainInput && data.strainInput.trim() !== "") {
+        const existingStrain = strains?.find(s => s.id === data.strainInput || s.name === data.strainInput);
+        
+        if (existingStrain) {
+          strainId = existingStrain.id;
+        } else {
+          // Create new strain
+          const response = await apiRequest("POST", "/api/strains", { name: data.strainInput.trim() });
+          const newStrain = await response.json();
+          strainId = newStrain.id;
+        }
+      }
+      
       const payload = {
-        ...data,
+        cageNumber: data.cageNumber,
+        roomNumber: data.roomNumber,
+        location: data.location,
         capacity: parseInt(data.capacity),
-        strainId: data.strainId === "" || data.strainId === "none" ? undefined : data.strainId,
+        status: data.status,
+        strainId,
       };
       await apiRequest("PUT", `/api/cages/${editingCage!.id}`, payload);
     },
@@ -201,7 +242,7 @@ export default function Cages() {
       location: cage.location,
       capacity: cage.capacity?.toString() || "",
       status: cage.status || "Active",
-      strainId: cage.strainId || undefined,
+      strainInput: "",
     });
     setShowCageForm(true);
   };
@@ -220,7 +261,7 @@ export default function Cages() {
       location: "",
       capacity: "",
       status: "Active",
-      strainId: undefined,
+      strainInput: "",
     });
   };
 
@@ -682,26 +723,70 @@ export default function Cages() {
 
               <FormField
                 control={form.control}
-                name="strainId"
+                name="strainInput"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Strain (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""} data-testid="select-cage-strain">
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select strain" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No strain selected</SelectItem>
-                        {strains?.map((strain) => (
-                          <SelectItem key={strain.id} value={strain.id}>
-                            {strain.name}
-                            {strain.category && <span className="text-muted-foreground"> ({strain.category})</span>}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={strainComboOpen} onOpenChange={setStrainComboOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={strainComboOpen}
+                            className="w-full justify-between"
+                            data-testid="button-strain-combobox"
+                          >
+                            {field.value
+                              ? strains?.find((strain) => strain.name === field.value || strain.id === field.value)?.name || field.value
+                              : "Select or type strain name..."}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Type strain name or search..."
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            data-testid="input-strain-search"
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {field.value ? `Create "${field.value}"` : "Type to create new strain"}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value=""
+                                onSelect={() => {
+                                  field.onChange("");
+                                  setStrainComboOpen(false);
+                                }}
+                                data-testid="option-no-strain"
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${!field.value ? "opacity-100" : "opacity-0"}`} />
+                                No strain selected
+                              </CommandItem>
+                              {strains?.map((strain) => (
+                                <CommandItem
+                                  key={strain.id}
+                                  value={strain.name}
+                                  onSelect={(currentValue) => {
+                                    field.onChange(currentValue === field.value ? "" : currentValue);
+                                    setStrainComboOpen(false);
+                                  }}
+                                  data-testid={`option-strain-${strain.id}`}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${field.value === strain.name ? "opacity-100" : "opacity-0"}`} />
+                                  {strain.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
