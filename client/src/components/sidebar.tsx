@@ -8,7 +8,8 @@ import {
   FileText, 
   Users, 
   Settings,
-  LogOut 
+  LogOut,
+  Dna
 } from "lucide-react";
 import { useLocation } from "wouter";
 import GlobalSearch from "@/components/global-search";
@@ -30,6 +31,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { id: 'animals', label: 'Animals', icon: QrCode, path: '/animals' },
     { id: 'cages', label: 'Cages', icon: Home, path: '/cages' },
+    { id: 'strains', label: 'Strains', icon: Dna, path: '/strains' },
     { id: 'qr-scanner', label: 'QR Scanner', icon: QrCode, path: '/qr-scanner' },
     { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
   ];

@@ -76,7 +76,10 @@ export interface IStorage {
   
   // Strain operations
   getStrains(): Promise<Strain[]>;
+  getStrain(id: string): Promise<Strain | undefined>;
   createStrain(strain: InsertStrain): Promise<Strain>;
+  updateStrain(id: string, strain: Partial<InsertStrain>): Promise<Strain>;
+  deleteStrain(id: string): Promise<void>;
   
   // Genotype operations
   getGenotypes(): Promise<Genotype[]>;
@@ -367,12 +370,30 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getStrain(id: string): Promise<Strain | undefined> {
+    const [strain] = await db.select().from(strains).where(eq(strains.id, id));
+    return strain;
+  }
+
   async createStrain(strainData: InsertStrain): Promise<Strain> {
     const [strain] = await db
       .insert(strains)
       .values(strainData)
       .returning();
     return strain;
+  }
+
+  async updateStrain(id: string, strainData: Partial<InsertStrain>): Promise<Strain> {
+    const [strain] = await db
+      .update(strains)
+      .set(strainData)
+      .where(eq(strains.id, id))
+      .returning();
+    return strain;
+  }
+
+  async deleteStrain(id: string): Promise<void> {
+    await db.delete(strains).where(eq(strains.id, id));
   }
 
   // Genotype operations
