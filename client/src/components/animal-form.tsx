@@ -13,13 +13,14 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Animal, Cage, User } from "@shared/schema";
+import type { Animal, Cage, User, Strain, Genotype } from "@shared/schema";
 
 const animalFormSchema = z.object({
   animalNumber: z.string().min(1, "Animal number is required"),
   cageId: z.string().optional(),
-  breed: z.string().min(1, "Breed is required"),
+  breed: z.string().min(1, "Strain is required"),
   genotype: z.string().optional(),
+  status: z.enum(["Active", "Reserved", "Transferred", "Sacrificed", "Breeding", "Replaced"]).default("Active"),
   dateOfBirth: z.string().optional(),
   weight: z.string().optional(),
   gender: z.enum(["Male", "Female"]).optional(),
@@ -54,6 +55,14 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
     queryKey: ['/api/users'],
   });
 
+  const { data: strains } = useQuery<Strain[]>({
+    queryKey: ['/api/strains'],
+  });
+
+  const { data: genotypes } = useQuery<Genotype[]>({
+    queryKey: ['/api/genotypes'],
+  });
+
   const form = useForm<AnimalFormData>({
     resolver: zodResolver(animalFormSchema),
     defaultValues: {
@@ -72,6 +81,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       genotypingUserId: animal?.genotypingUserId || "none",
       probes: animal?.probes || false,
       healthStatus: animal?.healthStatus || "Healthy",
+      status: animal?.status || "Active",
       diseases: animal?.diseases || "",
       notes: animal?.notes || "",
     },
@@ -226,21 +236,20 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
             </div>
 
             <div>
-              <Label htmlFor="breed">Breed *</Label>
+              <Label htmlFor="breed">Strain *</Label>
               <Select
                 value={form.watch("breed")}
                 onValueChange={(value) => form.setValue("breed", value)}
               >
-                <SelectTrigger data-testid="select-breed">
-                  <SelectValue placeholder="Select breed" />
+                <SelectTrigger data-testid="select-strain">
+                  <SelectValue placeholder="Select strain" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="C57BL/6">C57BL/6</SelectItem>
-                  <SelectItem value="BALB/c">BALB/c</SelectItem>
-                  <SelectItem value="DBA/2">DBA/2</SelectItem>
-                  <SelectItem value="129S1/SvImJ">129S1/SvImJ</SelectItem>
-                  <SelectItem value="NOD">NOD</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  {strains?.map((strain) => (
+                    <SelectItem key={strain.id} value={strain.name}>
+                      {strain.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {form.formState.errors.breed && (
@@ -252,12 +261,22 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
 
             <div>
               <Label htmlFor="genotype">Genotype</Label>
-              <Input
-                id="genotype"
-                placeholder="Enter genotype"
-                {...form.register("genotype")}
-                data-testid="input-genotype"
-              />
+              <Select
+                value={form.watch("genotype") || ""}
+                onValueChange={(value) => form.setValue("genotype", value)}
+              >
+                <SelectTrigger data-testid="select-genotype">
+                  <SelectValue placeholder="Select genotype" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No genotype</SelectItem>
+                  {genotypes?.map((genotype) => (
+                    <SelectItem key={genotype.id} value={genotype.name}>
+                      {genotype.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -388,7 +407,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         {/* Health Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-medium border-b pb-2">Health Information</h3>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="healthStatus">Health Status</Label>
               <Select
@@ -406,6 +425,29 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                 </SelectContent>
               </Select>
             </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={form.watch("status")}
+                onValueChange={(value) => form.setValue("status", value as any)}
+              >
+                <SelectTrigger data-testid="select-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Reserved">Reserved</SelectItem>
+                  <SelectItem value="Transferred">Transferred</SelectItem>
+                  <SelectItem value="Sacrificed">Sacrificed</SelectItem>
+                  <SelectItem value="Breeding">Breeding</SelectItem>
+                  <SelectItem value="Replaced">Replaced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
 
             <div>
               <Label htmlFor="diseases">Diseases/Conditions</Label>
