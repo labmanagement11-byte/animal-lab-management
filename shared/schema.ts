@@ -47,7 +47,7 @@ export const cages = pgTable("cages", {
   capacity: integer("capacity").default(5),
   isActive: boolean("is_active").default(true),
   status: varchar("status", {
-    enum: ['Active', 'Breeding', 'Holding', 'Deactivated']
+    enum: ['Active', 'Breeding', 'Holding']
   }).default('Active'),
   strainId: varchar("strain_id").references(() => strains.id),
   notes: text("notes"),

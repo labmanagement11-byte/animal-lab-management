@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,7 +31,8 @@ const cageFormSchema = z.object({
     const num = parseInt(val);
     return !isNaN(num) && num > 0;
   }, "Capacity must be a positive number"),
-  status: z.enum(['Active', 'Breeding', 'Holding', 'Deactivated']).default('Active'),
+  status: z.enum(['Active', 'Breeding', 'Holding']).default('Active'),
+  isActive: z.boolean().default(true),
   strainInput: z.string().optional(),
 });
 
@@ -77,6 +79,7 @@ export default function Cages() {
       location: editingCage?.location || "",
       capacity: editingCage?.capacity?.toString() || "",
       status: editingCage?.status || "Active",
+      isActive: editingCage?.isActive ?? true,
       strainInput: "",
     },
   });
@@ -109,6 +112,7 @@ export default function Cages() {
         location: data.location,
         capacity: parseInt(data.capacity),
         status: data.status,
+        isActive: data.isActive,
         strainId,
       };
       await apiRequest("POST", "/api/cages", payload);
@@ -174,6 +178,7 @@ export default function Cages() {
         location: data.location,
         capacity: parseInt(data.capacity),
         status: data.status,
+        isActive: data.isActive,
         strainId,
       };
       await apiRequest("PUT", `/api/cages/${editingCage!.id}`, payload);
@@ -276,6 +281,7 @@ export default function Cages() {
       location: "",
       capacity: "",
       status: "Active",
+      isActive: true,
       strainInput: "",
     });
   };
@@ -296,15 +302,12 @@ export default function Cages() {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200';
       case 'Holding':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200';
-      case 'Deactivated':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 border-gray-200';
     }
   };
 
-  const getStatusDisplayInfo = (status: string) => {
-    const isActive = ['Active', 'Breeding', 'Holding'].includes(status);
+  const getStatusDisplayInfo = (status: string, isActive: boolean) => {
     const activityStatus = isActive ? 'Active' : 'Deactivated';
     
     let purpose = '';
@@ -405,7 +408,7 @@ export default function Cages() {
                 </CardTitle>
                 <div className="flex flex-col gap-1">
                   {(() => {
-                    const statusInfo = getStatusDisplayInfo(cage.status || 'Active');
+                    const statusInfo = getStatusDisplayInfo(cage.status || 'Active', cage.isActive ?? true);
                     return (
                       <>
                         <Badge className={statusInfo.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
@@ -734,13 +737,33 @@ export default function Cages() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Active">Active - General Use (Green)</SelectItem>
-                        <SelectItem value="Breeding">Active - Breeding (Blue)</SelectItem>
-                        <SelectItem value="Holding">Active - Holding (Purple)</SelectItem>
-                        <SelectItem value="Deactivated">Deactivated (Red)</SelectItem>
+                        <SelectItem value="Active">General Use (Green)</SelectItem>
+                        <SelectItem value="Breeding">Breeding (Blue)</SelectItem>
+                        <SelectItem value="Holding">Holding (Purple)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-cage-active"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Active
+                      </FormLabel>
+                    </div>
                   </FormItem>
                 )}
               />
