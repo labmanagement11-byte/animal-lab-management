@@ -78,7 +78,7 @@ export default function Cages() {
       const payload = {
         ...data,
         capacity: parseInt(data.capacity),
-        strainId: data.strainId === "" ? undefined : data.strainId,
+        strainId: data.strainId === "" || data.strainId === "none" ? undefined : data.strainId,
       };
       await apiRequest("POST", "/api/cages", payload);
     },
@@ -120,7 +120,7 @@ export default function Cages() {
       const payload = {
         ...data,
         capacity: parseInt(data.capacity),
-        strainId: data.strainId === "" ? undefined : data.strainId,
+        strainId: data.strainId === "" || data.strainId === "none" ? undefined : data.strainId,
       };
       await apiRequest("PUT", `/api/cages/${editingCage!.id}`, payload);
     },
@@ -664,7 +664,7 @@ export default function Cages() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No strain selected</SelectItem>
+                        <SelectItem value="none">No strain selected</SelectItem>
                         {strains?.map((strain) => (
                           <SelectItem key={strain.id} value={strain.id}>
                             {strain.name}
