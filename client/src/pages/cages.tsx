@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Cage } from "@shared/schema";
+import type { Cage, Animal } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,7 @@ export default function Cages() {
   const [showQrGenerator, setShowQrGenerator] = useState(false);
   const [editingCage, setEditingCage] = useState<Cage | null>(null);
   const [selectedCage, setSelectedCage] = useState<Cage | null>(null);
+  const [expandedCages, setExpandedCages] = useState<Set<string>>(new Set());
 
   const { data: cages, isLoading } = useQuery<Cage[]>({
     queryKey: searchTerm ? ['/api/cages/search', searchTerm] : ['/api/cages'],
@@ -48,6 +49,10 @@ export default function Cages() {
       }
       return response.json();
     },
+  });
+
+  const { data: animals, isLoading: isLoadingAnimals } = useQuery<Animal[]>({
+    queryKey: ['/api/animals'],
   });
 
   const form = useForm<CageFormData>({
@@ -220,6 +225,36 @@ export default function Cages() {
     return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
   };
 
+  const getHealthStatusColor = (status: string) => {
+    switch (status) {
+      case 'Healthy':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'Monitoring':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'Sick':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'Quarantine':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const getAnimalsInCage = (cageId: string) => {
+    if (!animals) return [];
+    return animals.filter(animal => animal.cageId === cageId);
+  };
+
+  const toggleCageExpansion = (cageId: string) => {
+    const newExpanded = new Set(expandedCages);
+    if (newExpanded.has(cageId)) {
+      newExpanded.delete(cageId);
+    } else {
+      newExpanded.add(cageId);
+    }
+    setExpandedCages(newExpanded);
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -300,6 +335,94 @@ export default function Cages() {
                   <span className="text-muted-foreground">Capacity:</span>
                   <span className="ml-2 font-medium" data-testid={`text-capacity-${cage.id}`}>{cage.capacity || 'N/A'} animals</span>
                 </div>
+
+                {/* Animals Section */}
+                {!isLoadingAnimals && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm border-t border-border pt-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Animals:</span>
+                        <span className="font-medium" data-testid={`text-animal-count-${cage.id}`}>
+                          {getAnimalsInCage(cage.id).length}
+                        </span>
+                        <span className="text-muted-foreground">
+                          / {cage.capacity || '∞'}
+                        </span>
+                      </div>
+                      {getAnimalsInCage(cage.id).length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => toggleCageExpansion(cage.id)}
+                          data-testid={`button-toggle-animals-${cage.id}`}
+                        >
+                          {expandedCages.has(cage.id) ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Expanded Animal List */}
+                    {expandedCages.has(cage.id) && getAnimalsInCage(cage.id).length > 0 && (
+                      <div className="space-y-2 bg-muted/30 rounded-lg p-3">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                          Animals in this cage:
+                        </h4>
+                        <div className="space-y-2">
+                          {getAnimalsInCage(cage.id).map((animal) => (
+                            <div
+                              key={animal.id}
+                              className="flex items-center justify-between bg-background rounded p-2 text-sm"
+                              data-testid={`animal-in-cage-${animal.id}`}
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium" data-testid={`animal-number-${animal.id}`}>
+                                    {animal.animalNumber}
+                                  </span>
+                                  <Badge className={getHealthStatusColor(animal.healthStatus || 'Healthy')}>
+                                    {animal.healthStatus || 'Healthy'}
+                                  </Badge>
+                                  {animal.status && animal.status !== 'Active' && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {animal.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  <span>Strain: {animal.breed}</span>
+                                  {animal.gender && <span> • Gender: {animal.gender}</span>}
+                                  {animal.weight && <span> • Weight: {animal.weight}g</span>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Empty cage message */}
+                    {getAnimalsInCage(cage.id).length === 0 && (
+                      <div className="text-xs text-muted-foreground bg-muted/20 rounded p-2" data-testid={`empty-cage-${cage.id}`}>
+                        No animals currently assigned to this cage
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Loading state for animals */}
+                {isLoadingAnimals && (
+                  <div className="border-t border-border pt-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Loading animals...</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
