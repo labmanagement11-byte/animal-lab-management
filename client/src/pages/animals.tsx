@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Plus, Search, Eye, Edit, Trash2, QrCode } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, QrCode, Calendar, User, Beaker } from "lucide-react";
 import AnimalForm from "@/components/animal-form";
 import QrCodeGenerator from "@/components/qr-code-generator";
-import type { Animal } from "@shared/schema";
+import type { Animal, User as UserType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
+import { calculateAge, formatDate } from "@/utils/dateUtils";
 
 export default function Animals() {
   const { toast } = useToast();
@@ -34,6 +35,10 @@ export default function Animals() {
       }
       return response.json();
     },
+  });
+
+  const { data: users } = useQuery<UserType[]>({
+    queryKey: ['/api/users'],
   });
 
   const deleteAnimalMutation = useMutation({
@@ -80,6 +85,12 @@ export default function Animals() {
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
+  };
+
+  const getUserName = (userId: string | null | undefined) => {
+    if (!userId || !users) return 'N/A';
+    const user = users.find(u => u.id === userId);
+    return user ? `${user.firstName} ${user.lastName}` : 'Unknown User';
   };
 
   const handleEdit = (animal: Animal) => {
@@ -148,79 +159,119 @@ export default function Animals() {
               ))}
             </div>
           ) : animals && animals.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Animal ID</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cage</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Breed</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Age</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Weight</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Gender</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {animals.map((animal) => (
-                    <tr key={animal.id} className="border-b border-border hover:bg-accent/50" data-testid={`row-animal-${animal.id}`}>
-                      <td className="py-3 px-4 font-medium text-foreground" data-testid={`text-animal-id-${animal.id}`}>
-                        {animal.animalNumber}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {animal.cageId || 'N/A'}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {animal.breed}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {animal.age ? `${animal.age} weeks` : 'N/A'}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {animal.weight ? `${animal.weight}g` : 'N/A'}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {animal.gender || 'N/A'}
-                      </td>
-                      <td className="py-3 px-4">
+            <div className="space-y-4">
+              {animals.map((animal) => (
+                <Card key={animal.id} className="p-4" data-testid={`card-animal-${animal.id}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-3">
+                        <h3 className="text-lg font-semibold text-foreground" data-testid={`text-animal-id-${animal.id}`}>
+                          {animal.animalNumber}
+                        </h3>
                         <Badge className={getStatusColor(animal.healthStatus || 'Healthy')}>
-                          {animal.healthStatus}
+                          {animal.healthStatus || 'Healthy'}
                         </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleEdit(animal)}
-                            data-testid={`button-edit-${animal.id}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleGenerateQr(animal)}
-                            data-testid={`button-qr-${animal.id}`}
-                          >
-                            <QrCode className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleDelete(animal)}
-                            disabled={deleteAnimalMutation.isPending}
-                            data-testid={`button-delete-${animal.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        {animal.probes && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                            <Beaker className="w-3 h-3 mr-1" />
+                            Probes
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        {/* Basic Information */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-muted-foreground">Basic Info</h4>
+                          <div className="space-y-1">
+                            <div><span className="font-medium">Breed:</span> {animal.breed}</div>
+                            <div><span className="font-medium">Genotype:</span> {animal.genotype || 'N/A'}</div>
+                            <div><span className="font-medium">Gender:</span> {animal.gender || 'N/A'}</div>
+                            <div><span className="font-medium">Color:</span> {animal.color || 'N/A'}</div>
+                            <div><span className="font-medium">Generation:</span> {animal.generation || 'N/A'}</div>
+                            <div><span className="font-medium">Cage:</span> {animal.cageId || 'N/A'}</div>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+                        {/* Physical & Age */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-muted-foreground">Physical & Age</h4>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              <span className="font-medium">DOB:</span> 
+                              {formatDate(animal.dateOfBirth)}
+                            </div>
+                            <div><span className="font-medium">Age:</span> {calculateAge(animal.dateOfBirth)}</div>
+                            <div><span className="font-medium">Manual Age:</span> {animal.age ? `${animal.age} weeks` : 'N/A'}</div>
+                            <div><span className="font-medium">Weight:</span> {animal.weight ? `${animal.weight}g` : 'N/A'}</div>
+                          </div>
+                        </div>
+
+                        {/* Research Data */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-muted-foreground">Research Data</h4>
+                          <div className="space-y-1">
+                            <div><span className="font-medium">Protocol:</span> {animal.protocol || 'N/A'}</div>
+                            <div><span className="font-medium">Breeding Start:</span> {formatDate(animal.breedingStartDate)}</div>
+                            <div><span className="font-medium">DOG:</span> {formatDate(animal.dateOfGenotyping)}</div>
+                            <div className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              <span className="font-medium">Genotyping User:</span> 
+                              {getUserName(animal.genotypingUserId)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {(animal.diseases || animal.notes) && (
+                        <div className="mt-4 pt-3 border-t border-border">
+                          {animal.diseases && (
+                            <div className="mb-2">
+                              <span className="font-medium text-muted-foreground">Diseases:</span>
+                              <p className="text-sm mt-1">{animal.diseases}</p>
+                            </div>
+                          )}
+                          {animal.notes && (
+                            <div>
+                              <span className="font-medium text-muted-foreground">Notes:</span>
+                              <p className="text-sm mt-1">{animal.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleEdit(animal)}
+                        data-testid={`button-edit-${animal.id}`}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleGenerateQr(animal)}
+                        data-testid={`button-qr-${animal.id}`}
+                      >
+                        <QrCode className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleDelete(animal)}
+                        disabled={deleteAnimalMutation.isPending}
+                        data-testid={`button-delete-${animal.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           ) : (
             <div className="text-center py-8">
