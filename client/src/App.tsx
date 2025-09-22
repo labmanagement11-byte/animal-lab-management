@@ -13,6 +13,8 @@ import QrScanner from "@/pages/qr-scanner";
 import Reports from "@/pages/reports";
 import Admin from "@/pages/admin";
 import Users from "@/pages/users";
+import CageQrDetail from "@/pages/cage-qr-detail";
+import AnimalQrDetail from "@/pages/animal-qr-detail";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/sidebar";
 import { useLocation } from "wouter";
@@ -50,6 +52,8 @@ function AppContent() {
           <Route path="/reports" component={Reports} />
           <Route path="/admin" component={Admin} />
           <Route path="/users" component={Users} />
+          <Route path="/qr/cage/:id" component={CageQrDetail} />
+          <Route path="/qr/animal/:id" component={AnimalQrDetail} />
           <Route component={NotFound} />
         </Switch>
       </div>
