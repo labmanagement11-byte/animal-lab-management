@@ -82,13 +82,17 @@ export default function Cages() {
       
       // If strain input is provided, check if it's an existing strain ID or create new strain
       if (data.strainInput && data.strainInput.trim() !== "") {
-        const existingStrain = strains?.find(s => s.id === data.strainInput || s.name === data.strainInput);
+        const normalized = data.strainInput.trim();
+        const existingStrain = strains?.find(s => 
+          s.id === normalized || 
+          s.name.trim().toLowerCase() === normalized.toLowerCase()
+        );
         
         if (existingStrain) {
           strainId = existingStrain.id;
         } else {
           // Create new strain
-          const response = await apiRequest("POST", "/api/strains", { name: data.strainInput.trim() });
+          const response = await apiRequest("POST", "/api/strains", { name: normalized });
           const newStrain = await response.json();
           strainId = newStrain.id;
         }
@@ -108,7 +112,7 @@ export default function Cages() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
-          return Array.isArray(queryKey) && queryKey[0] === '/api/cages';
+          return Array.isArray(queryKey) && (queryKey[0] === '/api/cages' || queryKey[0] === '/api/strains');
         }
       });
       toast({
@@ -143,13 +147,17 @@ export default function Cages() {
       
       // If strain input is provided, check if it's an existing strain ID or create new strain
       if (data.strainInput && data.strainInput.trim() !== "") {
-        const existingStrain = strains?.find(s => s.id === data.strainInput || s.name === data.strainInput);
+        const normalized = data.strainInput.trim();
+        const existingStrain = strains?.find(s => 
+          s.id === normalized || 
+          s.name.trim().toLowerCase() === normalized.toLowerCase()
+        );
         
         if (existingStrain) {
           strainId = existingStrain.id;
         } else {
           // Create new strain
-          const response = await apiRequest("POST", "/api/strains", { name: data.strainInput.trim() });
+          const response = await apiRequest("POST", "/api/strains", { name: normalized });
           const newStrain = await response.json();
           strainId = newStrain.id;
         }
@@ -169,7 +177,7 @@ export default function Cages() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
-          return Array.isArray(queryKey) && queryKey[0] === '/api/cages';
+          return Array.isArray(queryKey) && (queryKey[0] === '/api/cages' || queryKey[0] === '/api/strains');
         }
       });
       toast({
@@ -236,13 +244,15 @@ export default function Cages() {
 
   const handleEdit = (cage: Cage) => {
     setEditingCage(cage);
+    // Find the strain name for the current cage's strain ID
+    const currentStrain = strains?.find(s => s.id === cage.strainId);
     form.reset({
       cageNumber: cage.cageNumber,
       roomNumber: cage.roomNumber,
       location: cage.location,
       capacity: cage.capacity?.toString() || "",
       status: cage.status || "Active",
-      strainInput: "",
+      strainInput: currentStrain?.name || "",
     });
     setShowCageForm(true);
   };
