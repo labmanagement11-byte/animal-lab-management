@@ -9,10 +9,13 @@ import {
   Users, 
   Settings,
   LogOut,
-  Dna
+  Dna,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useLocation } from "wouter";
 import GlobalSearch from "@/components/global-search";
+import { useTheme } from "@/contexts/theme-context";
 
 interface SidebarProps {
   onNavigate: (page: string) => void;
@@ -21,6 +24,7 @@ interface SidebarProps {
 export default function Sidebar({ onNavigate }: SidebarProps) {
   const { user } = useAuth();
   const [location] = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';
@@ -96,6 +100,22 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           ))}
           
           <li className="pt-4 border-t border-border">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              onClick={toggleTheme}
+              data-testid="button-toggle-theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4 mr-3" />
+              ) : (
+                <Moon className="w-4 h-4 mr-3" />
+              )}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </Button>
+          </li>
+          
+          <li>
             <Button
               variant="ghost"
               className="w-full justify-start text-muted-foreground hover:text-foreground"

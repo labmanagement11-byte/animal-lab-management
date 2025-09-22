@@ -18,6 +18,7 @@ import AnimalQrDetail from "@/pages/animal-qr-detail";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/sidebar";
 import { useLocation } from "wouter";
+import { ThemeProvider } from "@/contexts/theme-context";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -64,10 +65,12 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <AppContent />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AppContent />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
