@@ -22,7 +22,9 @@ import CageQrCodeGenerator from "@/components/cage-qr-code-generator";
 
 const cageFormSchema = z.object({
   cageNumber: z.string().min(1, "Cage number is required"),
-  roomNumber: z.string().min(1, "Room number is required"),
+  roomNumber: z.enum(['BB00028', 'ZRC-C61', 'ZRC-SC14'], {
+    required_error: "Room number is required",
+  }),
   location: z.string().min(1, "Location is required"),
   capacity: z.string().min(1, "Capacity is required").refine((val) => {
     const num = parseInt(val);
@@ -71,7 +73,7 @@ export default function Cages() {
     resolver: zodResolver(cageFormSchema),
     defaultValues: {
       cageNumber: editingCage?.cageNumber || "",
-      roomNumber: editingCage?.roomNumber || "",
+      roomNumber: editingCage?.roomNumber || "BB00028",
       location: editingCage?.location || "",
       capacity: editingCage?.capacity?.toString() || "",
       status: editingCage?.status || "Active",
@@ -270,7 +272,7 @@ export default function Cages() {
     setEditingCage(null);
     form.reset({
       cageNumber: "",
-      roomNumber: "",
+      roomNumber: "BB00028",
       location: "",
       capacity: "",
       status: "Active",
@@ -675,7 +677,16 @@ export default function Cages() {
                   <FormItem>
                     <FormLabel>Room Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="Room A" {...field} data-testid="input-room-number" />
+                      <Select onValueChange={field.onChange} value={field.value} data-testid="select-room-number">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select room" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BB00028">BB00028</SelectItem>
+                          <SelectItem value="ZRC-C61">ZRC-C61</SelectItem>
+                          <SelectItem value="ZRC-SC14">ZRC-SC14</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

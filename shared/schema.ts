@@ -40,7 +40,9 @@ export const users = pgTable("users", {
 export const cages = pgTable("cages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   cageNumber: varchar("cage_number").notNull().unique(),
-  roomNumber: varchar("room_number").notNull(),
+  roomNumber: varchar("room_number", { 
+    enum: ['BB00028', 'ZRC-C61', 'ZRC-SC14'] 
+  }).notNull(),
   location: varchar("location").notNull(),
   capacity: integer("capacity").default(5),
   isActive: boolean("is_active").default(true),
