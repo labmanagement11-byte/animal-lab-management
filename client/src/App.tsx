@@ -10,6 +10,7 @@ import Animals from "@/pages/animals";
 import Cages from "@/pages/cages";
 import Strains from "@/pages/strains";
 import QrScanner from "@/pages/qr-scanner";
+import Reports from "@/pages/reports";
 import Admin from "@/pages/admin";
 import Users from "@/pages/users";
 import NotFound from "@/pages/not-found";
@@ -46,6 +47,7 @@ function AppContent() {
           <Route path="/cages" component={Cages} />
           <Route path="/strains" component={Strains} />
           <Route path="/qr-scanner" component={QrScanner} />
+          <Route path="/reports" component={Reports} />
           <Route path="/admin" component={Admin} />
           <Route path="/users" component={Users} />
           <Route component={NotFound} />
