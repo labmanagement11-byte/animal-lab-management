@@ -72,6 +72,10 @@ export interface IStorage {
     animals: Animal[];
     cages: Cage[];
     users: User[];
+    strains: Strain[];
+    genotypes: Genotype[];
+    qrCodes: QrCode[];
+    fileAttachments: FileAttachment[];
   }>;
   
   // Strain operations
@@ -300,10 +304,14 @@ export class DatabaseStorage implements IStorage {
     animals: Animal[];
     cages: Cage[];
     users: User[];
+    strains: Strain[];
+    genotypes: Genotype[];
+    qrCodes: QrCode[];
+    fileAttachments: FileAttachment[];
   }> {
     const searchTerm = `%${query}%`;
 
-    // Search animals
+    // Search animals - expanded fields
     const animalsResult = await db
       .select()
       .from(animals)
@@ -317,13 +325,15 @@ export class DatabaseStorage implements IStorage {
           ilike(animals.protocol, searchTerm),
           ilike(animals.diseases, searchTerm),
           ilike(animals.notes, searchTerm),
+          ilike(animals.healthStatus, searchTerm),
+          ilike(animals.status, searchTerm),
           ilike(cages.cageNumber, searchTerm),
           ilike(cages.location, searchTerm)
         )
       )
       .limit(10);
 
-    // Search cages
+    // Search cages - expanded fields
     const cagesResult = await db
       .select()
       .from(cages)
@@ -331,7 +341,9 @@ export class DatabaseStorage implements IStorage {
         or(
           ilike(cages.cageNumber, searchTerm),
           ilike(cages.roomNumber, searchTerm),
-          ilike(cages.location, searchTerm)
+          ilike(cages.location, searchTerm),
+          ilike(cages.status, searchTerm),
+          ilike(cages.notes, searchTerm)
         )
       )
       .limit(10);
@@ -350,6 +362,62 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(10);
 
+    // Search strains
+    const strainsResult = await db
+      .select()
+      .from(strains)
+      .where(
+        or(
+          ilike(strains.name, searchTerm),
+          ilike(strains.description, searchTerm)
+        )
+      )
+      .limit(10);
+
+    // Search genotypes
+    const genotypesResult = await db
+      .select()
+      .from(genotypes)
+      .where(
+        or(
+          ilike(genotypes.name, searchTerm),
+          ilike(genotypes.description, searchTerm)
+        )
+      )
+      .limit(10);
+
+    // Search QR codes
+    const qrCodesResult = await db
+      .select()
+      .from(qrCodes)
+      .leftJoin(animals, eq(qrCodes.animalId, animals.id))
+      .leftJoin(cages, eq(qrCodes.cageId, cages.id))
+      .where(
+        or(
+          ilike(qrCodes.qrData, searchTerm),
+          ilike(animals.animalNumber, searchTerm),
+          ilike(cages.cageNumber, searchTerm)
+        )
+      )
+      .limit(10);
+
+    // Search file attachments
+    const fileAttachmentsResult = await db
+      .select()
+      .from(fileAttachments)
+      .leftJoin(animals, eq(fileAttachments.animalId, animals.id))
+      .leftJoin(cages, eq(fileAttachments.cageId, cages.id))
+      .where(
+        or(
+          ilike(fileAttachments.fileName, searchTerm),
+          ilike(fileAttachments.originalName, searchTerm),
+          ilike(fileAttachments.fileType, searchTerm),
+          ilike(animals.animalNumber, searchTerm),
+          ilike(cages.cageNumber, searchTerm)
+        )
+      )
+      .limit(10);
+
     return {
       animals: animalsResult.map(row => ({
         ...row.animals,
@@ -357,6 +425,18 @@ export class DatabaseStorage implements IStorage {
       })),
       cages: cagesResult,
       users: usersResult,
+      strains: strainsResult,
+      genotypes: genotypesResult,
+      qrCodes: qrCodesResult.map(row => ({
+        ...row.qrCodes,
+        animal: row.animals,
+        cage: row.cages
+      })),
+      fileAttachments: fileAttachmentsResult.map(row => ({
+        ...row.fileAttachments,
+        animal: row.animals,
+        cage: row.cages
+      })),
     };
   }
 
