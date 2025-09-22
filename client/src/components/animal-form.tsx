@@ -7,20 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Animal, Cage } from "@shared/schema";
+import type { Animal, Cage, User } from "@shared/schema";
 
 const animalFormSchema = z.object({
   animalNumber: z.string().min(1, "Animal number is required"),
   cageId: z.string().optional(),
   breed: z.string().min(1, "Breed is required"),
+  genotype: z.string().optional(),
+  dateOfBirth: z.string().optional(),
   age: z.string().optional(),
   weight: z.string().optional(),
   gender: z.enum(["Male", "Female"]).optional(),
+  color: z.string().optional(),
+  generation: z.string().optional(),
+  protocol: z.string().optional(),
+  breedingStartDate: z.string().optional(),
+  dateOfGenotyping: z.string().optional(),
+  genotypingUserId: z.string().optional(),
+  probes: z.boolean().default(false),
   healthStatus: z.enum(["Healthy", "Monitoring", "Sick", "Quarantine"]).default("Healthy"),
   diseases: z.string().optional(),
   notes: z.string().optional(),
@@ -41,15 +51,28 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
     queryKey: ['/api/cages'],
   });
 
+  const { data: users } = useQuery<User[]>({
+    queryKey: ['/api/users'],
+  });
+
   const form = useForm<AnimalFormData>({
     resolver: zodResolver(animalFormSchema),
     defaultValues: {
       animalNumber: animal?.animalNumber || "",
       cageId: animal?.cageId || "none",
       breed: animal?.breed || "",
+      genotype: animal?.genotype || "",
+      dateOfBirth: animal?.dateOfBirth ? new Date(animal.dateOfBirth).toISOString().split('T')[0] : "",
       age: animal?.age?.toString() || "",
       weight: animal?.weight || "",
       gender: animal?.gender || undefined,
+      color: animal?.color || "",
+      generation: animal?.generation?.toString() || "",
+      protocol: animal?.protocol || "",
+      breedingStartDate: animal?.breedingStartDate ? new Date(animal.breedingStartDate).toISOString().split('T')[0] : "",
+      dateOfGenotyping: animal?.dateOfGenotyping ? new Date(animal.dateOfGenotyping).toISOString().split('T')[0] : "",
+      genotypingUserId: animal?.genotypingUserId || "none",
+      probes: animal?.probes || false,
       healthStatus: animal?.healthStatus || "Healthy",
       diseases: animal?.diseases || "",
       notes: animal?.notes || "",
@@ -63,6 +86,11 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         cageId: data.cageId === "none" ? undefined : data.cageId,
         age: data.age ? parseInt(data.age) : undefined,
         weight: data.weight || undefined,
+        generation: data.generation ? parseInt(data.generation) : undefined,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
+        breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
+        dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
+        genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
       };
       await apiRequest("POST", "/api/animals", payload);
     },
@@ -101,6 +129,11 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         cageId: data.cageId === "none" ? undefined : data.cageId,
         age: data.age ? parseInt(data.age) : undefined,
         weight: data.weight || undefined,
+        generation: data.generation ? parseInt(data.generation) : undefined,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
+        breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
+        dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
+        genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
       };
       await apiRequest("PUT", `/api/animals/${animal!.id}`, payload);
     },
@@ -146,142 +179,259 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         <DialogTitle>{animal ? 'Edit Animal' : 'Add New Animal'}</DialogTitle>
       </DialogHeader>
       
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="animalNumber">Animal Number</Label>
-            <Input
-              id="animalNumber"
-              placeholder="M-XXX"
-              {...form.register("animalNumber")}
-              data-testid="input-animal-number"
-            />
-            {form.formState.errors.animalNumber && (
-              <p className="text-sm text-destructive mt-1">
-                {form.formState.errors.animalNumber.message}
-              </p>
-            )}
-          </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4 max-h-[80vh] overflow-y-auto">
+        {/* Basic Information */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium border-b pb-2">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="animalNumber">Animal Number *</Label>
+              <Input
+                id="animalNumber"
+                placeholder="M-XXX"
+                {...form.register("animalNumber")}
+                data-testid="input-animal-number"
+              />
+              {form.formState.errors.animalNumber && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.animalNumber.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <Label htmlFor="cageId">Cage</Label>
-            <Select 
-              value={form.watch("cageId")} 
-              onValueChange={(value) => form.setValue("cageId", value)}
-            >
-              <SelectTrigger data-testid="select-cage">
-                <SelectValue placeholder="Select cage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No cage assigned</SelectItem>
-                {cages?.map((cage) => (
-                  <SelectItem key={cage.id} value={cage.id}>
-                    {cage.cageNumber} - {cage.location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div>
+              <Label htmlFor="cageId">Cage</Label>
+              <Select 
+                value={form.watch("cageId")} 
+                onValueChange={(value) => form.setValue("cageId", value)}
+              >
+                <SelectTrigger data-testid="select-cage">
+                  <SelectValue placeholder="Select cage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No cage assigned</SelectItem>
+                  {cages?.map((cage) => (
+                    <SelectItem key={cage.id} value={cage.id}>
+                      {cage.cageNumber} - {cage.location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <Label htmlFor="breed">Breed</Label>
-            <Select
-              value={form.watch("breed")}
-              onValueChange={(value) => form.setValue("breed", value)}
-            >
-              <SelectTrigger data-testid="select-breed">
-                <SelectValue placeholder="Select breed" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="C57BL/6">C57BL/6</SelectItem>
-                <SelectItem value="BALB/c">BALB/c</SelectItem>
-                <SelectItem value="DBA/2">DBA/2</SelectItem>
-                <SelectItem value="129S1/SvImJ">129S1/SvImJ</SelectItem>
-                <SelectItem value="NOD">NOD</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            {form.formState.errors.breed && (
-              <p className="text-sm text-destructive mt-1">
-                {form.formState.errors.breed.message}
-              </p>
-            )}
-          </div>
+            <div>
+              <Label htmlFor="breed">Breed *</Label>
+              <Select
+                value={form.watch("breed")}
+                onValueChange={(value) => form.setValue("breed", value)}
+              >
+                <SelectTrigger data-testid="select-breed">
+                  <SelectValue placeholder="Select breed" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="C57BL/6">C57BL/6</SelectItem>
+                  <SelectItem value="BALB/c">BALB/c</SelectItem>
+                  <SelectItem value="DBA/2">DBA/2</SelectItem>
+                  <SelectItem value="129S1/SvImJ">129S1/SvImJ</SelectItem>
+                  <SelectItem value="NOD">NOD</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.formState.errors.breed && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.breed.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <Label htmlFor="age">Age (weeks)</Label>
-            <Input
-              id="age"
-              type="number"
-              placeholder="0"
-              {...form.register("age")}
-              data-testid="input-age"
-            />
-          </div>
+            <div>
+              <Label htmlFor="genotype">Genotype</Label>
+              <Input
+                id="genotype"
+                placeholder="Enter genotype"
+                {...form.register("genotype")}
+                data-testid="input-genotype"
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="weight">Weight (grams)</Label>
-            <Input
-              id="weight"
-              placeholder="0.0"
-              {...form.register("weight")}
-              data-testid="input-weight"
-            />
-          </div>
+            <div>
+              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Input
+                id="dateOfBirth"
+                type="date"
+                {...form.register("dateOfBirth")}
+                data-testid="input-date-of-birth"
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="gender">Gender</Label>
-            <Select
-              value={form.watch("gender")}
-              onValueChange={(value) => form.setValue("gender", value as "Male" | "Female")}
-            >
-              <SelectTrigger data-testid="select-gender">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <Label htmlFor="age">Age (weeks)</Label>
+              <Input
+                id="age"
+                type="number"
+                placeholder="0"
+                {...form.register("age")}
+                data-testid="input-age"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="weight">Weight (grams)</Label>
+              <Input
+                id="weight"
+                placeholder="0.0"
+                {...form.register("weight")}
+                data-testid="input-weight"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="gender">Gender</Label>
+              <Select
+                value={form.watch("gender")}
+                onValueChange={(value) => form.setValue("gender", value as "Male" | "Female")}
+              >
+                <SelectTrigger data-testid="select-gender">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="color">Color</Label>
+              <Input
+                id="color"
+                placeholder="Enter color"
+                {...form.register("color")}
+                data-testid="input-color"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="generation">Generation</Label>
+              <Input
+                id="generation"
+                type="number"
+                placeholder="0"
+                {...form.register("generation")}
+                data-testid="input-generation"
+              />
+            </div>
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="healthStatus">Health Status</Label>
-          <Select
-            value={form.watch("healthStatus")}
-            onValueChange={(value) => form.setValue("healthStatus", value as any)}
-          >
-            <SelectTrigger data-testid="select-health-status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Healthy">Healthy</SelectItem>
-              <SelectItem value="Monitoring">Monitoring</SelectItem>
-              <SelectItem value="Sick">Sick</SelectItem>
-              <SelectItem value="Quarantine">Quarantine</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Research Information */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium border-b pb-2">Research Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="protocol">Protocol</Label>
+              <Input
+                id="protocol"
+                placeholder="Enter protocol"
+                {...form.register("protocol")}
+                data-testid="input-protocol"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="breedingStartDate">Breeding Start Date</Label>
+              <Input
+                id="breedingStartDate"
+                type="date"
+                {...form.register("breedingStartDate")}
+                data-testid="input-breeding-start-date"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="dateOfGenotyping">Date of Genotyping (DOG)</Label>
+              <Input
+                id="dateOfGenotyping"
+                type="date"
+                {...form.register("dateOfGenotyping")}
+                data-testid="input-date-of-genotyping"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="genotypingUserId">Genotyping User</Label>
+              <Select 
+                value={form.watch("genotypingUserId")} 
+                onValueChange={(value) => form.setValue("genotypingUserId", value)}
+              >
+                <SelectTrigger data-testid="select-genotyping-user">
+                  <SelectValue placeholder="Select user" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No user assigned</SelectItem>
+                  {users?.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} ({user.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="probes"
+                checked={form.watch("probes")}
+                onCheckedChange={(checked) => form.setValue("probes", !!checked)}
+                data-testid="checkbox-probes"
+              />
+              <Label htmlFor="probes">Probes</Label>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <Label htmlFor="diseases">Diseases/Conditions</Label>
-          <Textarea
-            id="diseases"
-            placeholder="Enter any diseases or medical conditions..."
-            {...form.register("diseases")}
-            data-testid="textarea-diseases"
-          />
-        </div>
+        {/* Health Information */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium border-b pb-2">Health Information</h3>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="healthStatus">Health Status</Label>
+              <Select
+                value={form.watch("healthStatus")}
+                onValueChange={(value) => form.setValue("healthStatus", value as any)}
+              >
+                <SelectTrigger data-testid="select-health-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Healthy">Healthy</SelectItem>
+                  <SelectItem value="Monitoring">Monitoring</SelectItem>
+                  <SelectItem value="Sick">Sick</SelectItem>
+                  <SelectItem value="Quarantine">Quarantine</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div>
-          <Label htmlFor="notes">Additional Notes</Label>
-          <Textarea
-            id="notes"
-            placeholder="Enter any additional notes..."
-            {...form.register("notes")}
-            data-testid="textarea-notes"
-          />
+            <div>
+              <Label htmlFor="diseases">Diseases/Conditions</Label>
+              <Textarea
+                id="diseases"
+                placeholder="Enter any diseases or medical conditions..."
+                {...form.register("diseases")}
+                data-testid="textarea-diseases"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Additional Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Enter any additional notes..."
+                {...form.register("notes")}
+                data-testid="textarea-notes"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end space-x-4 pt-4 border-t border-border">
