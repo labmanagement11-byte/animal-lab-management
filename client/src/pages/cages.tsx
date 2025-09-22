@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp, Check, Grid3X3, List, LayoutGrid, Maximize2 } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -38,12 +38,15 @@ const cageFormSchema = z.object({
 
 type CageFormData = z.infer<typeof cageFormSchema>;
 
+type ViewMode = "list" | "table" | "medium-cards" | "large-cards";
+
 export default function Cages() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCageForm, setShowCageForm] = useState(false);
   const [showQrGenerator, setShowQrGenerator] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("medium-cards");
   const [editingCage, setEditingCage] = useState<Cage | null>(null);
   const [selectedCage, setSelectedCage] = useState<Cage | null>(null);
   const [expandedCages, setExpandedCages] = useState<Set<string>>(new Set());
@@ -382,8 +385,8 @@ export default function Cages() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center space-x-4 mb-6">
+      {/* Search and View Controls */}
+      <div className="flex items-center justify-between mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -394,10 +397,175 @@ export default function Cages() {
             data-testid="input-search-cages"
           />
         </div>
+        
+        {/* View Mode Toggle */}
+        <div className="flex items-center space-x-1 border border-border rounded-lg p-1">
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            data-testid="button-view-list"
+            className="h-8 w-8 p-0"
+          >
+            <List className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === "table" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            data-testid="button-view-table"
+            className="h-8 w-8 p-0"
+          >
+            <Grid3X3 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === "medium-cards" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("medium-cards")}
+            data-testid="button-view-medium-cards"
+            className="h-8 w-8 p-0"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === "large-cards" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("large-cards")}
+            data-testid="button-view-large-cards"
+            className="h-8 w-8 p-0"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Cages Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Cages Display */}
+      {viewMode === "table" && (
+        <div className="border border-border rounded-lg">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  <th className="text-left p-4 font-medium">Cage</th>
+                  <th className="text-left p-4 font-medium">Status</th>
+                  <th className="text-left p-4 font-medium">Room</th>
+                  <th className="text-left p-4 font-medium">Location</th>
+                  <th className="text-left p-4 font-medium">Capacity</th>
+                  <th className="text-left p-4 font-medium">Animals</th>
+                  <th className="text-left p-4 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cages?.map((cage) => {
+                  const cageAnimals = animals?.filter(animal => animal.cageId === cage.id) || [];
+                  const statusInfo = getStatusDisplayInfo(cage.status || 'Active', cage.isActive ?? true);
+                  return (
+                    <tr key={cage.id} className="border-b border-border hover:bg-muted/25">
+                      <td className="p-4">
+                        <div className="flex items-center">
+                          <Home className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <span className="font-medium">Cage {cage.cageNumber}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1">
+                          <Badge className={statusInfo.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
+                            {statusInfo.activityStatus}
+                          </Badge>
+                          {statusInfo.purpose && (
+                            <Badge variant="outline" className="text-xs">
+                              {statusInfo.purpose}
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</td>
+                      <td className="p-4" data-testid={`text-location-${cage.id}`}>{cage.location}</td>
+                      <td className="p-4" data-testid={`text-capacity-${cage.id}`}>{cage.capacity || 'N/A'}</td>
+                      <td className="p-4">
+                        <div className="flex items-center text-sm">
+                          <Users className="w-4 h-4 mr-1 text-muted-foreground" />
+                          <span>{cageAnimals.length}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(cage)} data-testid={`button-edit-${cage.id}`}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleGenerateQr(cage)} data-testid={`button-qr-${cage.id}`}>
+                            <QrCode className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => deleteCageMutation.mutate(cage.id)} disabled={deleteCageMutation.isPending} data-testid={`button-delete-${cage.id}`}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {viewMode === "list" && (
+        <div className="space-y-2">
+          {cages?.map((cage) => {
+            const cageAnimals = animals?.filter(animal => animal.cageId === cage.id) || [];
+            const statusInfo = getStatusDisplayInfo(cage.status || 'Active', cage.isActive ?? true);
+            return (
+              <div key={cage.id} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/25">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <Home className="w-5 h-5 mr-2 text-muted-foreground" />
+                    <span className="font-medium">Cage {cage.cageNumber}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge className={statusInfo.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
+                      {statusInfo.activityStatus}
+                    </Badge>
+                    {statusInfo.purpose && (
+                      <Badge variant="outline" className="text-xs">
+                        {statusInfo.purpose}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Room: <span className="text-foreground" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Location: <span className="text-foreground" data-testid={`text-location-${cage.id}`}>{cage.location}</span>
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Users className="w-4 h-4 mr-1" />
+                    <span>{cageAnimals.length} animals</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Button size="sm" variant="ghost" onClick={() => handleEdit(cage)} data-testid={`button-edit-${cage.id}`}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => handleGenerateQr(cage)} data-testid={`button-qr-${cage.id}`}>
+                    <QrCode className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => deleteCageMutation.mutate(cage.id)} disabled={deleteCageMutation.isPending} data-testid={`button-delete-${cage.id}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {(viewMode === "medium-cards" || viewMode === "large-cards") && (
+        <div className={`grid gap-6 ${
+          viewMode === "medium-cards" 
+            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" 
+            : "grid-cols-1 md:grid-cols-2"
+        }`}>
         {cages?.map((cage) => (
           <Card key={cage.id} className="hover:shadow-md transition-shadow">
             <CardHeader>
@@ -631,7 +799,8 @@ export default function Cages() {
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Empty State */}
       {cages?.length === 0 && (
