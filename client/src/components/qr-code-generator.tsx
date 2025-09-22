@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -68,46 +69,36 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
   });
 
   useEffect(() => {
-    // Generate QR code using a simple pattern (in production, use a proper QR library)
-    const generateQrCode = () => {
+    const generateQrCode = async () => {
       if (!canvasRef.current) return;
 
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const size = 200;
-      canvas.width = size;
-      canvas.height = size;
-
-      // Clear canvas
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, size, size);
-
-      // Draw QR pattern (simplified)
-      ctx.fillStyle = 'black';
-      
-      // Corner squares
-      ctx.fillRect(0, 0, 40, 40);
-      ctx.fillRect(160, 0, 40, 40);
-      ctx.fillRect(0, 160, 40, 40);
-
-      // Data pattern (simplified)
-      for (let i = 0; i < 20; i++) {
-        for (let j = 0; j < 20; j++) {
-          if ((i + j) % 3 === 0) {
-            ctx.fillRect(i * 10, j * 10, 8, 8);
+      try {
+        // Generate real QR code using qrcode library
+        const canvas = canvasRef.current;
+        await QRCode.toCanvas(canvas, qrData, {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
           }
-        }
-      }
+        });
 
-      // Convert to data URL
-      const dataUrl = canvas.toDataURL('image/png');
-      setQrDataUrl(dataUrl);
+        // Convert to data URL for download/copy functionality
+        const dataUrl = canvas.toDataURL('image/png');
+        setQrDataUrl(dataUrl);
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+        toast({
+          title: "Error",
+          description: "Failed to generate QR code",
+          variant: "destructive",
+        });
+      }
     };
 
     generateQrCode();
-  }, [animal]);
+  }, [animal, qrData, toast]);
 
   const handleDownload = () => {
     if (!qrDataUrl) return;
