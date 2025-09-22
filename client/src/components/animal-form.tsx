@@ -21,7 +21,6 @@ const animalFormSchema = z.object({
   breed: z.string().min(1, "Breed is required"),
   genotype: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  age: z.string().optional(),
   weight: z.string().optional(),
   gender: z.enum(["Male", "Female"]).optional(),
   color: z.string().optional(),
@@ -63,7 +62,6 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       breed: animal?.breed || "",
       genotype: animal?.genotype || "",
       dateOfBirth: animal?.dateOfBirth ? new Date(animal.dateOfBirth).toISOString().split('T')[0] : "",
-      age: animal?.age?.toString() || "",
       weight: animal?.weight || "",
       gender: animal?.gender || undefined,
       color: animal?.color || "",
@@ -84,7 +82,6 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       const payload = {
         ...data,
         cageId: data.cageId === "none" ? undefined : data.cageId,
-        age: data.age ? parseInt(data.age) : undefined,
         weight: data.weight || undefined,
         generation: data.generation ? parseInt(data.generation) : undefined,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
@@ -95,7 +92,12 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       await apiRequest("POST", "/api/animals", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/animals'] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === '/api/animals';
+        }
+      });
       toast({
         title: "Success",
         description: "Animal created successfully",
@@ -127,7 +129,6 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       const payload = {
         ...data,
         cageId: data.cageId === "none" ? undefined : data.cageId,
-        age: data.age ? parseInt(data.age) : undefined,
         weight: data.weight || undefined,
         generation: data.generation ? parseInt(data.generation) : undefined,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
@@ -138,7 +139,12 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       await apiRequest("PUT", `/api/animals/${animal!.id}`, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/animals'] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === '/api/animals';
+        }
+      });
       toast({
         title: "Success",
         description: "Animal updated successfully",
@@ -261,17 +267,6 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                 type="date"
                 {...form.register("dateOfBirth")}
                 data-testid="input-date-of-birth"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="age">Age (weeks)</Label>
-              <Input
-                id="age"
-                type="number"
-                placeholder="0"
-                {...form.register("age")}
-                data-testid="input-age"
               />
             </div>
 
