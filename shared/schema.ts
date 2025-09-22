@@ -47,7 +47,7 @@ export const cages = pgTable("cages", {
   status: varchar("status", {
     enum: ['Active', 'Breeding', 'Holding']
   }).default('Active'),
-  strainId: varchar("strain_id").references(() => strains.id),
+  // strainId: varchar("strain_id").references(() => strains.id), // Temporarily commented until DB migration
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -58,7 +58,7 @@ export const strains = pgTable("strains", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull().unique(),
   description: text("description"),
-  category: varchar("category"),
+  // category: varchar("category"), // Temporarily commented until DB migration
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -148,10 +148,10 @@ export const cagesRelations = relations(cages, ({ one, many }) => ({
   animals: many(animals),
   qrCodes: many(qrCodes),
   attachments: many(fileAttachments),
-  strain: one(strains, {
-    fields: [cages.strainId],
-    references: [strains.id],
-  }),
+  // strain: one(strains, {
+  //   fields: [cages.strainId],
+  //   references: [strains.id],
+  // }), // Temporarily commented until DB migration
 }));
 
 export const fileAttachmentsRelations = relations(fileAttachments, ({ one }) => ({
