@@ -54,9 +54,18 @@ export const animals = pgTable("animals", {
   animalNumber: varchar("animal_number").notNull().unique(),
   cageId: varchar("cage_id").references(() => cages.id),
   breed: varchar("breed").notNull(),
-  age: integer("age"), // in weeks
+  genotype: varchar("genotype"),
+  dateOfBirth: timestamp("date_of_birth"),
+  age: integer("age"), // in weeks - will be calculated from dateOfBirth
   weight: decimal("weight", { precision: 5, scale: 2 }), // in grams
   gender: varchar("gender", { enum: ['Male', 'Female'] }),
+  color: varchar("color"),
+  generation: integer("generation"),
+  protocol: varchar("protocol"),
+  breedingStartDate: timestamp("breeding_start_date"),
+  dateOfGenotyping: timestamp("date_of_genotyping"), // DOG
+  genotypingUserId: varchar("genotyping_user_id").references(() => users.id),
+  probes: boolean("probes").default(false),
   healthStatus: varchar("health_status", { 
     enum: ['Healthy', 'Monitoring', 'Sick', 'Quarantine'] 
   }).default('Healthy'),
@@ -91,6 +100,7 @@ export const auditLogs = pgTable("audit_logs", {
 export const usersRelations = relations(users, ({ many }) => ({
   qrCodes: many(qrCodes),
   auditLogs: many(auditLogs),
+  genotypedAnimals: many(animals),
 }));
 
 export const cagesRelations = relations(cages, ({ many }) => ({
@@ -102,6 +112,10 @@ export const animalsRelations = relations(animals, ({ one, many }) => ({
   cage: one(cages, {
     fields: [animals.cageId],
     references: [cages.id],
+  }),
+  genotypingUser: one(users, {
+    fields: [animals.genotypingUserId],
+    references: [users.id],
   }),
   qrCodes: many(qrCodes),
 }));
