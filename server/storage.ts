@@ -5,6 +5,8 @@ import {
   qrCodes,
   auditLogs,
   fileAttachments,
+  strains,
+  genotypes,
   type User,
   type UpsertUser,
   type Animal,
@@ -17,6 +19,10 @@ import {
   type InsertAuditLog,
   type FileAttachment,
   type InsertFileAttachment,
+  type Strain,
+  type InsertStrain,
+  type Genotype,
+  type InsertGenotype,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, ilike, or } from "drizzle-orm";
@@ -67,6 +73,14 @@ export interface IStorage {
     cages: Cage[];
     users: User[];
   }>;
+  
+  // Strain operations
+  getStrains(): Promise<Strain[]>;
+  createStrain(strain: InsertStrain): Promise<Strain>;
+  
+  // Genotype operations
+  getGenotypes(): Promise<Genotype[]>;
+  createGenotype(genotype: InsertGenotype): Promise<Genotype>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -121,14 +135,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAnimal(animal: InsertAnimal): Promise<Animal> {
-    const [newAnimal] = await db.insert(animals).values(animal).returning();
+    const [newAnimal] = await db.insert(animals).values([animal]).returning();
     return newAnimal;
   }
 
-  async updateAnimal(id: string, animal: Partial<InsertAnimal>): Promise<Animal> {
+  async updateAnimal(id: string, animalData: Partial<InsertAnimal>): Promise<Animal> {
+    // Ensure dates are properly handled
+    const updateData = {
+      ...animalData,
+      updatedAt: new Date(),
+      dateOfBirth: animalData.dateOfBirth instanceof Date ? animalData.dateOfBirth : 
+        (animalData.dateOfBirth ? new Date(animalData.dateOfBirth) : undefined),
+      breedingStartDate: animalData.breedingStartDate instanceof Date ? animalData.breedingStartDate : 
+        (animalData.breedingStartDate ? new Date(animalData.breedingStartDate) : undefined),
+      dateOfGenotyping: animalData.dateOfGenotyping instanceof Date ? animalData.dateOfGenotyping : 
+        (animalData.dateOfGenotyping ? new Date(animalData.dateOfGenotyping) : undefined),
+    };
+    
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key as keyof typeof updateData] === undefined) {
+        delete updateData[key as keyof typeof updateData];
+      }
+    });
+
     const [updatedAnimal] = await db
       .update(animals)
-      .set({ ...animal, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(animals.id, id))
       .returning();
     return updatedAnimal;
@@ -146,6 +179,7 @@ export class DatabaseStorage implements IStorage {
         or(
           ilike(animals.animalNumber, `%${query}%`),
           ilike(animals.breed, `%${query}%`),
+          ilike(animals.genotype, `%${query}%`),
           ilike(animals.notes, `%${query}%`)
         )
       )
@@ -321,6 +355,42 @@ export class DatabaseStorage implements IStorage {
       cages: cagesResult,
       users: usersResult,
     };
+  }
+
+  // Strain operations
+  async getStrains(): Promise<Strain[]> {
+    const result = await db
+      .select()
+      .from(strains)
+      .where(eq(strains.isActive, true))
+      .orderBy(strains.name);
+    return result;
+  }
+
+  async createStrain(strainData: InsertStrain): Promise<Strain> {
+    const [strain] = await db
+      .insert(strains)
+      .values(strainData)
+      .returning();
+    return strain;
+  }
+
+  // Genotype operations
+  async getGenotypes(): Promise<Genotype[]> {
+    const result = await db
+      .select()
+      .from(genotypes)
+      .where(eq(genotypes.isActive, true))
+      .orderBy(genotypes.name);
+    return result;
+  }
+
+  async createGenotype(genotypeData: InsertGenotype): Promise<Genotype> {
+    const [genotype] = await db
+      .insert(genotypes)
+      .values(genotypeData)
+      .returning();
+    return genotype;
   }
 }
 

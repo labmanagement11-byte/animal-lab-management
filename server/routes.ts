@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema } from "@shared/schema";
+import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -110,7 +110,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertAnimalSchema.parse(req.body);
+      // Transform date strings to Date objects
+      const transformedData = {
+        ...req.body,
+        dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : null,
+        breedingStartDate: req.body.breedingStartDate ? new Date(req.body.breedingStartDate) : null,
+        dateOfGenotyping: req.body.dateOfGenotyping ? new Date(req.body.dateOfGenotyping) : null,
+      };
+      
+      const validatedData = insertAnimalSchema.parse(transformedData);
       const animal = await storage.createAnimal(validatedData);
       
       // Create audit log
@@ -134,8 +142,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Transform date strings to Date objects
+      const transformedData = {
+        ...req.body,
+        dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : undefined,
+        breedingStartDate: req.body.breedingStartDate ? new Date(req.body.breedingStartDate) : undefined,
+        dateOfGenotyping: req.body.dateOfGenotyping ? new Date(req.body.dateOfGenotyping) : undefined,
+      };
+      
       const partialSchema = insertAnimalSchema.partial();
-      const validatedData = partialSchema.parse(req.body);
+      const validatedData = partialSchema.parse(transformedData);
       const animal = await storage.updateAnimal(req.params.id, validatedData);
       
       // Create audit log

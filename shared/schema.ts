@@ -44,8 +44,30 @@ export const cages = pgTable("cages", {
   location: varchar("location").notNull(),
   capacity: integer("capacity").default(5),
   isActive: boolean("is_active").default(true),
+  status: varchar("status", {
+    enum: ['Active', 'Reserved', 'Transferred', 'Sacrificed', 'Breeding', 'Replaced']
+  }).default('Active'),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Strains table - for managing laboratory animal strains
+export const strains = pgTable("strains", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Genotypes table - for managing genotype options
+export const genotypes = pgTable("genotypes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // File attachments table
@@ -67,8 +89,8 @@ export const animals = pgTable("animals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   animalNumber: varchar("animal_number").notNull().unique(),
   cageId: varchar("cage_id").references(() => cages.id),
-  breed: varchar("breed").notNull(),
-  genotype: varchar("genotype"),
+  breed: varchar("breed").notNull(), // Will change to strain later
+  genotype: varchar("genotype"), // Will change to reference later
   dateOfBirth: timestamp("date_of_birth"),
   age: integer("age"), // in weeks - will be calculated from dateOfBirth
   weight: decimal("weight", { precision: 5, scale: 2 }), // in grams
@@ -83,6 +105,9 @@ export const animals = pgTable("animals", {
   healthStatus: varchar("health_status", { 
     enum: ['Healthy', 'Monitoring', 'Sick', 'Quarantine'] 
   }).default('Healthy'),
+  status: varchar("status", {
+    enum: ['Active', 'Reserved', 'Transferred', 'Sacrificed', 'Breeding', 'Replaced']
+  }).default('Active'),
   diseases: text("diseases"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -138,6 +163,14 @@ export const fileAttachmentsRelations = relations(fileAttachments, ({ one }) => 
   }),
 }));
 
+export const strainsRelations = relations(strains, ({ many }) => ({
+  animals: many(animals),
+}));
+
+export const genotypesRelations = relations(genotypes, ({ many }) => ({
+  animals: many(animals),
+}));
+
 export const animalsRelations = relations(animals, ({ one, many }) => ({
   cage: one(cages, {
     fields: [animals.cageId],
@@ -190,6 +223,10 @@ export const insertAnimalSchema = createInsertSchema(animals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  dateOfBirth: z.string().optional().or(z.date().optional()),
+  breedingStartDate: z.string().optional().or(z.date().optional()),
+  dateOfGenotyping: z.string().optional().or(z.date().optional()),
 });
 
 export const insertQrCodeSchema = createInsertSchema(qrCodes).omit({
@@ -203,6 +240,16 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 });
 
 export const insertFileAttachmentSchema = createInsertSchema(fileAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStrainSchema = createInsertSchema(strains).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGenotypeSchema = createInsertSchema(genotypes).omit({
   id: true,
   createdAt: true,
 });
@@ -226,3 +273,9 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type FileAttachment = typeof fileAttachments.$inferSelect;
 export type InsertFileAttachment = z.infer<typeof insertFileAttachmentSchema>;
+
+export type Strain = typeof strains.$inferSelect;
+export type InsertStrain = z.infer<typeof insertStrainSchema>;
+
+export type Genotype = typeof genotypes.$inferSelect;
+export type InsertGenotype = z.infer<typeof insertGenotypeSchema>;
