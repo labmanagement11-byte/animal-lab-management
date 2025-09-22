@@ -16,24 +16,58 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Animal, Cage, User, Strain, Genotype } from "@shared/schema";
 
 const animalFormSchema = z.object({
-  animalNumber: z.string().min(1, "Animal number is required"),
+  animalNumber: z.string()
+    .min(1, "Animal number is required")
+    .regex(/^[A-Za-z0-9-]+$/i, "Animal number should contain only letters, numbers, and hyphens (e.g., M-001, F-123)")
+    .transform(val => val.trim().toUpperCase()),
   cageId: z.string().optional(),
-  breed: z.string().min(1, "Strain is required"),
+  breed: z.string().min(1, "Please select a strain from the dropdown"),
   genotype: z.string().optional(),
   status: z.enum(["Active", "Reserved", "Transferred", "Sacrificed", "Breeding", "Replaced"]).default("Active"),
-  dateOfBirth: z.string().optional(),
-  weight: z.string().optional(),
+  dateOfBirth: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const date = new Date(val);
+    const today = new Date();
+    return date <= today;
+  }, "Date of birth cannot be in the future"),
+  weight: z.string().optional().refine((val) => {
+    if (!val || val.trim() === '') return true;
+    const weight = parseFloat(val);
+    return !isNaN(weight) && weight > 0 && weight <= 1000;
+  }, "Weight must be a positive number up to 1000 grams").transform(val => val && val.trim() !== '' ? val.trim() : undefined),
   gender: z.enum(["Male", "Female"]).optional(),
   color: z.string().optional(),
-  generation: z.string().optional(),
+  generation: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const gen = parseInt(val);
+    return !isNaN(gen) && gen >= 0 && gen <= 20;
+  }, "Generation must be a number between 0 and 20"),
   protocol: z.string().optional(),
-  breedingStartDate: z.string().optional(),
-  dateOfGenotyping: z.string().optional(),
+  breedingStartDate: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const date = new Date(val);
+    const today = new Date();
+    return date <= today;
+  }, "Breeding start date cannot be in the future"),
+  dateOfGenotyping: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const date = new Date(val);
+    const today = new Date();
+    return date <= today;
+  }, "Genotyping date cannot be in the future"),
   genotypingUserId: z.string().optional(),
   probes: z.boolean().default(false),
   healthStatus: z.enum(["Healthy", "Monitoring", "Sick", "Quarantine"]).default("Healthy"),
   diseases: z.string().optional(),
   notes: z.string().optional(),
+}).refine((data) => {
+  if (data.status === "Breeding" && !data.breedingStartDate) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Breeding start date is required when status is set to 'Breeding'",
+  path: ["breedingStartDate"]
 });
 
 type AnimalFormData = z.infer<typeof animalFormSchema>;
@@ -204,7 +238,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
               <Label htmlFor="animalNumber">Animal Number *</Label>
               <Input
                 id="animalNumber"
-                placeholder="M-XXX"
+                placeholder="M-001, F-123, etc."
                 {...form.register("animalNumber")}
                 data-testid="input-animal-number"
               />
@@ -213,6 +247,9 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                   {form.formState.errors.animalNumber.message}
                 </p>
               )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Use format like M-001, F-123 (letters, numbers, hyphens only)
+              </p>
             </div>
 
             <div>
@@ -287,16 +324,33 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                 {...form.register("dateOfBirth")}
                 data-testid="input-date-of-birth"
               />
+              {form.formState.errors.dateOfBirth && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.dateOfBirth.message}
+                </p>
+              )}
             </div>
 
             <div>
               <Label htmlFor="weight">Weight (grams)</Label>
               <Input
                 id="weight"
-                placeholder="0.0"
+                type="number"
+                step="0.1"
+                min="0"
+                max="1000"
+                placeholder="25.5"
                 {...form.register("weight")}
                 data-testid="input-weight"
               />
+              {form.formState.errors.weight && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.weight.message}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter weight in grams (e.g., 25.5)
+              </p>
             </div>
 
             <div>
@@ -330,10 +384,17 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
               <Input
                 id="generation"
                 type="number"
+                min="0"
+                max="20"
                 placeholder="0"
                 {...form.register("generation")}
                 data-testid="input-generation"
               />
+              {form.formState.errors.generation && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.generation.message}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -360,6 +421,11 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                 {...form.register("breedingStartDate")}
                 data-testid="input-breeding-start-date"
               />
+              {form.formState.errors.breedingStartDate && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.breedingStartDate.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -370,6 +436,11 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                 {...form.register("dateOfGenotyping")}
                 data-testid="input-date-of-genotyping"
               />
+              {form.formState.errors.dateOfGenotyping && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.dateOfGenotyping.message}
+                </p>
+              )}
             </div>
 
             <div>
