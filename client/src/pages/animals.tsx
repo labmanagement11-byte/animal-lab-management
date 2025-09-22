@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Eye, Edit, Trash2, QrCode, Calendar, User, Beaker, Grid, List } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, QrCode, Calendar, User, Beaker, Grid, List, Table, LayoutGrid, Square } from "lucide-react";
 import AnimalForm from "@/components/animal-form";
 import QrCodeGenerator from "@/components/qr-code-generator";
 import type { Animal, User as UserType, Cage } from "@shared/schema";
@@ -23,7 +23,7 @@ export default function Animals() {
   const [showQrGenerator, setShowQrGenerator] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
-  const [viewMode, setViewMode] = useState<"individual" | "by-cage">("individual");
+  const [viewMode, setViewMode] = useState<"table" | "small-cards" | "large-cards" | "by-cage">("large-cards");
 
   const { data: animals, isLoading } = useQuery<Animal[]>({
     queryKey: searchTerm ? ['/api/animals/search', searchTerm] : ['/api/animals'],
@@ -157,12 +157,30 @@ export default function Animals() {
           <div className="flex items-center gap-2">
             <Button 
               size="sm" 
-              variant={viewMode === "individual" ? "default" : "outline"}
-              onClick={() => setViewMode("individual")}
-              data-testid="button-view-individual"
+              variant={viewMode === "table" ? "default" : "outline"}
+              onClick={() => setViewMode("table")}
+              data-testid="button-view-table"
             >
-              <List className="w-4 h-4 mr-2" />
-              Individual
+              <Table className="w-4 h-4 mr-2" />
+              Table
+            </Button>
+            <Button 
+              size="sm" 
+              variant={viewMode === "small-cards" ? "default" : "outline"}
+              onClick={() => setViewMode("small-cards")}
+              data-testid="button-view-small-cards"
+            >
+              <Square className="w-4 h-4 mr-2" />
+              Small Cards
+            </Button>
+            <Button 
+              size="sm" 
+              variant={viewMode === "large-cards" ? "default" : "outline"}
+              onClick={() => setViewMode("large-cards")}
+              data-testid="button-view-large-cards"
+            >
+              <LayoutGrid className="w-4 h-4 mr-2" />
+              Large Cards
             </Button>
             <Button 
               size="sm" 
@@ -212,19 +230,147 @@ export default function Animals() {
               ))}
             </div>
           ) : animals && animals.length > 0 ? (
-            viewMode === "individual" ? (
+            viewMode === "table" ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-border">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="border border-border p-3 text-left font-medium">Animal ID</th>
+                      <th className="border border-border p-3 text-left font-medium">Strain</th>
+                      <th className="border border-border p-3 text-left font-medium">Status</th>
+                      <th className="border border-border p-3 text-left font-medium">Age</th>
+                      <th className="border border-border p-3 text-left font-medium">Gender</th>
+                      <th className="border border-border p-3 text-left font-medium">Cage</th>
+                      <th className="border border-border p-3 text-left font-medium">Weight</th>
+                      <th className="border border-border p-3 text-left font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {animals.map((animal) => (
+                      <tr key={animal.id} className="hover:bg-muted/30" data-testid={`table-row-${animal.id}`}>
+                        <td className="border border-border p-3 font-medium" data-testid={`table-animal-id-${animal.id}`}>
+                          {animal.animalNumber}
+                        </td>
+                        <td className="border border-border p-3">{animal.breed}</td>
+                        <td className="border border-border p-3">
+                          <Badge className={getStatusColor(animal.healthStatus || 'Healthy')}>
+                            {animal.healthStatus || 'Healthy'}
+                          </Badge>
+                        </td>
+                        <td className="border border-border p-3">{calculateAge(animal.dateOfBirth)}</td>
+                        <td className="border border-border p-3">{animal.gender || 'N/A'}</td>
+                        <td className="border border-border p-3">{getCageDisplay(animal.cageId)}</td>
+                        <td className="border border-border p-3">{animal.weight ? `${animal.weight}g` : 'N/A'}</td>
+                        <td className="border border-border p-3">
+                          <div className="flex items-center space-x-1">
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleEdit(animal)}
+                              data-testid={`table-edit-${animal.id}`}
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleGenerateQr(animal)}
+                              data-testid={`table-qr-${animal.id}`}
+                            >
+                              <QrCode className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleDelete(animal)}
+                              disabled={deleteAnimalMutation.isPending}
+                              data-testid={`table-delete-${animal.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : viewMode === "small-cards" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {animals.map((animal) => (
+                  <Card key={animal.id} className="p-3" data-testid={`small-card-${animal.id}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-foreground" data-testid={`small-card-id-${animal.id}`}>
+                          {animal.animalNumber}
+                        </h3>
+                        <Badge className={getStatusColor(animal.healthStatus || 'Healthy')}>
+                          {animal.healthStatus || 'Healthy'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleEdit(animal)}
+                          data-testid={`small-edit-${animal.id}`}
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleGenerateQr(animal)}
+                          data-testid={`small-qr-${animal.id}`}
+                        >
+                          <QrCode className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDelete(animal)}
+                          disabled={deleteAnimalMutation.isPending}
+                          data-testid={`small-delete-${animal.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs space-y-1">
+                      <div><span className="font-medium">Strain:</span> {animal.breed}</div>
+                      <div><span className="font-medium">Age:</span> {calculateAge(animal.dateOfBirth)}</div>
+                      <div><span className="font-medium">Gender:</span> {animal.gender || 'N/A'}</div>
+                      <div><span className="font-medium">Cage:</span> {getCageDisplay(animal.cageId)}</div>
+                      {animal.genotype && <div><span className="font-medium">Genotype:</span> {animal.genotype}</div>}
+                      {animal.probes && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                          <Beaker className="w-2 h-2 mr-1" />
+                          Probes
+                        </Badge>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : viewMode === "large-cards" ? (
               <div className="space-y-4">
                 {animals.map((animal) => (
-                  <Card key={animal.id} className="p-4" data-testid={`card-animal-${animal.id}`}>
+                  <Card key={animal.id} className="p-4" data-testid={`large-card-${animal.id}`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-4 mb-3">
-                          <h3 className="text-lg font-semibold text-foreground" data-testid={`text-animal-id-${animal.id}`}>
+                          <h3 className="text-lg font-semibold text-foreground" data-testid={`large-card-id-${animal.id}`}>
                             {animal.animalNumber}
                           </h3>
                           <Badge className={getStatusColor(animal.healthStatus || 'Healthy')}>
                             {animal.healthStatus || 'Healthy'}
                           </Badge>
+                          {animal.status && animal.status !== 'Active' && (
+                            <Badge variant="secondary">
+                              {animal.status}
+                            </Badge>
+                          )}
                           {animal.probes && (
                             <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
                               <Beaker className="w-3 h-3 mr-1" />
@@ -238,7 +384,7 @@ export default function Animals() {
                           <div className="space-y-2">
                             <h4 className="font-medium text-muted-foreground">Basic Info</h4>
                             <div className="space-y-1">
-                              <div><span className="font-medium">Breed:</span> {animal.breed}</div>
+                              <div><span className="font-medium">Strain:</span> {animal.breed}</div>
                               <div><span className="font-medium">Genotype:</span> {animal.genotype || 'N/A'}</div>
                               <div><span className="font-medium">Gender:</span> {animal.gender || 'N/A'}</div>
                               <div><span className="font-medium">Color:</span> {animal.color || 'N/A'}</div>
@@ -300,7 +446,7 @@ export default function Animals() {
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleEdit(animal)}
-                          data-testid={`button-edit-${animal.id}`}
+                          data-testid={`large-edit-${animal.id}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -308,7 +454,7 @@ export default function Animals() {
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleGenerateQr(animal)}
-                          data-testid={`button-qr-${animal.id}`}
+                          data-testid={`large-qr-${animal.id}`}
                         >
                           <QrCode className="w-4 h-4" />
                         </Button>
@@ -317,7 +463,7 @@ export default function Animals() {
                           variant="ghost"
                           onClick={() => handleDelete(animal)}
                           disabled={deleteAnimalMutation.isPending}
-                          data-testid={`button-delete-${animal.id}`}
+                          data-testid={`large-delete-${animal.id}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -346,7 +492,7 @@ export default function Animals() {
                         </h3>
                         {cageInfo && (
                           <p className="text-sm text-muted-foreground mt-1">
-                            Capacity: {cageInfo.capacity} | Type: {cageInfo.cageType}
+                            Capacity: {cageInfo.capacity} | Status: {cageInfo.status || 'Active'}
                           </p>
                         )}
                       </div>
@@ -359,7 +505,7 @@ export default function Animals() {
                                 <h4 className="font-medium text-foreground" data-testid={`compact-animal-id-${animal.id}`}>
                                   {animal.animalNumber}
                                 </h4>
-                                <Badge size="sm" className={getStatusColor(animal.healthStatus || 'Healthy')}>
+                                <Badge className={getStatusColor(animal.healthStatus || 'Healthy')}>
                                   {animal.healthStatus || 'Healthy'}
                                 </Badge>
                               </div>
@@ -399,7 +545,7 @@ export default function Animals() {
                               <div><span className="font-medium">Weight:</span> {animal.weight ? `${animal.weight}g` : 'N/A'}</div>
                               {animal.genotype && <div><span className="font-medium">Genotype:</span> {animal.genotype}</div>}
                               {animal.probes && (
-                                <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
                                   <Beaker className="w-2 h-2 mr-1" />
                                   Probes
                                 </Badge>
