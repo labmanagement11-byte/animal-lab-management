@@ -47,7 +47,7 @@ export const cages = pgTable("cages", {
   status: varchar("status", {
     enum: ['Active', 'Breeding', 'Holding', 'Deactivated']
   }).default('Active'),
-  // strainId: varchar("strain_id").references(() => strains.id), // Temporarily commented until DB migration
+  strainId: varchar("strain_id").references(() => strains.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

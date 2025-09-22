@@ -24,7 +24,10 @@ const cageFormSchema = z.object({
   cageNumber: z.string().min(1, "Cage number is required"),
   roomNumber: z.string().min(1, "Room number is required"),
   location: z.string().min(1, "Location is required"),
-  capacity: z.string().min(1, "Capacity is required"),
+  capacity: z.string().min(1, "Capacity is required").refine((val) => {
+    const num = parseInt(val);
+    return !isNaN(num) && num > 0;
+  }, "Capacity must be a positive number"),
   status: z.enum(['Active', 'Breeding', 'Holding', 'Deactivated']).default('Active'),
   strainInput: z.string().optional(),
 });
@@ -112,7 +115,7 @@ export default function Cages() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
-          return Array.isArray(queryKey) && (queryKey[0] === '/api/cages' || queryKey[0] === '/api/strains');
+          return Array.isArray(queryKey) && (typeof queryKey[0] === 'string' && (queryKey[0].startsWith('/api/cages') || queryKey[0].startsWith('/api/strains')));
         }
       });
       toast({
@@ -214,7 +217,7 @@ export default function Cages() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
-          return Array.isArray(queryKey) && queryKey[0] === '/api/cages';
+          return Array.isArray(queryKey) && (typeof queryKey[0] === 'string' && queryKey[0].startsWith('/api/cages'));
         }
       });
       toast({
