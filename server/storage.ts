@@ -4,6 +4,7 @@ import {
   cages,
   qrCodes,
   auditLogs,
+  fileAttachments,
   type User,
   type UpsertUser,
   type Animal,
@@ -14,6 +15,8 @@ import {
   type InsertQrCode,
   type AuditLog,
   type InsertAuditLog,
+  type FileAttachment,
+  type InsertFileAttachment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, ilike, or } from "drizzle-orm";
@@ -56,6 +59,13 @@ export interface IStorage {
     activeCages: number;
     qrCodes: number;
     healthAlerts: number;
+  }>;
+  
+  // Global search
+  globalSearch(query: string): Promise<{
+    animals: Animal[];
+    cages: Cage[];
+    users: User[];
   }>;
 }
 
@@ -245,6 +255,71 @@ export class DatabaseStorage implements IStorage {
       activeCages: activeCages.count,
       qrCodes: qrCodesCount.count,
       healthAlerts: healthAlerts.count,
+    };
+  }
+
+  // Global search
+  async globalSearch(query: string): Promise<{
+    animals: Animal[];
+    cages: Cage[];
+    users: User[];
+  }> {
+    const searchTerm = `%${query}%`;
+
+    // Search animals
+    const animalsResult = await db
+      .select()
+      .from(animals)
+      .leftJoin(cages, eq(animals.cageId, cages.id))
+      .where(
+        or(
+          ilike(animals.animalNumber, searchTerm),
+          ilike(animals.breed, searchTerm),
+          ilike(animals.genotype, searchTerm),
+          ilike(animals.color, searchTerm),
+          ilike(animals.protocol, searchTerm),
+          ilike(animals.diseases, searchTerm),
+          ilike(animals.notes, searchTerm),
+          ilike(cages.cageNumber, searchTerm),
+          ilike(cages.location, searchTerm)
+        )
+      )
+      .limit(10);
+
+    // Search cages
+    const cagesResult = await db
+      .select()
+      .from(cages)
+      .where(
+        or(
+          ilike(cages.cageNumber, searchTerm),
+          ilike(cages.roomNumber, searchTerm),
+          ilike(cages.location, searchTerm)
+        )
+      )
+      .limit(10);
+
+    // Search users
+    const usersResult = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          ilike(users.email, searchTerm),
+          ilike(users.firstName, searchTerm),
+          ilike(users.lastName, searchTerm),
+          ilike(users.role, searchTerm)
+        )
+      )
+      .limit(10);
+
+    return {
+      animals: animalsResult.map(row => ({
+        ...row.animals,
+        cage: row.cages
+      })),
+      cages: cagesResult,
+      users: usersResult,
     };
   }
 }

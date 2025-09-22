@@ -33,6 +33,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Global search
+  app.get('/api/search', isAuthenticated, async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+
+      const results = await storage.globalSearch(query);
+      
+      // Format results for frontend
+      const formattedResults = [
+        ...results.animals.map(animal => ({
+          id: animal.id,
+          type: 'animal',
+          data: animal
+        })),
+        ...results.cages.map(cage => ({
+          id: cage.id,
+          type: 'cage',
+          data: cage
+        })),
+        ...results.users.map(user => ({
+          id: user.id,
+          type: 'user',
+          data: user
+        }))
+      ];
+
+      res.json(formattedResults);
+    } catch (error) {
+      console.error("Error performing global search:", error);
+      res.status(500).json({ message: "Failed to perform search" });
+    }
+  });
+
   // Animal routes
   app.get('/api/animals', isAuthenticated, async (req, res) => {
     try {

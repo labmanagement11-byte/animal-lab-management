@@ -6,6 +6,7 @@ import { Download, Copy } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import PrintQrCode from "@/components/print-qr-code";
 import type { Animal } from "@shared/schema";
 
 interface QrCodeGeneratorProps {
@@ -182,7 +183,7 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-center space-x-2">
+        <div className="flex items-center justify-center space-x-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -202,6 +203,7 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
             <Copy className="w-4 h-4 mr-2" />
             Copy Data
           </Button>
+          <PrintQrCode animal={animal} qrDataUrl={qrDataUrl} />
           <Button
             onClick={handleSave}
             disabled={createQrCodeMutation.isPending}

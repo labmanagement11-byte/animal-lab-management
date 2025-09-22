@@ -48,6 +48,20 @@ export const cages = pgTable("cages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// File attachments table
+export const fileAttachments = pgTable("file_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  fileType: varchar("file_type").notNull(), // image/jpeg, application/pdf, etc.
+  fileSize: integer("file_size"), // in bytes
+  filePath: varchar("file_path").notNull(), // storage path
+  animalId: varchar("animal_id").references(() => animals.id),
+  cageId: varchar("cage_id").references(() => cages.id),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Animals table
 export const animals = pgTable("animals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -106,6 +120,22 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const cagesRelations = relations(cages, ({ many }) => ({
   animals: many(animals),
   qrCodes: many(qrCodes),
+  attachments: many(fileAttachments),
+}));
+
+export const fileAttachmentsRelations = relations(fileAttachments, ({ one }) => ({
+  animal: one(animals, {
+    fields: [fileAttachments.animalId],
+    references: [animals.id],
+  }),
+  cage: one(cages, {
+    fields: [fileAttachments.cageId],
+    references: [cages.id],
+  }),
+  uploader: one(users, {
+    fields: [fileAttachments.uploadedBy],
+    references: [users.id],
+  }),
 }));
 
 export const animalsRelations = relations(animals, ({ one, many }) => ({
@@ -118,6 +148,7 @@ export const animalsRelations = relations(animals, ({ one, many }) => ({
     references: [users.id],
   }),
   qrCodes: many(qrCodes),
+  attachments: many(fileAttachments),
 }));
 
 export const qrCodesRelations = relations(qrCodes, ({ one }) => ({
@@ -171,6 +202,11 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   timestamp: true,
 });
 
+export const insertFileAttachmentSchema = createInsertSchema(fileAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -187,3 +223,6 @@ export type InsertQrCode = z.infer<typeof insertQrCodeSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+export type FileAttachment = typeof fileAttachments.$inferSelect;
+export type InsertFileAttachment = z.infer<typeof insertFileAttachmentSchema>;

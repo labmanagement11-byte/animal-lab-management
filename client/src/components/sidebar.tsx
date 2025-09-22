@@ -11,6 +11,7 @@ import {
   LogOut 
 } from "lucide-react";
 import { useLocation } from "wouter";
+import GlobalSearch from "@/components/global-search";
 
 interface SidebarProps {
   onNavigate: (page: string) => void;
@@ -68,6 +69,11 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Global Search */}
+      <div className="p-4 border-b border-border">
+        <GlobalSearch onNavigate={onNavigate} />
       </div>
 
       {/* Navigation */}
