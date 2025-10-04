@@ -145,18 +145,25 @@ export default function ReportsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText className="w-8 h-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-            <p className="text-muted-foreground">System analytics and data reports</p>
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <FileText className="w-8 h-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+              <p className="text-muted-foreground">System analytics and data reports</p>
+            </div>
           </div>
+
+          <Button onClick={exportReport} data-testid="button-export-report" className="sm:self-start">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <Select value={reportType} onValueChange={setReportType}>
-            <SelectTrigger className="w-40" data-testid="select-report-type">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-[10rem]" data-testid="select-report-type">
               <SelectValue placeholder="Report Type" />
             </SelectTrigger>
             <SelectContent>
@@ -168,7 +175,7 @@ export default function ReportsPage() {
           </Select>
 
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-32" data-testid="select-date-range">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-[9rem]" data-testid="select-date-range">
               <SelectValue placeholder="Date Range" />
             </SelectTrigger>
             <SelectContent>
@@ -178,11 +185,6 @@ export default function ReportsPage() {
               <SelectItem value="365">Last year</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button onClick={exportReport} data-testid="button-export-report">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
         </div>
       </div>
 
@@ -251,7 +253,8 @@ export default function ReportsPage() {
             <CardDescription>Complete list of all animals in the system</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Animal Number</TableHead>
@@ -288,6 +291,7 @@ export default function ReportsPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -299,7 +303,8 @@ export default function ReportsPage() {
             <CardDescription>Current occupancy and utilization of all cages</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Cage Number</TableHead>
@@ -329,6 +334,7 @@ export default function ReportsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -340,7 +346,8 @@ export default function ReportsPage() {
             <CardDescription>Distribution of animals by strain</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Strain</TableHead>
@@ -363,6 +370,7 @@ export default function ReportsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -396,8 +404,9 @@ export default function ReportsPage() {
               <CardDescription>Animals with health concerns</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                   <TableRow>
                     <TableHead>Animal Number</TableHead>
                     <TableHead>Status</TableHead>
@@ -422,7 +431,8 @@ export default function ReportsPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>

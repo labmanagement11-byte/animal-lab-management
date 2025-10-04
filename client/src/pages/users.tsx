@@ -115,7 +115,7 @@ export default function UsersPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground" data-testid="title-user-management">
             User Management
@@ -124,7 +124,7 @@ export default function UsersPage() {
             Manage user roles and permissions in the system
           </p>
         </div>
-        <Badge variant="default">
+        <Badge variant="default" className="w-fit">
           <Users className="w-4 h-4 mr-1" />
           {users?.length || 0} Users
         </Badge>
@@ -138,7 +138,8 @@ export default function UsersPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -198,7 +199,8 @@ export default function UsersPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
 
           {(!users || users.length === 0) && (
             <div className="text-center py-8 text-muted-foreground">
