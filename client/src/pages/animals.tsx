@@ -6,9 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Eye, Edit, Trash2, QrCode, Calendar, User, Beaker, Grid, List, Table, LayoutGrid, Square } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Calendar, User, Beaker, Grid, List, Table, LayoutGrid, Square } from "lucide-react";
 import AnimalForm from "@/components/animal-form";
-import QrCodeGenerator from "@/components/qr-code-generator";
 import type { Animal, User as UserType, Cage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -20,9 +19,7 @@ export default function Animals() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAnimalForm, setShowAnimalForm] = useState(false);
-  const [showQrGenerator, setShowQrGenerator] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
-  const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "small-cards" | "large-cards" | "by-cage">("large-cards");
 
   const { data: animals, isLoading } = useQuery<Animal[]>({
@@ -127,11 +124,6 @@ export default function Animals() {
   const handleEdit = (animal: Animal) => {
     setEditingAnimal(animal);
     setShowAnimalForm(true);
-  };
-
-  const handleGenerateQr = (animal: Animal) => {
-    setSelectedAnimal(animal);
-    setShowQrGenerator(true);
   };
 
   const handleDelete = (animal: Animal) => {
@@ -274,14 +266,6 @@ export default function Animals() {
                             <Button 
                               size="sm" 
                               variant="ghost"
-                              onClick={() => handleGenerateQr(animal)}
-                              data-testid={`table-qr-${animal.id}`}
-                            >
-                              <QrCode className="w-3 h-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
                               onClick={() => handleDelete(animal)}
                               disabled={deleteAnimalMutation.isPending}
                               data-testid={`table-delete-${animal.id}`}
@@ -316,14 +300,6 @@ export default function Animals() {
                           data-testid={`small-edit-${animal.id}`}
                         >
                           <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => handleGenerateQr(animal)}
-                          data-testid={`small-qr-${animal.id}`}
-                        >
-                          <QrCode className="w-3 h-3" />
                         </Button>
                         <Button 
                           size="sm" 
@@ -453,14 +429,6 @@ export default function Animals() {
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          onClick={() => handleGenerateQr(animal)}
-                          data-testid={`large-qr-${animal.id}`}
-                        >
-                          <QrCode className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
                           onClick={() => handleDelete(animal)}
                           disabled={deleteAnimalMutation.isPending}
                           data-testid={`large-delete-${animal.id}`}
@@ -521,14 +489,6 @@ export default function Animals() {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => handleGenerateQr(animal)}
-                                  data-testid={`compact-qr-${animal.id}`}
-                                >
-                                  <QrCode className="w-3 h-3" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
                                   onClick={() => handleDelete(animal)}
                                   disabled={deleteAnimalMutation.isPending}
                                   data-testid={`compact-delete-${animal.id}`}
@@ -576,18 +536,6 @@ export default function Animals() {
             animal={editingAnimal}
             onClose={handleFormClose}
           />
-        </DialogContent>
-      </Dialog>
-
-      {/* QR Code Generator Modal */}
-      <Dialog open={showQrGenerator} onOpenChange={setShowQrGenerator}>
-        <DialogContent>
-          {selectedAnimal && (
-            <QrCodeGenerator 
-              animal={selectedAnimal}
-              onClose={() => setShowQrGenerator(false)}
-            />
-          )}
         </DialogContent>
       </Dialog>
     </div>

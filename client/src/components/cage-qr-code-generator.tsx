@@ -44,7 +44,6 @@ export default function CageQrCodeGenerator({ cage, onClose }: CageQrCodeGenerat
       await apiRequest("POST", "/api/qr-codes", {
         cageId: cage.id,
         qrData: qrData,
-        animalId: null, // Cage-focused QR code
       });
     },
     onSuccess: () => {
