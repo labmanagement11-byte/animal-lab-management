@@ -194,21 +194,20 @@ export const animalsRelations = relations(animals, ({ one, many }) => ({
     fields: [animals.genotypingUserId],
     references: [users.id],
   }),
-  qrCodes: many(qrCodes),
   attachments: many(fileAttachments),
 }));
 
 export const qrCodesRelations = relations(qrCodes, ({ one }) => ({
-  animal: one(animals, {
-    fields: [qrCodes.animalId],
-    references: [animals.id],
-  }),
   cage: one(cages, {
     fields: [qrCodes.cageId],
     references: [cages.id],
   }),
   generatedBy: one(users, {
     fields: [qrCodes.generatedBy],
+    references: [users.id],
+  }),
+  claimedByUser: one(users, {
+    fields: [qrCodes.claimedBy],
     references: [users.id],
   }),
 }));
@@ -231,12 +230,16 @@ export const insertCageSchema = createInsertSchema(cages).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  deletedAt: true,
+  deletedBy: true,
 });
 
 export const insertAnimalSchema = createInsertSchema(animals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  deletedAt: true,
+  deletedBy: true,
 }).extend({
   dateOfBirth: z.string().optional().or(z.date().optional()),
   breedingStartDate: z.string().optional().or(z.date().optional()),
@@ -246,6 +249,8 @@ export const insertAnimalSchema = createInsertSchema(animals).omit({
 export const insertQrCodeSchema = createInsertSchema(qrCodes).omit({
   id: true,
   createdAt: true,
+  claimedAt: true,
+  claimedBy: true,
 });
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
