@@ -113,9 +113,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transform date strings to Date objects
       const transformedData = {
         ...req.body,
-        dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : null,
-        breedingStartDate: req.body.breedingStartDate ? new Date(req.body.breedingStartDate) : null,
-        dateOfGenotyping: req.body.dateOfGenotyping ? new Date(req.body.dateOfGenotyping) : null,
+        dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : undefined,
+        breedingStartDate: req.body.breedingStartDate ? new Date(req.body.breedingStartDate) : undefined,
+        dateOfGenotyping: req.body.dateOfGenotyping ? new Date(req.body.dateOfGenotyping) : undefined,
       };
       
       const validatedData = insertAnimalSchema.parse(transformedData);
@@ -175,12 +175,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteAnimal(req.params.id);
+      const userId = req.user.claims.sub;
+      await storage.deleteAnimal(req.params.id, userId);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId,
+        action: 'SOFT_DELETE',
+        tableName: 'animals',
+        recordId: req.params.id,
+        changes: { deletedBy: userId },
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting animal:", error);
+      res.status(500).json({ message: "Failed to delete animal" });
+    }
+  });
+
+  // Restore deleted animal
+  app.post('/api/animals/:id/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const animal = await storage.restoreAnimal(req.params.id);
       
       // Create audit log
       await storage.createAuditLog({
         userId: req.user.claims.sub,
-        action: 'DELETE',
+        action: 'RESTORE',
+        tableName: 'animals',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.json(animal);
+    } catch (error: any) {
+      console.error("Error restoring animal:", error);
+      if (error.message === "Animal not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to restore animal" });
+    }
+  });
+
+  // Get deleted animals (trash)
+  app.get('/api/animals/trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedAnimals = await storage.getDeletedAnimals();
+      res.json(deletedAnimals);
+    } catch (error) {
+      console.error("Error fetching deleted animals:", error);
+      res.status(500).json({ message: "Failed to fetch deleted animals" });
+    }
+  });
+
+  // Permanently delete animal (Admin/Director only)
+  app.delete('/api/animals/:id/permanent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
+        return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
+      }
+
+      await storage.permanentlyDeleteAnimal(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'PERMANENT_DELETE',
         tableName: 'animals',
         recordId: req.params.id,
         changes: null,
@@ -188,8 +250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting animal:", error);
-      res.status(500).json({ message: "Failed to delete animal" });
+      console.error("Error permanently deleting animal:", error);
+      res.status(500).json({ message: "Failed to permanently delete animal" });
     }
   });
 
@@ -241,6 +303,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/cages/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const partialSchema = insertCageSchema.partial();
+      const validatedData = partialSchema.parse(req.body);
+      const cage = await storage.updateCage(req.params.id, validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'cages',
+        recordId: req.params.id,
+        changes: validatedData,
+      });
+
+      res.json(cage);
+    } catch (error) {
+      console.error("Error updating cage:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      res.status(500).json({ message: "Failed to update cage" });
+    }
+  });
+
+  app.delete('/api/cages/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteCage(req.params.id, userId);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId,
+        action: 'SOFT_DELETE',
+        tableName: 'cages',
+        recordId: req.params.id,
+        changes: { deletedBy: userId },
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting cage:", error);
+      res.status(500).json({ message: "Failed to delete cage" });
+    }
+  });
+
+  // Restore deleted cage
+  app.post('/api/cages/:id/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const cage = await storage.restoreCage(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'RESTORE',
+        tableName: 'cages',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.json(cage);
+    } catch (error: any) {
+      console.error("Error restoring cage:", error);
+      if (error.message === "Cage not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to restore cage" });
+    }
+  });
+
+  // Get deleted cages (trash)
+  app.get('/api/cages/trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedCages = await storage.getDeletedCages();
+      res.json(deletedCages);
+    } catch (error) {
+      console.error("Error fetching deleted cages:", error);
+      res.status(500).json({ message: "Failed to fetch deleted cages" });
+    }
+  });
+
+  // Permanently delete cage (Admin/Director only)
+  app.delete('/api/cages/:id/permanent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
+        return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
+      }
+
+      await storage.permanentlyDeleteCage(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'PERMANENT_DELETE',
+        tableName: 'cages',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error permanently deleting cage:", error);
+      res.status(500).json({ message: "Failed to permanently delete cage" });
+    }
+  });
+
   // QR Code routes
   app.get('/api/qr-codes', isAuthenticated, async (req, res) => {
     try {
@@ -276,6 +445,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: fromZodError(error).toString() });
       }
       res.status(500).json({ message: "Failed to create QR code" });
+    }
+  });
+
+  // Get QR code by scan data
+  app.get('/api/qr-codes/scan/:qrData', isAuthenticated, async (req, res) => {
+    try {
+      const qrCode = await storage.getQrCodeByData(req.params.qrData);
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+      res.json(qrCode);
+    } catch (error) {
+      console.error("Error fetching QR code:", error);
+      res.status(500).json({ message: "Failed to fetch QR code" });
+    }
+  });
+
+  // Claim a blank QR code - fill in cage information after scanning
+  app.post('/api/qr-codes/:id/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const { cageId } = req.body;
+      if (!cageId) {
+        return res.status(400).json({ message: "cageId is required" });
+      }
+
+      const userId = req.user.claims.sub;
+      const qrCode = await storage.claimQrCode(req.params.id, cageId, userId);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId,
+        action: 'CLAIM_QR',
+        tableName: 'qr_codes',
+        recordId: req.params.id,
+        changes: { cageId, claimedBy: userId },
+      });
+
+      res.json(qrCode);
+    } catch (error: any) {
+      console.error("Error claiming QR code:", error);
+      const errorMessage = error.message || "Failed to claim QR code";
+      if (errorMessage.includes("not found") || errorMessage.includes("deleted")) {
+        return res.status(404).json({ message: errorMessage });
+      }
+      if (errorMessage.includes("already been claimed")) {
+        return res.status(409).json({ message: errorMessage });
+      }
+      res.status(500).json({ message: errorMessage });
     }
   });
 

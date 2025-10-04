@@ -196,6 +196,9 @@ export class DatabaseStorage implements IStorage {
       .set({ deletedAt: null, deletedBy: null })
       .where(eq(animals.id, id))
       .returning();
+    if (!restored) {
+      throw new Error("Animal not found");
+    }
     return restored;
   }
 
@@ -273,6 +276,9 @@ export class DatabaseStorage implements IStorage {
       .set({ deletedAt: null, deletedBy: null })
       .where(eq(cages.id, id))
       .returning();
+    if (!restored) {
+      throw new Error("Cage not found");
+    }
     return restored;
   }
 
@@ -314,6 +320,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode> {
+    // Verify QR code exists and is blank
+    const [existingCode] = await db.select().from(qrCodes).where(eq(qrCodes.id, id));
+    if (!existingCode) {
+      throw new Error("QR code not found");
+    }
+    if (!existingCode.isBlank) {
+      throw new Error("QR code has already been claimed");
+    }
+
+    // Verify cage exists and is not deleted
+    const [cage] = await db.select().from(cages).where(eq(cages.id, cageId));
+    if (!cage) {
+      throw new Error("Cage not found");
+    }
+    if (cage.deletedAt) {
+      throw new Error("Cannot claim QR code for a deleted cage");
+    }
+
     const [claimedCode] = await db
       .update(qrCodes)
       .set({ 
