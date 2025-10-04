@@ -114,6 +114,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get deleted animals (trash)
+  app.get('/api/animals/trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedAnimals = await storage.getDeletedAnimals();
+      res.json(deletedAnimals);
+    } catch (error) {
+      console.error("Error fetching deleted animals:", error);
+      res.status(500).json({ message: "Failed to fetch deleted animals" });
+    }
+  });
+
   app.get('/api/animals/:id', isAuthenticated, async (req, res) => {
     try {
       const animal = await storage.getAnimal(req.params.id);
@@ -237,17 +248,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get deleted animals (trash)
-  app.get('/api/animals/trash', isAuthenticated, async (req, res) => {
-    try {
-      const deletedAnimals = await storage.getDeletedAnimals();
-      res.json(deletedAnimals);
-    } catch (error) {
-      console.error("Error fetching deleted animals:", error);
-      res.status(500).json({ message: "Failed to fetch deleted animals" });
-    }
-  });
-
   // Permanently delete animal (Admin/Director only)
   app.delete('/api/animals/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
@@ -282,6 +282,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching cages:", error);
       res.status(500).json({ message: "Failed to fetch cages" });
+    }
+  });
+
+  // Get deleted cages (trash)
+  app.get('/api/cages/trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedCages = await storage.getDeletedCages();
+      res.json(deletedCages);
+    } catch (error) {
+      console.error("Error fetching deleted cages:", error);
+      res.status(500).json({ message: "Failed to fetch deleted cages" });
     }
   });
 
@@ -389,17 +400,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: error.message });
       }
       res.status(500).json({ message: "Failed to restore cage" });
-    }
-  });
-
-  // Get deleted cages (trash)
-  app.get('/api/cages/trash', isAuthenticated, async (req, res) => {
-    try {
-      const deletedCages = await storage.getDeletedCages();
-      res.json(deletedCages);
-    } catch (error) {
-      console.error("Error fetching deleted cages:", error);
-      res.status(500).json({ message: "Failed to fetch deleted cages" });
     }
   });
 
