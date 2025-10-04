@@ -19,14 +19,28 @@ import {
   Home,
   Activity,
   Calendar,
-  Filter
+  Filter,
+  TrendingUp
 } from "lucide-react";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 import type { Animal, Cage, User } from "@shared/schema";
 
+interface MonthlyReport {
+  animalActivity: { created: number; updated: number; deleted: number; restored: number };
+  cageActivity: { created: number; updated: number; deleted: number; restored: number };
+  userActivity: Array<{ userId: string; username: string; actionCount: number }>;
+  totalActions: number;
+}
+
 export default function ReportsPage() {
+  const { user } = useAuth();
   const [reportType, setReportType] = useState<string>("animals");
   const [dateRange, setDateRange] = useState<string>("30");
+  
+  const currentDate = new Date();
+  const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
 
   // Fetch data for reports
   const { data: animals, isLoading: animalsLoading } = useQuery<Animal[]>({
@@ -39,6 +53,22 @@ export default function ReportsPage() {
 
   const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ['/api/users'],
+  });
+
+  // Fetch monthly report for Admin/Director
+  const isAdminOrDirector = user?.role === 'Admin' || user?.role === 'Director';
+  const { data: monthlyReport, isLoading: monthlyReportLoading } = useQuery<MonthlyReport>({
+    queryKey: ['/api/reports/monthly', selectedYear, selectedMonth],
+    queryFn: async () => {
+      const response = await fetch(`/api/reports/monthly?year=${selectedYear}&month=${selectedMonth}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch monthly report');
+      }
+      return response.json();
+    },
+    enabled: isAdminOrDirector,
   });
 
   const isLoading = animalsLoading || cagesLoading || usersLoading;
@@ -187,6 +217,150 @@ export default function ReportsPage() {
           </Select>
         </div>
       </div>
+
+      {/* Monthly Activity Report - Admin/Director Only */}
+      {isAdminOrDirector && (
+        <Card className="border-primary/50">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <CardTitle>Monthly Activity Report</CardTitle>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+                  <SelectTrigger className="w-full sm:w-[130px]" data-testid="select-month">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">January</SelectItem>
+                    <SelectItem value="2">February</SelectItem>
+                    <SelectItem value="3">March</SelectItem>
+                    <SelectItem value="4">April</SelectItem>
+                    <SelectItem value="5">May</SelectItem>
+                    <SelectItem value="6">June</SelectItem>
+                    <SelectItem value="7">July</SelectItem>
+                    <SelectItem value="8">August</SelectItem>
+                    <SelectItem value="9">September</SelectItem>
+                    <SelectItem value="10">October</SelectItem>
+                    <SelectItem value="11">November</SelectItem>
+                    <SelectItem value="12">December</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+                  <SelectTrigger className="w-full sm:w-[100px]" data-testid="select-year">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i).map((year) => (
+                      <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <CardDescription>Activity summary for {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {monthlyReportLoading ? (
+              <div className="text-center py-4">Loading monthly report...</div>
+            ) : monthlyReport ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Total Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold" data-testid="monthly-total-actions">{monthlyReport.totalActions}</div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Animal Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-sm">
+                      <div className="flex justify-between" data-testid="animal-created">
+                        <span>Created:</span>
+                        <span className="font-medium text-green-600">{monthlyReport.animalActivity.created}</span>
+                      </div>
+                      <div className="flex justify-between" data-testid="animal-updated">
+                        <span>Updated:</span>
+                        <span className="font-medium text-blue-600">{monthlyReport.animalActivity.updated}</span>
+                      </div>
+                      <div className="flex justify-between" data-testid="animal-deleted">
+                        <span>Deleted:</span>
+                        <span className="font-medium text-red-600">{monthlyReport.animalActivity.deleted}</span>
+                      </div>
+                      <div className="flex justify-between" data-testid="animal-restored">
+                        <span>Restored:</span>
+                        <span className="font-medium text-yellow-600">{monthlyReport.animalActivity.restored}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Cage Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-sm">
+                      <div className="flex justify-between" data-testid="cage-created">
+                        <span>Created:</span>
+                        <span className="font-medium text-green-600">{monthlyReport.cageActivity.created}</span>
+                      </div>
+                      <div className="flex justify-between" data-testid="cage-updated">
+                        <span>Updated:</span>
+                        <span className="font-medium text-blue-600">{monthlyReport.cageActivity.updated}</span>
+                      </div>
+                      <div className="flex justify-between" data-testid="cage-deleted">
+                        <span>Deleted:</span>
+                        <span className="font-medium text-red-600">{monthlyReport.cageActivity.deleted}</span>
+                      </div>
+                      <div className="flex justify-between" data-testid="cage-restored">
+                        <span>Restored:</span>
+                        <span className="font-medium text-yellow-600">{monthlyReport.cageActivity.restored}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium mb-3">User Activity</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Username</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {monthlyReport.userActivity.length > 0 ? (
+                          monthlyReport.userActivity.map((user) => (
+                            <TableRow key={user.userId} data-testid={`user-activity-${user.userId}`}>
+                              <TableCell className="font-medium">{user.username}</TableCell>
+                              <TableCell className="text-right">{user.actionCount}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={2} className="text-center text-muted-foreground">
+                              No activity recorded for this month
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">No data available</div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -67,6 +67,12 @@ export interface IStorage {
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
+  getMonthlyActivityReport(year: number, month: number): Promise<{
+    animalActivity: { created: number; updated: number; deleted: number; restored: number };
+    cageActivity: { created: number; updated: number; deleted: number; restored: number };
+    userActivity: Array<{ userId: string; username: string; actionCount: number }>;
+    totalActions: number;
+  }>;
   
   // Dashboard statistics
   getDashboardStats(): Promise<{
@@ -403,6 +409,66 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
     return result;
+  }
+
+  async getMonthlyActivityReport(year: number, month: number): Promise<{
+    animalActivity: { created: number; updated: number; deleted: number; restored: number };
+    cageActivity: { created: number; updated: number; deleted: number; restored: number };
+    userActivity: Array<{ userId: string; username: string; actionCount: number }>;
+    totalActions: number;
+  }> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+
+    const logs = await db
+      .select()
+      .from(auditLogs)
+      .where(and(
+        gte(auditLogs.timestamp, startDate),
+        lt(auditLogs.timestamp, endDate)
+      ))
+      .orderBy(desc(auditLogs.timestamp));
+
+    const animalActivity = {
+      created: logs.filter(l => l.tableName === 'animals' && l.action === 'CREATE').length,
+      updated: logs.filter(l => l.tableName === 'animals' && l.action === 'UPDATE').length,
+      deleted: logs.filter(l => l.tableName === 'animals' && (l.action === 'DELETE' || l.action === 'SOFT_DELETE' || l.action === 'PERMANENT_DELETE')).length,
+      restored: logs.filter(l => l.tableName === 'animals' && l.action === 'RESTORE').length,
+    };
+
+    const cageActivity = {
+      created: logs.filter(l => l.tableName === 'cages' && l.action === 'CREATE').length,
+      updated: logs.filter(l => l.tableName === 'cages' && l.action === 'UPDATE').length,
+      deleted: logs.filter(l => l.tableName === 'cages' && (l.action === 'DELETE' || l.action === 'SOFT_DELETE' || l.action === 'PERMANENT_DELETE')).length,
+      restored: logs.filter(l => l.tableName === 'cages' && l.action === 'RESTORE').length,
+    };
+
+    const userActivityMap = new Map<string, number>();
+    for (const log of logs) {
+      if (log.userId) {
+        userActivityMap.set(log.userId, (userActivityMap.get(log.userId) || 0) + 1);
+      }
+    }
+
+    const userActivity = await Promise.all(
+      Array.from(userActivityMap.entries()).map(async ([userId, count]) => {
+        const user = await this.getUser(userId);
+        return {
+          userId,
+          username: user?.username || 'Unknown',
+          actionCount: count,
+        };
+      })
+    );
+
+    userActivity.sort((a, b) => b.actionCount - a.actionCount);
+
+    return {
+      animalActivity,
+      cageActivity,
+      userActivity,
+      totalActions: logs.length,
+    };
   }
 
   // Dashboard statistics

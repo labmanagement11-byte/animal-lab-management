@@ -33,6 +33,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Monthly activity report (Admin/Director only)
+  app.get('/api/reports/monthly', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
+        return res.status(403).json({ message: "Only Admin and Director can access reports" });
+      }
+
+      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+      const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
+
+      const report = await storage.getMonthlyActivityReport(year, month);
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching monthly report:", error);
+      res.status(500).json({ message: "Failed to fetch monthly report" });
+    }
+  });
+
   // Global search
   app.get('/api/search', isAuthenticated, async (req, res) => {
     try {
