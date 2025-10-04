@@ -54,6 +54,7 @@ export interface IStorage {
   restoreCage(id: string): Promise<Cage>;
   permanentlyDeleteCage(id: string): Promise<void>;
   getDeletedCages(): Promise<Cage[]>;
+  cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number }>;
   
   // QR Code operations
   getQrCodes(): Promise<QrCode[]>;
@@ -293,6 +294,40 @@ export class DatabaseStorage implements IStorage {
       .where(isNotNull(cages.deletedAt))
       .orderBy(desc(cages.deletedAt));
     return result;
+  }
+
+  async cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number }> {
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+    const expiredAnimals = await db
+      .select({ id: animals.id })
+      .from(animals)
+      .where(and(
+        isNotNull(animals.deletedAt),
+        lte(animals.deletedAt, tenDaysAgo)
+      ));
+
+    const expiredCages = await db
+      .select({ id: cages.id })
+      .from(cages)
+      .where(and(
+        isNotNull(cages.deletedAt),
+        lte(cages.deletedAt, tenDaysAgo)
+      ));
+
+    for (const animal of expiredAnimals) {
+      await this.permanentlyDeleteAnimal(animal.id);
+    }
+
+    for (const cage of expiredCages) {
+      await this.permanentlyDeleteCage(cage.id);
+    }
+
+    return {
+      deletedAnimals: expiredAnimals.length,
+      deletedCages: expiredCages.length,
+    };
   }
 
   // QR Code operations

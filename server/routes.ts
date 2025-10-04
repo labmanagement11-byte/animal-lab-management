@@ -410,6 +410,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cleanup expired deleted items (Admin/Success Manager only)
+  app.post('/api/trash/cleanup', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || (user.role !== 'Admin' && user.role !== 'Success Manager')) {
+        return res.status(403).json({ message: "Only Admin and Success Manager can run cleanup" });
+      }
+
+      const result = await storage.cleanupExpiredDeleted();
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CLEANUP',
+        tableName: 'trash',
+        recordId: 'bulk',
+        changes: result,
+      });
+
+      res.json({
+        message: "Cleanup completed successfully",
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error cleaning up expired items:", error);
+      res.status(500).json({ message: "Failed to cleanup expired items" });
+    }
+  });
+
   // QR Code routes
   app.get('/api/qr-codes', isAuthenticated, async (req, res) => {
     try {
