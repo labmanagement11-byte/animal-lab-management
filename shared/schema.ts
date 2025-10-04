@@ -51,6 +51,8 @@ export const cages = pgTable("cages", {
   }).default('Active'),
   strainId: varchar("strain_id").references(() => strains.id),
   notes: text("notes"),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -114,16 +116,20 @@ export const animals = pgTable("animals", {
   }).default('Active'),
   diseases: text("diseases"),
   notes: text("notes"),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// QR Codes table
+// QR Codes table - Only for cages
 export const qrCodes = pgTable("qr_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  animalId: varchar("animal_id").references(() => animals.id),
   cageId: varchar("cage_id").references(() => cages.id),
   qrData: text("qr_data").notNull(),
+  isBlank: boolean("is_blank").default(true), // Blank QR codes can be filled later
+  claimedAt: timestamp("claimed_at"), // When the QR was scanned and filled
+  claimedBy: varchar("claimed_by").references(() => users.id),
   generatedBy: varchar("generated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
