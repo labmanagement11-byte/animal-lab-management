@@ -11,7 +11,8 @@ import {
   LogOut,
   Dna,
   Moon,
-  Sun
+  Sun,
+  Trash2
 } from "lucide-react";
 import { useLocation } from "wouter";
 import GlobalSearch from "@/components/global-search";
@@ -38,6 +39,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
     { id: 'strains', label: 'Strains', icon: Dna, path: '/strains' },
     { id: 'qr-scanner', label: 'QR Scanner', icon: QrCode, path: '/qr-scanner' },
     { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
+    { id: 'trash', label: 'Trash', icon: Trash2, path: '/trash' },
   ];
 
   if ((user as any)?.role === 'Success Manager' || (user as any)?.role === 'Admin') {

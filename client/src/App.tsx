@@ -11,6 +11,7 @@ import Cages from "@/pages/cages";
 import Strains from "@/pages/strains";
 import QrScanner from "@/pages/qr-scanner";
 import Reports from "@/pages/reports";
+import Trash from "@/pages/trash";
 import Admin from "@/pages/admin";
 import Users from "@/pages/users";
 import CageQrDetail from "@/pages/cage-qr-detail";
@@ -51,6 +52,7 @@ function AppContent() {
           <Route path="/strains" component={Strains} />
           <Route path="/qr-scanner" component={QrScanner} />
           <Route path="/reports" component={Reports} />
+          <Route path="/trash" component={Trash} />
           <Route path="/admin" component={Admin} />
           <Route path="/users" component={Users} />
           <Route path="/qr/cage/:id" component={CageQrDetail} />

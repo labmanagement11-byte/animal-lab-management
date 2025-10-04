@@ -66,3 +66,19 @@ export function formatDate(date: string | Date | null): string {
     day: 'numeric',
   });
 }
+
+export function calculateDaysUntilPermanentDeletion(deletedAt: string | Date | null): number | null {
+  if (!deletedAt) return null;
+  
+  const deletedDate = new Date(deletedAt);
+  if (isNaN(deletedDate.getTime())) return null;
+  
+  const permanentDeletionDate = new Date(deletedDate);
+  permanentDeletionDate.setDate(permanentDeletionDate.getDate() + 10);
+  
+  const currentDate = new Date();
+  const diffTime = permanentDeletionDate.getTime() - currentDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return Math.max(0, diffDays);
+}
