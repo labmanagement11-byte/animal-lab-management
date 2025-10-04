@@ -25,7 +25,7 @@ import {
   type InsertGenotype,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, ilike, or } from "drizzle-orm";
+import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -35,24 +35,32 @@ export interface IStorage {
   updateUserRole(email: string, role: 'Admin' | 'Success Manager' | 'Director' | 'Employee'): Promise<User | undefined>;
   
   // Animal operations
-  getAnimals(limit?: number): Promise<Animal[]>;
+  getAnimals(limit?: number, includeDeleted?: boolean): Promise<Animal[]>;
   getAnimal(id: string): Promise<Animal | undefined>;
   createAnimal(animal: InsertAnimal): Promise<Animal>;
   updateAnimal(id: string, animal: Partial<InsertAnimal>): Promise<Animal>;
-  deleteAnimal(id: string): Promise<void>;
+  deleteAnimal(id: string, userId: string): Promise<void>;
+  restoreAnimal(id: string): Promise<Animal>;
+  permanentlyDeleteAnimal(id: string): Promise<void>;
+  getDeletedAnimals(): Promise<Animal[]>;
   searchAnimals(query: string): Promise<Animal[]>;
   
   // Cage operations
-  getCages(): Promise<Cage[]>;
+  getCages(includeDeleted?: boolean): Promise<Cage[]>;
   getCage(id: string): Promise<Cage | undefined>;
   createCage(cage: InsertCage): Promise<Cage>;
   updateCage(id: string, cage: Partial<InsertCage>): Promise<Cage>;
-  deleteCage(id: string): Promise<void>;
+  deleteCage(id: string, userId: string): Promise<void>;
+  restoreCage(id: string): Promise<Cage>;
+  permanentlyDeleteCage(id: string): Promise<void>;
+  getDeletedCages(): Promise<Cage[]>;
   
   // QR Code operations
   getQrCodes(): Promise<QrCode[]>;
   getQrCode(id: string): Promise<QrCode | undefined>;
+  getQrCodeByData(qrData: string): Promise<QrCode | undefined>;
   createQrCode(qrCode: InsertQrCode): Promise<QrCode>;
+  claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode>;
   deleteQrCode(id: string): Promise<void>;
   
   // Audit log operations
@@ -127,10 +135,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Animal operations
-  async getAnimals(limit = 50): Promise<Animal[]> {
+  async getAnimals(limit = 50, includeDeleted = false): Promise<Animal[]> {
     const result = await db
       .select()
       .from(animals)
+      .where(includeDeleted ? undefined : isNull(animals.deletedAt))
       .orderBy(desc(animals.createdAt))
       .limit(limit);
     return result;
@@ -142,7 +151,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAnimal(animal: InsertAnimal): Promise<Animal> {
-    const [newAnimal] = await db.insert(animals).values([animal]).returning();
+    const [newAnimal] = await db.insert(animals).values(animal).returning();
     return newAnimal;
   }
 
@@ -174,8 +183,33 @@ export class DatabaseStorage implements IStorage {
     return updatedAnimal;
   }
 
-  async deleteAnimal(id: string): Promise<void> {
+  async deleteAnimal(id: string, userId: string): Promise<void> {
+    await db
+      .update(animals)
+      .set({ deletedAt: new Date(), deletedBy: userId })
+      .where(eq(animals.id, id));
+  }
+
+  async restoreAnimal(id: string): Promise<Animal> {
+    const [restored] = await db
+      .update(animals)
+      .set({ deletedAt: null, deletedBy: null })
+      .where(eq(animals.id, id))
+      .returning();
+    return restored;
+  }
+
+  async permanentlyDeleteAnimal(id: string): Promise<void> {
     await db.delete(animals).where(eq(animals.id, id));
+  }
+
+  async getDeletedAnimals(): Promise<Animal[]> {
+    const result = await db
+      .select()
+      .from(animals)
+      .where(isNotNull(animals.deletedAt))
+      .orderBy(desc(animals.deletedAt));
+    return result;
   }
 
   async searchAnimals(query: string): Promise<Animal[]> {
@@ -183,11 +217,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(animals)
       .where(
-        or(
-          ilike(animals.animalNumber, `%${query}%`),
-          ilike(animals.breed, `%${query}%`),
-          ilike(animals.genotype, `%${query}%`),
-          ilike(animals.notes, `%${query}%`)
+        and(
+          isNull(animals.deletedAt),
+          or(
+            ilike(animals.animalNumber, `%${query}%`),
+            ilike(animals.breed, `%${query}%`),
+            ilike(animals.genotype, `%${query}%`),
+            ilike(animals.notes, `%${query}%`)
+          )
         )
       )
       .orderBy(desc(animals.createdAt));
@@ -195,8 +232,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Cage operations
-  async getCages(): Promise<Cage[]> {
-    const result = await db.select().from(cages).orderBy(cages.cageNumber);
+  async getCages(includeDeleted = false): Promise<Cage[]> {
+    const result = await db
+      .select()
+      .from(cages)
+      .where(includeDeleted ? undefined : isNull(cages.deletedAt))
+      .orderBy(cages.cageNumber);
     return result;
   }
 
@@ -219,8 +260,33 @@ export class DatabaseStorage implements IStorage {
     return updatedCage;
   }
 
-  async deleteCage(id: string): Promise<void> {
+  async deleteCage(id: string, userId: string): Promise<void> {
+    await db
+      .update(cages)
+      .set({ deletedAt: new Date(), deletedBy: userId })
+      .where(eq(cages.id, id));
+  }
+
+  async restoreCage(id: string): Promise<Cage> {
+    const [restored] = await db
+      .update(cages)
+      .set({ deletedAt: null, deletedBy: null })
+      .where(eq(cages.id, id))
+      .returning();
+    return restored;
+  }
+
+  async permanentlyDeleteCage(id: string): Promise<void> {
     await db.delete(cages).where(eq(cages.id, id));
+  }
+
+  async getDeletedCages(): Promise<Cage[]> {
+    const result = await db
+      .select()
+      .from(cages)
+      .where(isNotNull(cages.deletedAt))
+      .orderBy(desc(cages.deletedAt));
+    return result;
   }
 
   // QR Code operations
@@ -237,9 +303,28 @@ export class DatabaseStorage implements IStorage {
     return qrCode;
   }
 
+  async getQrCodeByData(qrData: string): Promise<QrCode | undefined> {
+    const [qrCode] = await db.select().from(qrCodes).where(eq(qrCodes.qrData, qrData));
+    return qrCode;
+  }
+
   async createQrCode(qrCode: InsertQrCode): Promise<QrCode> {
     const [newQrCode] = await db.insert(qrCodes).values(qrCode).returning();
     return newQrCode;
+  }
+
+  async claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode> {
+    const [claimedCode] = await db
+      .update(qrCodes)
+      .set({ 
+        cageId, 
+        isBlank: false, 
+        claimedAt: new Date(), 
+        claimedBy: userId 
+      })
+      .where(eq(qrCodes.id, id))
+      .returning();
+    return claimedCode;
   }
 
   async deleteQrCode(id: string): Promise<void> {
@@ -270,12 +355,13 @@ export class DatabaseStorage implements IStorage {
   }> {
     const [totalAnimals] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(animals);
+      .from(animals)
+      .where(isNull(animals.deletedAt));
 
     const [activeCages] = await db
       .select({ count: sql<number>`count(*)` })
       .from(cages)
-      .where(eq(cages.isActive, true));
+      .where(and(eq(cages.isActive, true), isNull(cages.deletedAt)));
 
     const [qrCodesCount] = await db
       .select({ count: sql<number>`count(*)` })
@@ -285,9 +371,12 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(animals)
       .where(
-        or(
-          eq(animals.healthStatus, 'Sick'),
-          eq(animals.healthStatus, 'Quarantine')
+        and(
+          isNull(animals.deletedAt),
+          or(
+            eq(animals.healthStatus, 'Sick'),
+            eq(animals.healthStatus, 'Quarantine')
+          )
         )
       );
 
@@ -311,39 +400,45 @@ export class DatabaseStorage implements IStorage {
   }> {
     const searchTerm = `%${query}%`;
 
-    // Search animals - expanded fields
+    // Search animals - expanded fields, excluding deleted
     const animalsResult = await db
       .select()
       .from(animals)
       .leftJoin(cages, eq(animals.cageId, cages.id))
       .where(
-        or(
-          ilike(animals.animalNumber, searchTerm),
-          ilike(animals.breed, searchTerm),
-          ilike(animals.genotype, searchTerm),
-          ilike(animals.color, searchTerm),
-          ilike(animals.protocol, searchTerm),
-          ilike(animals.diseases, searchTerm),
-          ilike(animals.notes, searchTerm),
-          ilike(animals.healthStatus, searchTerm),
-          ilike(animals.status, searchTerm),
-          ilike(cages.cageNumber, searchTerm),
-          ilike(cages.location, searchTerm)
+        and(
+          isNull(animals.deletedAt),
+          or(
+            ilike(animals.animalNumber, searchTerm),
+            ilike(animals.breed, searchTerm),
+            ilike(animals.genotype, searchTerm),
+            ilike(animals.color, searchTerm),
+            ilike(animals.protocol, searchTerm),
+            ilike(animals.diseases, searchTerm),
+            ilike(animals.notes, searchTerm),
+            ilike(animals.healthStatus, searchTerm),
+            ilike(animals.status, searchTerm),
+            ilike(cages.cageNumber, searchTerm),
+            ilike(cages.location, searchTerm)
+          )
         )
       )
       .limit(10);
 
-    // Search cages - expanded fields
+    // Search cages - expanded fields, excluding deleted
     const cagesResult = await db
       .select()
       .from(cages)
       .where(
-        or(
-          ilike(cages.cageNumber, searchTerm),
-          ilike(cages.roomNumber, searchTerm),
-          ilike(cages.location, searchTerm),
-          ilike(cages.status, searchTerm),
-          ilike(cages.notes, searchTerm)
+        and(
+          isNull(cages.deletedAt),
+          or(
+            ilike(cages.cageNumber, searchTerm),
+            ilike(cages.roomNumber, searchTerm),
+            ilike(cages.location, searchTerm),
+            ilike(cages.status, searchTerm),
+            ilike(cages.notes, searchTerm)
+          )
         )
       )
       .limit(10);
@@ -386,16 +481,14 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(10);
 
-    // Search QR codes
+    // Search QR codes - only for cages now
     const qrCodesResult = await db
       .select()
       .from(qrCodes)
-      .leftJoin(animals, eq(qrCodes.animalId, animals.id))
       .leftJoin(cages, eq(qrCodes.cageId, cages.id))
       .where(
         or(
           ilike(qrCodes.qrData, searchTerm),
-          ilike(animals.animalNumber, searchTerm),
           ilike(cages.cageNumber, searchTerm)
         )
       )
@@ -428,12 +521,11 @@ export class DatabaseStorage implements IStorage {
       strains: strainsResult,
       genotypes: genotypesResult,
       qrCodes: qrCodesResult.map(row => ({
-        ...row.qrCodes,
-        animal: row.animals,
+        ...row.qr_codes,
         cage: row.cages
       })),
       fileAttachments: fileAttachmentsResult.map(row => ({
-        ...row.fileAttachments,
+        ...row.file_attachments,
         animal: row.animals,
         cage: row.cages
       })),
