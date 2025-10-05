@@ -521,12 +521,13 @@ export default function Cages() {
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
-                          <Badge className={statusInfo.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
-                            {statusInfo.activityStatus}
-                          </Badge>
-                          {statusInfo.purpose && (
-                            <Badge variant="outline" className="text-xs">
-                              {statusInfo.purpose}
+                          {!statusInfo.isActive ? (
+                            <Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'>
+                              {statusInfo.activityStatus}
+                            </Badge>
+                          ) : (
+                            <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                              {statusInfo.originalStatus}
                             </Badge>
                           )}
                         </div>
@@ -575,12 +576,13 @@ export default function Cages() {
                     <span className="font-medium">Cage {cage.cageNumber}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge className={statusInfo.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
-                      {statusInfo.activityStatus}
-                    </Badge>
-                    {statusInfo.purpose && (
-                      <Badge variant="outline" className="text-xs">
-                        {statusInfo.purpose}
+                    {!statusInfo.isActive ? (
+                      <Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'>
+                        {statusInfo.activityStatus}
+                      </Badge>
+                    ) : (
+                      <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                        {statusInfo.originalStatus}
                       </Badge>
                     )}
                   </div>
@@ -631,12 +633,13 @@ export default function Cages() {
                     const statusInfo = getStatusDisplayInfo(cage.status || 'Active', cage.isActive ?? true);
                     return (
                       <>
-                        <Badge className={statusInfo.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
-                          {statusInfo.activityStatus}
-                        </Badge>
-                        {statusInfo.purpose && (
-                          <Badge variant="outline" className="text-xs">
-                            {statusInfo.purpose}
+                        {!statusInfo.isActive ? (
+                          <Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'>
+                            {statusInfo.activityStatus}
+                          </Badge>
+                        ) : (
+                          <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                            {statusInfo.originalStatus}
                           </Badge>
                         )}
                       </>

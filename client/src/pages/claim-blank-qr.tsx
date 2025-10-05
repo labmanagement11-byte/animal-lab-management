@@ -36,13 +36,14 @@ export default function ClaimBlankQr() {
   });
 
   const { data: qrCode, isLoading: qrLoading } = useQuery<QrCodeType>({
-    queryKey: ['/api/qr-codes/by-data', qrId],
+    queryKey: ['/api/qr-codes', qrId],
     enabled: !!qrId,
     queryFn: async () => {
-      const allQrs = await fetch('/api/qr-codes', { credentials: 'include' }).then(r => r.json());
-      const foundQr = allQrs.find((qr: QrCodeType) => qr.qrData.includes(qrId || ''));
-      if (!foundQr) throw new Error('QR code not found');
-      return foundQr;
+      const response = await fetch(`/api/qr-codes/${qrId}`, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('QR code not found');
+      }
+      return response.json();
     },
   });
 

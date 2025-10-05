@@ -145,6 +145,8 @@ export const qrCodes = pgTable("qr_codes", {
   claimedAt: timestamp("claimed_at"), // When the QR was scanned and filled
   claimedBy: varchar("claimed_by").references(() => users.id),
   generatedBy: varchar("generated_by").references(() => users.id),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -265,6 +267,8 @@ export const insertQrCodeSchema = createInsertSchema(qrCodes).omit({
   createdAt: true,
   claimedAt: true,
   claimedBy: true,
+  deletedAt: true,
+  deletedBy: true,
 });
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({

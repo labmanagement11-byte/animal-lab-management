@@ -523,12 +523,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = `${req.protocol}://${req.get('host')}`;
 
       for (let i = 0; i < count; i++) {
-        const randomId = crypto.randomUUID();
-        const qrCode = await storage.createQrCode({
-          qrData: `${baseUrl}/qr/blank/${randomId}`,
+        // First create QR with temporary data to get the ID
+        const tempQrCode = await storage.createQrCode({
+          qrData: 'temp',
           isBlank: true,
           generatedBy: userId,
         });
+        
+        // Now update with correct URL using the actual ID
+        const qrCode = await storage.updateQrCode(tempQrCode.id, {
+          qrData: `${baseUrl}/qr/blank/${tempQrCode.id}`,
+        });
+        
         qrCodes.push(qrCode);
       }
 
@@ -853,12 +859,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User invitation endpoints (Admin only)
+  // User invitation endpoints (Admin and Director only)
   app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'Admin') {
-        return res.status(403).json({ message: "Only admins can create invitations" });
+      if (user?.role !== 'Admin' && user?.role !== 'Director') {
+        return res.status(403).json({ message: "Only Admin and Director can create invitations" });
       }
 
       const { email, role } = req.body;
@@ -904,8 +910,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'Admin') {
-        return res.status(403).json({ message: "Only admins can view invitations" });
+      if (user?.role !== 'Admin' && user?.role !== 'Director') {
+        return res.status(403).json({ message: "Only Admin and Director can view invitations" });
       }
 
       const invitations = await storage.getInvitations();

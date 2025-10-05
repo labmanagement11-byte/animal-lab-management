@@ -2,9 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -12,14 +13,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Users, UserCheck, Shield, Crown, Briefcase } from "lucide-react";
+import { Users, UserCheck, Shield, Crown, Briefcase, UserPlus, Copy, Mail } from "lucide-react";
 import { useState } from "react";
 
 const updateRoleSchema = z.object({
   role: z.enum(['Admin', 'Success Manager', 'Director', 'Employee']),
 });
 
+const inviteUserSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  role: z.enum(['Admin', 'Success Manager', 'Director', 'Employee']),
+});
+
 type UpdateRoleForm = z.infer<typeof updateRoleSchema>;
+type InviteUserForm = z.infer<typeof inviteUserSchema>;
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
@@ -27,10 +34,20 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [invitationLink, setInvitationLink] = useState("");
 
   const form = useForm<UpdateRoleForm>({
     resolver: zodResolver(updateRoleSchema),
     defaultValues: {
+      role: 'Employee',
+    },
+  });
+
+  const inviteForm = useForm<InviteUserForm>({
+    resolver: zodResolver(inviteUserSchema),
+    defaultValues: {
+      email: '',
       role: 'Employee',
     },
   });
@@ -62,11 +79,43 @@ export default function UsersPage() {
     },
   });
 
+  const inviteUserMutation = useMutation({
+    mutationFn: (data: InviteUserForm) => 
+      apiRequest('POST', '/api/invitations', data),
+    onSuccess: (response: any) => {
+      toast({
+        title: "Invitation Sent",
+        description: `Invitation sent to ${response.invitation.email}`,
+      });
+      setInvitationLink(response.invitationLink);
+      inviteForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send invitation",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRoleUpdate = (data: UpdateRoleForm) => {
     if (!selectedUser) return;
     updateRoleMutation.mutate({
       email: selectedUser.email,
       role: data.role,
+    });
+  };
+
+  const handleInviteUser = (data: InviteUserForm) => {
+    inviteUserMutation.mutate(data);
+  };
+
+  const copyInvitationLink = () => {
+    navigator.clipboard.writeText(invitationLink);
+    toast({
+      title: "Copied!",
+      description: "Invitation link copied to clipboard",
     });
   };
 
@@ -103,7 +152,9 @@ export default function UsersPage() {
   };
 
   const isCurrentUserAdmin = (currentUser as any)?.role === 'Admin';
+  const isCurrentUserDirector = (currentUser as any)?.role === 'Director';
   const isCurrentUserSuccessManager = (currentUser as any)?.role === 'Success Manager';
+  const canInviteUsers = isCurrentUserAdmin || isCurrentUserDirector;
 
   if (isLoading) {
     return (
@@ -124,10 +175,21 @@ export default function UsersPage() {
             Manage user roles and permissions in the system
           </p>
         </div>
-        <Badge variant="default" className="w-fit">
-          <Users className="w-4 h-4 mr-1" />
-          {users?.length || 0} Users
-        </Badge>
+        <div className="flex items-center gap-3">
+          {canInviteUsers && (
+            <Button 
+              onClick={() => setInviteDialogOpen(true)}
+              data-testid="button-invite-user"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Invite User
+            </Button>
+          )}
+          <Badge variant="default" className="w-fit">
+            <Users className="w-4 h-4 mr-1" />
+            {users?.length || 0} Users
+          </Badge>
+        </div>
       </div>
 
       <Card>
@@ -292,6 +354,133 @@ export default function UsersPage() {
               </form>
             </Form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite User Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite New User</DialogTitle>
+            <DialogDescription>
+              Send an invitation to a new user via email. Only Admin and Director can invite users.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...inviteForm}>
+            <form onSubmit={inviteForm.handleSubmit(handleInviteUser)} className="space-y-4">
+              <FormField
+                control={inviteForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="user@example.com" 
+                        {...field} 
+                        data-testid="input-invite-email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={inviteForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-invite-role">
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Employee">
+                          <div className="flex items-center">
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            Employee
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Director">
+                          <div className="flex items-center">
+                            <Briefcase className="w-4 h-4 mr-2" />
+                            Director
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Success Manager">
+                          <div className="flex items-center">
+                            <Shield className="w-4 h-4 mr-2" />
+                            Success Manager
+                          </div>
+                        </SelectItem>
+                        {isCurrentUserAdmin && (
+                          <SelectItem value="Admin">
+                            <div className="flex items-center">
+                              <Crown className="w-4 h-4 mr-2" />
+                              Admin
+                            </div>
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {invitationLink && (
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Invitation Link</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={copyInvitationLink}
+                      data-testid="button-copy-link"
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground break-all">
+                    {invitationLink}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <Mail className="w-3 h-3 inline mr-1" />
+                    Share this link with the invited user
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setInviteDialogOpen(false);
+                    setInvitationLink("");
+                    inviteForm.reset();
+                  }}
+                  data-testid="button-cancel-invite"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={inviteUserMutation.isPending}
+                  data-testid="button-send-invite"
+                >
+                  {inviteUserMutation.isPending ? "Sending..." : "Send Invitation"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
