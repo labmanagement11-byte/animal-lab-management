@@ -10,6 +10,8 @@ import Animals from "@/pages/animals";
 import Cages from "@/pages/cages";
 import Strains from "@/pages/strains";
 import QrScanner from "@/pages/qr-scanner";
+import QrCodes from "@/pages/qr-codes";
+import HealthAlerts from "@/pages/health-alerts";
 import Reports from "@/pages/reports";
 import Trash from "@/pages/trash";
 import Admin from "@/pages/admin";
@@ -62,6 +64,8 @@ function AppContent() {
             <Route path="/cages" component={Cages} />
             <Route path="/strains" component={Strains} />
             <Route path="/qr-scanner" component={QrScanner} />
+            <Route path="/qr-codes" component={QrCodes} />
+            <Route path="/health-alerts" component={HealthAlerts} />
             <Route path="/blank-qr" component={BlankQr} />
             <Route path="/reports" component={Reports} />
             <Route path="/trash" component={Trash} />

@@ -10,6 +10,7 @@ import FloatingActionButton from "@/components/floating-action-button";
 import type { Animal } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface DashboardStats {
   totalAnimals: number;
@@ -20,6 +21,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [showAnimalForm, setShowAnimalForm] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -90,7 +92,11 @@ export default function Dashboard() {
         </div>
         <div className="md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 lg:gap-6">
           <div className="flex md:contents gap-4 overflow-x-auto pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
-            <Card className="flex-shrink-0 w-72 md:w-auto snap-center">
+            <Card 
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow" 
+              onClick={() => setLocation('/animals')}
+              data-testid="card-total-animals"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -110,7 +116,11 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="flex-shrink-0 w-72 md:w-auto snap-center">
+            <Card 
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setLocation('/cages')}
+              data-testid="card-active-cages"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -129,7 +139,11 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="flex-shrink-0 w-72 md:w-auto snap-center">
+            <Card 
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setLocation('/qr-codes')}
+              data-testid="card-qr-codes"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -148,7 +162,11 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="flex-shrink-0 w-72 md:w-auto snap-center">
+            <Card 
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setLocation('/health-alerts')}
+              data-testid="card-health-alerts"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
