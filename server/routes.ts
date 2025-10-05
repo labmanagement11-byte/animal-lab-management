@@ -45,8 +45,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
       const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
-
-      const report = await storage.getMonthlyActivityReport(year, month);
+      
+      // Admin can see all companies, others only their own company
+      const companyId = user.role === 'Admin' ? undefined : user.companyId || 'default-company-id';
+      const report = await storage.getMonthlyActivityReport(year, month, companyId);
       res.json(report);
     } catch (error) {
       console.error("Error fetching monthly report:", error);

@@ -84,7 +84,7 @@ export interface IStorage {
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
   getAuditLogsByRecord(tableName: string, recordId: string): Promise<AuditLog[]>;
-  getMonthlyActivityReport(year: number, month: number): Promise<{
+  getMonthlyActivityReport(year: number, month: number, companyId?: string): Promise<{
     animalActivity: { created: number; updated: number; deleted: number; restored: number };
     cageActivity: { created: number; updated: number; deleted: number; restored: number };
     userActivity: Array<{ userId: string; username: string; actionCount: number }>;
@@ -664,7 +664,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getMonthlyActivityReport(year: number, month: number): Promise<{
+  async getMonthlyActivityReport(year: number, month: number, companyId?: string): Promise<{
     animalActivity: { created: number; updated: number; deleted: number; restored: number };
     cageActivity: { created: number; updated: number; deleted: number; restored: number };
     userActivity: Array<{ userId: string; username: string; actionCount: number }>;
@@ -676,10 +676,18 @@ export class DatabaseStorage implements IStorage {
     const logs = await db
       .select()
       .from(auditLogs)
-      .where(and(
-        gte(auditLogs.timestamp, startDate),
-        lt(auditLogs.timestamp, endDate)
-      ))
+      .where(
+        companyId 
+          ? and(
+              gte(auditLogs.timestamp, startDate),
+              lt(auditLogs.timestamp, endDate),
+              eq(auditLogs.companyId, companyId)
+            )
+          : and(
+              gte(auditLogs.timestamp, startDate),
+              lt(auditLogs.timestamp, endDate)
+            )
+      )
       .orderBy(desc(auditLogs.timestamp));
 
     const animalActivity = {
@@ -867,17 +875,27 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(10);
 
-    // Search users
+    // Search users - filter by companyId for non-admin
     const usersResult = await db
       .select()
       .from(users)
       .where(
-        or(
-          ilike(users.email, searchTerm),
-          ilike(users.firstName, searchTerm),
-          ilike(users.lastName, searchTerm),
-          ilike(users.role, searchTerm)
-        )
+        companyId
+          ? and(
+              eq(users.companyId, companyId),
+              or(
+                ilike(users.email, searchTerm),
+                ilike(users.firstName, searchTerm),
+                ilike(users.lastName, searchTerm),
+                ilike(users.role, searchTerm)
+              )
+            )
+          : or(
+              ilike(users.email, searchTerm),
+              ilike(users.firstName, searchTerm),
+              ilike(users.lastName, searchTerm),
+              ilike(users.role, searchTerm)
+            )
       )
       .limit(10);
 
