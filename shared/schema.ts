@@ -74,7 +74,7 @@ export const cages = pgTable("cages", {
     enum: ['BB00028', 'ZRC-C61', 'ZRC-SC14'] 
   }).notNull(),
   location: varchar("location").notNull(),
-  capacity: integer("capacity").default(5),
+  capacity: integer("capacity"),
   isActive: boolean("is_active").default(true),
   status: varchar("status", {
     enum: ['Active', 'Breeding', 'Holding']

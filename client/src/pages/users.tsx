@@ -326,7 +326,7 @@ export default function UsersPage() {
                 data-testid="button-create-user"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Crear Usuario
+                Create User
               </Button>
               <Button 
                 onClick={() => setInviteDialogOpen(true)}
@@ -334,7 +334,7 @@ export default function UsersPage() {
                 data-testid="button-invite-user"
               >
                 <Mail className="w-4 h-4 mr-2" />
-                Invitar por Email
+                Invite by Email
               </Button>
             </>
           )}

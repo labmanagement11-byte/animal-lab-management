@@ -28,7 +28,7 @@ export default function ClaimBlankQr() {
     cageNumber: "",
     roomNumber: "BB00028",
     location: "",
-    capacity: 5,
+    capacity: "" as string | number,
     isActive: true,
     status: "Active",
     strainId: "",
@@ -71,8 +71,8 @@ export default function ClaimBlankQr() {
       queryClient.invalidateQueries({ queryKey: ['/api/cages'] });
       setClaimed(true);
       toast({
-        title: "¡Éxito!",
-        description: `Jaula ${cage.cageNumber} creada y vinculada al código QR`,
+        title: "Success!",
+        description: `Cage ${cage.cageNumber} created and linked to QR code`,
       });
       setTimeout(() => {
         setLocation(`/qr/cage/${cage.id}`);
@@ -81,8 +81,8 @@ export default function ClaimBlankQr() {
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "No autorizado",
-          description: "Sesión expirada. Iniciando sesión nuevamente...",
+          title: "Unauthorized",
+          description: "Session expired. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -92,7 +92,7 @@ export default function ClaimBlankQr() {
       }
       toast({
         title: "Error",
-        description: error.message || "Error al crear la jaula",
+        description: error.message || "Error creating cage",
         variant: "destructive",
       });
     },
@@ -238,13 +238,13 @@ export default function ClaimBlankQr() {
               </div>
 
               <div>
-                <Label htmlFor="capacity">Capacidad</Label>
+                <Label htmlFor="capacity">Capacity</Label>
                 <Input
                   id="capacity"
                   type="number"
-                  min="1"
                   value={formData.capacity}
-                  onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 5 })}
+                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value ? parseInt(e.target.value) : "" })}
+                  placeholder="Optional"
                   data-testid="input-capacity"
                 />
               </div>

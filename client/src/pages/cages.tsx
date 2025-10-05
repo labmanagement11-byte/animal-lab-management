@@ -29,7 +29,8 @@ const cageFormSchema = z.object({
     required_error: "Room number is required",
   }),
   location: z.string().min(1, "Location is required"),
-  capacity: z.string().min(1, "Capacity is required").refine((val) => {
+  capacity: z.string().optional().refine((val) => {
+    if (!val || val === "") return true;
     const num = parseInt(val);
     return !isNaN(num) && num > 0;
   }, "Capacity must be a positive number"),
@@ -120,7 +121,7 @@ export default function Cages() {
         cageNumber: data.cageNumber,
         roomNumber: data.roomNumber,
         location: data.location,
-        capacity: parseInt(data.capacity),
+        capacity: data.capacity ? parseInt(data.capacity) : undefined,
         status: data.status,
         isActive: data.isActive,
         strainId,
@@ -194,7 +195,7 @@ export default function Cages() {
         cageNumber: data.cageNumber,
         roomNumber: data.roomNumber,
         location: data.location,
-        capacity: parseInt(data.capacity),
+        capacity: data.capacity ? parseInt(data.capacity) : undefined,
         status: data.status,
         isActive: data.isActive,
         strainId,
@@ -518,6 +519,7 @@ export default function Cages() {
                   <th className="text-left p-4 font-medium">Status</th>
                   <th className="text-left p-4 font-medium">Room</th>
                   <th className="text-left p-4 font-medium">Location</th>
+                  <th className="text-left p-4 font-medium">Strain</th>
                   <th className="text-left p-4 font-medium">Capacity</th>
                   <th className="text-left p-4 font-medium">Animals</th>
                   <th className="text-left p-4 font-medium">Actions</th>
@@ -550,6 +552,9 @@ export default function Cages() {
                       </td>
                       <td className="p-4" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</td>
                       <td className="p-4" data-testid={`text-location-${cage.id}`}>{cage.location}</td>
+                      <td className="p-4" data-testid={`text-strain-${cage.id}`}>
+                        {cage.strainId && strains ? strains.find(s => s.id === cage.strainId)?.name || '-' : '-'}
+                      </td>
                       <td className="p-4" data-testid={`text-capacity-${cage.id}`}>{cage.capacity || 'N/A'}</td>
                       <td className="p-4">
                         <div className="flex items-center text-sm">
@@ -608,6 +613,13 @@ export default function Cages() {
                   <div className="text-sm text-muted-foreground">
                     Location: <span className="text-foreground" data-testid={`text-location-${cage.id}`}>{cage.location}</span>
                   </div>
+                  {cage.strainId && strains && (
+                    <div className="text-sm text-muted-foreground">
+                      Strain: <span className="text-foreground" data-testid={`text-strain-${cage.id}`}>
+                        {strains.find(s => s.id === cage.strainId)?.name || '-'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Users className="w-4 h-4 mr-1" />
                     <span>{cageAnimals.length} animals</span>
@@ -681,6 +693,15 @@ export default function Cages() {
                   <span className="text-muted-foreground">Capacity:</span>
                   <span className="ml-2 font-medium" data-testid={`text-capacity-${cage.id}`}>{cage.capacity || 'N/A'} animals</span>
                 </div>
+
+                {cage.strainId && strains && (
+                  <div className="flex items-center text-sm">
+                    <span className="text-muted-foreground">Strain:</span>
+                    <span className="ml-2 font-medium" data-testid={`text-strain-${cage.id}`}>
+                      {strains.find(s => s.id === cage.strainId)?.name || 'Unknown'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Animals Section */}
                 {!isLoadingAnimals && (
