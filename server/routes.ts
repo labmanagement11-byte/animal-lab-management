@@ -326,7 +326,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Restore deleted animal
   app.post('/api/animals/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
-      const animal = await storage.restoreAnimal(req.params.id);
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted animal to validate access
+      const deletedAnimals = await storage.getDeletedAnimals(companyId);
+      const animal = deletedAnimals.find(a => a.id === req.params.id);
+      if (!animal) {
+        return res.status(404).json({ message: "Animal not found" });
+      }
+
+      const restoredAnimal = await storage.restoreAnimal(req.params.id);
       
       // Create audit log
       await storage.createAuditLog({
@@ -337,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: null,
       });
 
-      res.json(animal);
+      res.json(restoredAnimal);
     } catch (error: any) {
       console.error("Error restoring animal:", error);
       if (error.message === "Animal not found") {
@@ -353,6 +369,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
+      }
+
+      // Validate user has access to this resource
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted animal to validate access
+      const deletedAnimals = await storage.getDeletedAnimals(companyId);
+      const animal = deletedAnimals.find(a => a.id === req.params.id);
+      if (!animal) {
+        return res.status(404).json({ message: "Animal not found" });
       }
 
       await storage.permanentlyDeleteAnimal(req.params.id);
@@ -381,10 +412,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
       }
 
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ message: "Invalid request: ids array is required" });
       }
+
+      // Fetch deleted animals to validate access
+      const deletedAnimals = await storage.getDeletedAnimals(companyId);
+      const deletedAnimalIds = new Set(deletedAnimals.map(a => a.id));
 
       const results = {
         success: [] as string[],
@@ -393,6 +436,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const id of ids) {
         try {
+          // Validate this animal belongs to user's company
+          if (!deletedAnimalIds.has(id)) {
+            results.failed.push(id);
+            continue;
+          }
+
           await storage.permanentlyDeleteAnimal(id);
           await storage.createAuditLog({
             userId: req.user.claims.sub,
@@ -585,7 +634,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Restore deleted cage
   app.post('/api/cages/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
-      const cage = await storage.restoreCage(req.params.id);
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted cage to validate access
+      const deletedCages = await storage.getDeletedCages(companyId);
+      const cage = deletedCages.find(c => c.id === req.params.id);
+      if (!cage) {
+        return res.status(404).json({ message: "Cage not found" });
+      }
+
+      const restoredCage = await storage.restoreCage(req.params.id);
       
       // Create audit log
       await storage.createAuditLog({
@@ -596,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: null,
       });
 
-      res.json(cage);
+      res.json(restoredCage);
     } catch (error: any) {
       console.error("Error restoring cage:", error);
       if (error.message === "Cage not found") {
@@ -612,6 +677,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
+      }
+
+      // Validate user has access to this resource
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted cage to validate access
+      const deletedCages = await storage.getDeletedCages(companyId);
+      const cage = deletedCages.find(c => c.id === req.params.id);
+      if (!cage) {
+        return res.status(404).json({ message: "Cage not found" });
       }
 
       await storage.permanentlyDeleteCage(req.params.id);
@@ -640,10 +720,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
       }
 
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ message: "Invalid request: ids array is required" });
       }
+
+      // Fetch deleted cages to validate access
+      const deletedCages = await storage.getDeletedCages(companyId);
+      const deletedCageIds = new Set(deletedCages.map(c => c.id));
 
       const results = {
         success: [] as string[],
@@ -652,6 +744,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const id of ids) {
         try {
+          // Validate this cage belongs to user's company
+          if (!deletedCageIds.has(id)) {
+            results.failed.push(id);
+            continue;
+          }
+
           await storage.permanentlyDeleteCage(id);
           await storage.createAuditLog({
             userId: req.user.claims.sub,
@@ -933,7 +1031,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Restore deleted QR code
   app.post('/api/qr-codes/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
-      const qrCode = await storage.restoreQrCode(req.params.id);
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted QR code to validate access
+      const deletedQrCodes = await storage.getDeletedQrCodes(companyId);
+      const qrCode = deletedQrCodes.find(q => q.id === req.params.id);
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+
+      const restoredQrCode = await storage.restoreQrCode(req.params.id);
 
       // Create audit log only after successful restoration
       await storage.createAuditLog({
@@ -944,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: { restored: true },
       });
 
-      res.json(qrCode);
+      res.json(restoredQrCode);
     } catch (error: any) {
       console.error("Error restoring QR code:", error);
       if (error.message.includes("not found")) {
@@ -983,6 +1097,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only Admin can permanently delete QR codes" });
       }
 
+      // Validate user has access to this resource
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted QR code to validate access
+      const deletedQrCodes = await storage.getDeletedQrCodes(companyId);
+      const qrCode = deletedQrCodes.find(q => q.id === req.params.id);
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+
       await storage.permanentlyDeleteQrCode(req.params.id);
 
       // Create audit log
@@ -1009,10 +1138,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only Admin can permanently delete QR codes" });
       }
 
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ message: "Invalid request: ids array is required" });
       }
+
+      // Fetch deleted QR codes to validate access
+      const deletedQrCodes = await storage.getDeletedQrCodes(companyId);
+      const deletedQrCodeIds = new Set(deletedQrCodes.map(q => q.id));
 
       const results = {
         success: [] as string[],
@@ -1021,6 +1162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const id of ids) {
         try {
+          // Validate this QR code belongs to user's company
+          if (!deletedQrCodeIds.has(id)) {
+            results.failed.push(id);
+            continue;
+          }
+
           await storage.permanentlyDeleteQrCode(id);
           await storage.createAuditLog({
             userId: req.user.claims.sub,
@@ -1179,7 +1326,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/strains/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
-      const strain = await storage.restoreStrain(req.params.id);
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted strain to validate access
+      const deletedStrains = await storage.getDeletedStrains(companyId);
+      const strain = deletedStrains.find(s => s.id === req.params.id);
+      if (!strain) {
+        return res.status(404).json({ message: "Strain not found" });
+      }
+
+      const restoredStrain = await storage.restoreStrain(req.params.id);
       
       // Create audit log
       await storage.createAuditLog({
@@ -1190,7 +1353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: null,
       });
 
-      res.json(strain);
+      res.json(restoredStrain);
     } catch (error) {
       console.error("Error restoring strain:", error);
       res.status(500).json({ message: "Failed to restore strain" });
@@ -1202,6 +1365,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       if (user?.role !== 'Admin' && user?.role !== 'Director') {
         return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Validate user has access to this resource
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Fetch the deleted strain to validate access
+      const deletedStrains = await storage.getDeletedStrains(companyId);
+      const strain = deletedStrains.find(s => s.id === req.params.id);
+      if (!strain) {
+        return res.status(404).json({ message: "Strain not found" });
       }
 
       await storage.permanentlyDeleteStrain(req.params.id);
@@ -1230,10 +1408,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ message: "Invalid request: ids array is required" });
       }
+
+      // Fetch deleted strains to validate access
+      const deletedStrains = await storage.getDeletedStrains(companyId);
+      const deletedStrainIds = new Set(deletedStrains.map(s => s.id));
 
       const results = {
         success: [] as string[],
@@ -1242,6 +1432,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const id of ids) {
         try {
+          // Validate this strain belongs to user's company
+          if (!deletedStrainIds.has(id)) {
+            results.failed.push(id);
+            continue;
+          }
+
           await storage.permanentlyDeleteStrain(id);
           await storage.createAuditLog({
             userId: req.user.claims.sub,
