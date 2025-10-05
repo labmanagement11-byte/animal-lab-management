@@ -10,6 +10,7 @@ import FloatingActionButton from "@/components/floating-action-button";
 import type { Animal } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useLanguage } from "@/contexts/language-context";
 
 interface DashboardStats {
   totalAnimals: number;
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [showAnimalForm, setShowAnimalForm] = useState(false);
+  const { t } = useLanguage();
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['/api/dashboard/stats'],
@@ -78,8 +80,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 relative z-10">
         <div>
-          <h2 className="text-xl md:text-2xl font-semibold text-white dark:text-white">Dashboard</h2>
-          <p className="text-sm text-gray-100 dark:text-gray-100 hidden md:block">Manage your laboratory animals and cages</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-white dark:text-white">{t.dashboard.title}</h2>
+          <p className="text-sm text-gray-100 dark:text-gray-100 hidden md:block">{t.dashboard.manageAnimalsAndCages}</p>
         </div>
         <div className="hidden md:flex items-center space-x-4">
           <Button 
@@ -87,7 +89,7 @@ export default function Dashboard() {
             data-testid="button-add-animal"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Animal
+            {t.dashboard.addAnimal}
           </Button>
         </div>
       </div>
@@ -95,7 +97,7 @@ export default function Dashboard() {
       {/* Statistics Cards - Horizontal scroll on mobile */}
       <div className="mb-6 md:mb-8 relative z-10">
         <div className="md:hidden mb-4">
-          <h3 className="text-sm font-semibold text-white px-1">Statistics</h3>
+          <h3 className="text-sm font-semibold text-white px-1">{t.dashboard.statistics}</h3>
         </div>
         <div className="md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 lg:gap-6">
           <div className="flex md:contents gap-4 overflow-x-auto pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
@@ -107,13 +109,13 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Animals</p>
+                    <p className="text-sm text-muted-foreground">{t.dashboard.totalAnimals}</p>
                     <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-total-animals">
                       {stats?.totalAnimals || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
                       <TrendingUp className="w-4 h-4 text-green-500" />
-                      <span className="text-xs text-green-500">Active</span>
+                      <span className="text-xs text-green-500">{t.dashboard.active}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
@@ -131,12 +133,12 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Active Cages</p>
+                    <p className="text-sm text-muted-foreground">{t.dashboard.activeCages}</p>
                     <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-active-cages">
                       {stats?.activeCages || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
-                      <span className="text-xs text-muted-foreground">In use</span>
+                      <span className="text-xs text-muted-foreground">{t.dashboard.inUse}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-2xl flex items-center justify-center">
@@ -154,12 +156,12 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">QR Codes</p>
+                    <p className="text-sm text-muted-foreground">{t.dashboard.qrCodes}</p>
                     <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-qr-codes">
                       {stats?.qrCodes || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
-                      <span className="text-xs text-muted-foreground">Generated</span>
+                      <span className="text-xs text-muted-foreground">{t.dashboard.generated}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center">
@@ -177,13 +179,13 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Health Alerts</p>
+                    <p className="text-sm text-muted-foreground">{t.dashboard.healthAlerts}</p>
                     <p className="text-3xl font-bold text-destructive mt-2" data-testid="text-health-alerts">
                       {stats?.healthAlerts || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
                       <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      <span className="text-xs text-orange-500">Attention</span>
+                      <span className="text-xs text-orange-500">{t.dashboard.attention}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-2xl flex items-center justify-center">
@@ -199,10 +201,10 @@ export default function Dashboard() {
       {/* Recent Animals */}
       <Card className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm relative z-10">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg md:text-xl">Recent Animals</CardTitle>
+          <CardTitle className="text-lg md:text-xl">{t.dashboard.recentAnimals}</CardTitle>
           <Button variant="outline" size="sm" data-testid="button-view-all-animals">
-            <span className="hidden md:inline">View All</span>
-            <span className="md:hidden">All</span>
+            <span className="hidden md:inline">{t.dashboard.viewAll}</span>
+            <span className="md:hidden">{t.dashboard.all}</span>
           </Button>
         </CardHeader>
         <CardContent>
@@ -213,12 +215,12 @@ export default function Dashboard() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cage</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Breed</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Weight</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t.dashboard.id}</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t.animal.cage}</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t.dashboard.breed}</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t.animal.weight}</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t.animal.status}</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t.dashboard.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -309,7 +311,7 @@ export default function Dashboard() {
             </>
           ) : (
             <div className="text-center py-8">
-              <p className="text-muted-foreground" data-testid="text-no-animals">No animals found</p>
+              <p className="text-muted-foreground" data-testid="text-no-animals">{t.dashboard.noAnimalsFound}</p>
             </div>
           )}
         </CardContent>
@@ -318,7 +320,7 @@ export default function Dashboard() {
       {/* Floating Action Button - Mobile Only */}
       <FloatingActionButton 
         onClick={() => setShowAnimalForm(true)}
-        label="Add Animal"
+        label={t.dashboard.addAnimal}
       />
 
       {/* Animal Form Modal */}
