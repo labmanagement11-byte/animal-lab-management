@@ -197,6 +197,19 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getDeletedUsers(): Promise<User[]> {
+    const result = await db
+      .select()
+      .from(users)
+      .where(isNotNull(users.deletedAt))
+      .orderBy(desc(users.deletedAt));
+    return result;
+  }
+
+  async permanentlyDeleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
   // Animal operations
   async getAnimals(limit = 50, includeDeleted = false): Promise<any[]> {
     const result = await db
