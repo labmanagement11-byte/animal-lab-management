@@ -23,9 +23,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard statistics
-  app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const stats = await storage.getDashboardStats(companyId);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -89,10 +91,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Animal routes
-  app.get('/api/animals', isAuthenticated, async (req, res) => {
+  app.get('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-      const animals = await storage.getAnimals(limit);
+      const animals = await storage.getAnimals(limit, false, companyId);
       res.json(animals);
     } catch (error) {
       console.error("Error fetching animals:", error);
@@ -100,13 +104,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/animals/search', isAuthenticated, async (req, res) => {
+  app.get('/api/animals/search', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
-      const animals = await storage.searchAnimals(query);
+      const animals = await storage.searchAnimals(query, companyId);
       res.json(animals);
     } catch (error) {
       console.error("Error searching animals:", error);
@@ -115,9 +121,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get deleted animals (trash)
-  app.get('/api/animals/trash', isAuthenticated, async (req, res) => {
+  app.get('/api/animals/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const deletedAnimals = await storage.getDeletedAnimals();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const deletedAnimals = await storage.getDeletedAnimals(companyId);
       res.json(deletedAnimals);
     } catch (error) {
       console.error("Error fetching deleted animals:", error);
@@ -140,9 +148,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.claims.sub);
+      
       // Transform date strings to Date objects
       const transformedData = {
         ...req.body,
+        companyId: user?.companyId || 'default-company-id',
         dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : undefined,
         breedingStartDate: req.body.breedingStartDate ? new Date(req.body.breedingStartDate) : undefined,
         dateOfGenotyping: req.body.dateOfGenotyping ? new Date(req.body.dateOfGenotyping) : undefined,
@@ -320,9 +331,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cage routes
-  app.get('/api/cages', isAuthenticated, async (req, res) => {
+  app.get('/api/cages', isAuthenticated, async (req: any, res) => {
     try {
-      const cages = await storage.getCages();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const cages = await storage.getCages(false, companyId);
       res.json(cages);
     } catch (error) {
       console.error("Error fetching cages:", error);
@@ -331,9 +344,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get deleted cages (trash)
-  app.get('/api/cages/trash', isAuthenticated, async (req, res) => {
+  app.get('/api/cages/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const deletedCages = await storage.getDeletedCages();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const deletedCages = await storage.getDeletedCages(companyId);
       res.json(deletedCages);
     } catch (error) {
       console.error("Error fetching deleted cages:", error);
@@ -356,7 +371,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/cages', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertCageSchema.parse(req.body);
+      const user = await storage.getUser(req.user.claims.sub);
+      const dataWithCompany = {
+        ...req.body,
+        companyId: user?.companyId || 'default-company-id'
+      };
+      
+      const validatedData = insertCageSchema.parse(dataWithCompany);
       const cage = await storage.createCage(validatedData);
       
       // Create audit log
@@ -549,9 +570,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // QR Code routes
-  app.get('/api/qr-codes', isAuthenticated, async (req, res) => {
+  app.get('/api/qr-codes', isAuthenticated, async (req: any, res) => {
     try {
-      const qrCodes = await storage.getQrCodes();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const qrCodes = await storage.getQrCodes(false, companyId);
       res.json(qrCodes);
     } catch (error) {
       console.error("Error fetching QR codes:", error);
@@ -561,9 +584,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/qr-codes', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.claims.sub);
       const validatedData = insertQrCodeSchema.parse({
         ...req.body,
         generatedBy: req.user.claims.sub,
+        companyId: user?.companyId || 'default-company-id',
       });
       const qrCode = await storage.createQrCode(validatedData);
       
@@ -610,6 +635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const qrCodes = [];
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       const baseUrl = `${req.protocol}://${req.get('host')}`;
 
       for (let i = 0; i < count; i++) {
@@ -618,6 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           qrData: 'temp',
           isBlank: true,
           generatedBy: userId,
+          companyId: user?.companyId || 'default-company-id',
         });
         
         // Now update with correct URL using the actual ID
@@ -760,9 +787,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get deleted QR codes (trash)
-  app.get('/api/qr-codes-trash', isAuthenticated, async (req, res) => {
+  app.get('/api/qr-codes-trash', isAuthenticated, async (req: any, res) => {
     try {
-      const deletedQrCodes = await storage.getDeletedQrCodes();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const deletedQrCodes = await storage.getDeletedQrCodes(companyId);
       res.json(deletedQrCodes);
     } catch (error) {
       console.error("Error fetching deleted QR codes:", error);
@@ -871,9 +900,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all users endpoint (for Admin and Success Manager only)
   // Strain routes
-  app.get('/api/strains', isAuthenticated, async (req, res) => {
+  app.get('/api/strains', isAuthenticated, async (req: any, res) => {
     try {
-      const strains = await storage.getStrains();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const strains = await storage.getStrains(companyId);
       res.json(strains);
     } catch (error) {
       console.error("Error fetching strains:", error);
@@ -883,7 +914,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/strains', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertStrainSchema.parse(req.body);
+      const user = await storage.getUser(req.user.claims.sub);
+      const dataWithCompany = {
+        ...req.body,
+        companyId: user?.companyId || 'default-company-id'
+      };
+      
+      const validatedData = insertStrainSchema.parse(dataWithCompany);
       const strain = await storage.createStrain(validatedData);
       
       // Create audit log
@@ -905,9 +942,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/strains/trash', isAuthenticated, async (req, res) => {
+  app.get('/api/strains/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const deletedStrains = await storage.getDeletedStrains();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const deletedStrains = await storage.getDeletedStrains(companyId);
       res.json(deletedStrains);
     } catch (error) {
       console.error("Error fetching deleted strains:", error);
@@ -1026,9 +1065,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Genotype routes
-  app.get('/api/genotypes', isAuthenticated, async (req, res) => {
+  app.get('/api/genotypes', isAuthenticated, async (req: any, res) => {
     try {
-      const genotypes = await storage.getGenotypes();
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      const genotypes = await storage.getGenotypes(companyId);
       res.json(genotypes);
     } catch (error) {
       console.error("Error fetching genotypes:", error);
@@ -1038,7 +1079,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/genotypes', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertGenotypeSchema.parse(req.body);
+      const user = await storage.getUser(req.user.claims.sub);
+      const dataWithCompany = {
+        ...req.body,
+        companyId: user?.companyId || 'default-company-id'
+      };
+      
+      const validatedData = insertGenotypeSchema.parse(dataWithCompany);
       const genotype = await storage.createGenotype(validatedData);
       
       // Create audit log
@@ -1396,6 +1443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token,
         status: 'pending',
         expiresAt,
+        companyId: user?.companyId || 'default-company-id',
       });
 
       // Create audit log
