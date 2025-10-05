@@ -12,8 +12,11 @@ import {
   MapPin,
   Activity,
   AlertTriangle,
-  QrCode as QrCodeIcon
+  QrCode as QrCodeIcon,
+  CheckSquare,
+  Square
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Animal, Cage, Strain, QrCode, User as UserType } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +36,12 @@ export default function Trash() {
   const { toast } = useToast();
   const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" | "strain" | "qrcode" | "user" } | null>(null);
   const [activeTab, setActiveTab] = useState<"animals" | "cages" | "strains" | "qrcodes" | "users">("animals");
+  const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
+  const [selectedCages, setSelectedCages] = useState<Set<string>>(new Set());
+  const [selectedStrains, setSelectedStrains] = useState<Set<string>>(new Set());
+  const [selectedQrCodes, setSelectedQrCodes] = useState<Set<string>>(new Set());
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const { data: currentUser } = useQuery<UserType>({
     queryKey: ['/api/auth/user'],
@@ -54,11 +63,11 @@ export default function Trash() {
   });
 
   const { data: deletedQrCodes = [], isLoading: loadingQrCodes } = useQuery<QrCode[]>({
-    queryKey: ['/api/qr-codes-trash'],
+    queryKey: ['/api/qr-codes/trash'],
   });
 
   const { data: deletedUsers = [], isLoading: loadingUsers } = useQuery<UserType[]>({
-    queryKey: ['/api/users-trash'],
+    queryKey: ['/api/users/trash'],
     enabled: isAdmin,
   });
 
@@ -203,7 +212,7 @@ export default function Trash() {
       await apiRequest("POST", `/api/qr-codes/${id}/restore`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/trash'] });
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
       toast({
         title: "Success",
@@ -224,7 +233,7 @@ export default function Trash() {
       await apiRequest("DELETE", `/api/qr-codes/${id}/permanent`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/trash'] });
       setDeletingItem(null);
       toast({
         title: "Success",
@@ -246,7 +255,7 @@ export default function Trash() {
       await apiRequest("POST", `/api/users/${id}/restore`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users-trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/trash'] });
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       toast({
         title: "Success",
@@ -267,7 +276,7 @@ export default function Trash() {
       await apiRequest("DELETE", `/api/users/${id}/permanent`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users-trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/trash'] });
       setDeletingItem(null);
       toast({
         title: "Success",
@@ -283,6 +292,254 @@ export default function Trash() {
       });
     },
   });
+
+  const batchDeleteAnimalsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest("POST", "/api/animals/batch-delete", { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/animals/trash'] });
+      setSelectedAnimals(new Set());
+      setBatchDeleting(false);
+      toast({
+        title: "Success",
+        description: "Selected animals deleted successfully",
+      });
+    },
+    onError: () => {
+      setBatchDeleting(false);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected animals",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const batchDeleteCagesMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest("POST", "/api/cages/batch-delete", { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cages/trash'] });
+      setSelectedCages(new Set());
+      setBatchDeleting(false);
+      toast({
+        title: "Success",
+        description: "Selected cages deleted successfully",
+      });
+    },
+    onError: () => {
+      setBatchDeleting(false);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected cages",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const batchDeleteStrainsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest("POST", "/api/strains/batch-delete", { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/strains/trash'] });
+      setSelectedStrains(new Set());
+      setBatchDeleting(false);
+      toast({
+        title: "Success",
+        description: "Selected strains deleted successfully",
+      });
+    },
+    onError: () => {
+      setBatchDeleting(false);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected strains",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const batchDeleteQrCodesMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest("POST", "/api/qr-codes/batch-delete", { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/trash'] });
+      setSelectedQrCodes(new Set());
+      setBatchDeleting(false);
+      toast({
+        title: "Success",
+        description: "Selected QR codes deleted successfully",
+      });
+    },
+    onError: () => {
+      setBatchDeleting(false);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected QR codes",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const batchDeleteUsersMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest("POST", "/api/users/batch-delete", { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users/trash'] });
+      setSelectedUsers(new Set());
+      setBatchDeleting(false);
+      toast({
+        title: "Success",
+        description: "Selected users deleted successfully",
+      });
+    },
+    onError: () => {
+      setBatchDeleting(false);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected users",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSelectAll = (tab: string) => {
+    switch(tab) {
+      case 'animals':
+        setSelectedAnimals(new Set(deletedAnimals.map(a => a.id)));
+        break;
+      case 'cages':
+        setSelectedCages(new Set(deletedCages.map(c => c.id)));
+        break;
+      case 'strains':
+        setSelectedStrains(new Set(deletedStrains.map(s => s.id)));
+        break;
+      case 'qrcodes':
+        setSelectedQrCodes(new Set(deletedQrCodes.map(q => q.id)));
+        break;
+      case 'users':
+        setSelectedUsers(new Set(deletedUsers.map(u => u.id)));
+        break;
+    }
+  };
+
+  const handleDeselectAll = (tab: string) => {
+    switch(tab) {
+      case 'animals':
+        setSelectedAnimals(new Set());
+        break;
+      case 'cages':
+        setSelectedCages(new Set());
+        break;
+      case 'strains':
+        setSelectedStrains(new Set());
+        break;
+      case 'qrcodes':
+        setSelectedQrCodes(new Set());
+        break;
+      case 'users':
+        setSelectedUsers(new Set());
+        break;
+    }
+  };
+
+  const handleBatchDelete = () => {
+    setBatchDeleting(true);
+    switch(activeTab) {
+      case 'animals':
+        batchDeleteAnimalsMutation.mutate(Array.from(selectedAnimals));
+        break;
+      case 'cages':
+        batchDeleteCagesMutation.mutate(Array.from(selectedCages));
+        break;
+      case 'strains':
+        batchDeleteStrainsMutation.mutate(Array.from(selectedStrains));
+        break;
+      case 'qrcodes':
+        batchDeleteQrCodesMutation.mutate(Array.from(selectedQrCodes));
+        break;
+      case 'users':
+        batchDeleteUsersMutation.mutate(Array.from(selectedUsers));
+        break;
+    }
+  };
+
+  const toggleSelection = (id: string, tab: string) => {
+    switch(tab) {
+      case 'animals': {
+        const newSet = new Set(selectedAnimals);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        setSelectedAnimals(newSet);
+        break;
+      }
+      case 'cages': {
+        const newSet = new Set(selectedCages);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        setSelectedCages(newSet);
+        break;
+      }
+      case 'strains': {
+        const newSet = new Set(selectedStrains);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        setSelectedStrains(newSet);
+        break;
+      }
+      case 'qrcodes': {
+        const newSet = new Set(selectedQrCodes);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        setSelectedQrCodes(newSet);
+        break;
+      }
+      case 'users': {
+        const newSet = new Set(selectedUsers);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        setSelectedUsers(newSet);
+        break;
+      }
+    }
+  };
+
+  const getSelectedCount = () => {
+    switch(activeTab) {
+      case 'animals':
+        return selectedAnimals.size;
+      case 'cages':
+        return selectedCages.size;
+      case 'strains':
+        return selectedStrains.size;
+      case 'qrcodes':
+        return selectedQrCodes.size;
+      case 'users':
+        return selectedUsers.size;
+      default:
+        return 0;
+    }
+  };
 
   const getUserName = (userId: string | null | undefined) => {
     if (!userId) return 'N/A';
@@ -379,6 +636,50 @@ export default function Trash() {
             )}
           </TabsList>
 
+          {/* Bulk Actions Bar */}
+          {canPermanentlyDelete && getSelectedCount() === 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSelectAll(activeTab)}
+                data-testid="button-select-all"
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Select All
+              </Button>
+            </div>
+          )}
+
+          {canPermanentlyDelete && getSelectedCount() > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-sm font-medium">
+                  {getSelectedCount()} selected
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDeselectAll(activeTab)}
+                data-testid="button-deselect-all"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                Deselect All
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBatchDelete}
+                disabled={batchDeleting}
+                data-testid="button-delete-selected"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {batchDeleting ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </div>
+          )}
+
           {/* Animals Tab */}
           <TabsContent value="animals" className="space-y-4 mt-6">
             {deletedAnimals.length === 0 ? (
@@ -399,20 +700,30 @@ export default function Trash() {
                   return (
                     <Card key={animal.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-animal-${animal.id}`}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg" data-testid={`text-animal-number-${animal.id}`}>
-                              {animal.animalNumber}
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {animal.breed}
-                            </p>
-                          </div>
-                          {animal.status && (
-                            <Badge className={getStatusColor(animal.status)} data-testid={`badge-status-${animal.id}`}>
-                              {animal.status}
-                            </Badge>
+                        <div className="flex items-start gap-3">
+                          {canPermanentlyDelete && (
+                            <Checkbox
+                              checked={selectedAnimals.has(animal.id)}
+                              onCheckedChange={() => toggleSelection(animal.id, 'animals')}
+                              className="mt-1"
+                              data-testid={`checkbox-animal-${animal.id}`}
+                            />
                           )}
+                          <div className="flex items-start justify-between gap-2 flex-1">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg" data-testid={`text-animal-number-${animal.id}`}>
+                                {animal.animalNumber}
+                              </CardTitle>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {animal.breed}
+                              </p>
+                            </div>
+                            {animal.status && (
+                              <Badge className={getStatusColor(animal.status)} data-testid={`badge-status-${animal.id}`}>
+                                {animal.status}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -490,19 +801,29 @@ export default function Trash() {
                   return (
                     <Card key={cage.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-cage-${cage.id}`}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg" data-testid={`text-cage-number-${cage.id}`}>
-                              {cage.cageNumber}
-                            </CardTitle>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                              <MapPin className="h-3 w-3" />
-                              {cage.location}
+                        <div className="flex items-start gap-3">
+                          {canPermanentlyDelete && (
+                            <Checkbox
+                              checked={selectedCages.has(cage.id)}
+                              onCheckedChange={() => toggleSelection(cage.id, 'cages')}
+                              className="mt-1"
+                              data-testid={`checkbox-cage-${cage.id}`}
+                            />
+                          )}
+                          <div className="flex items-start justify-between gap-2 flex-1">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg" data-testid={`text-cage-number-${cage.id}`}>
+                                {cage.cageNumber}
+                              </CardTitle>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                                <MapPin className="h-3 w-3" />
+                                {cage.location}
+                              </div>
                             </div>
+                            <Badge variant="outline">
+                              Capacity: {cage.capacity}
+                            </Badge>
                           </div>
-                          <Badge variant="outline">
-                            Capacity: {cage.capacity}
-                          </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -580,16 +901,26 @@ export default function Trash() {
                   return (
                     <Card key={strain.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-strain-${strain.id}`}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg" data-testid={`text-strain-name-${strain.id}`}>
-                              {strain.name}
-                            </CardTitle>
-                            {strain.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {strain.description}
-                              </p>
-                            )}
+                        <div className="flex items-start gap-3">
+                          {canPermanentlyDelete && (
+                            <Checkbox
+                              checked={selectedStrains.has(strain.id)}
+                              onCheckedChange={() => toggleSelection(strain.id, 'strains')}
+                              className="mt-1"
+                              data-testid={`checkbox-strain-${strain.id}`}
+                            />
+                          )}
+                          <div className="flex items-start justify-between gap-2 flex-1">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg" data-testid={`text-strain-name-${strain.id}`}>
+                                {strain.name}
+                              </CardTitle>
+                              {strain.description && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {strain.description}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
@@ -668,21 +999,31 @@ export default function Trash() {
                   return (
                     <Card key={qrCode.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-qrcode-${qrCode.id}`}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg flex items-center gap-2" data-testid={`text-qrcode-id-${qrCode.id}`}>
-                              <QrCodeIcon className="h-5 w-5" />
-                              QR {qrCode.id.substring(0, 8)}
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {qrCode.isBlank ? "Blank QR Code" : "Linked QR Code"}
-                            </p>
-                          </div>
-                          {qrCode.cageId && (
-                            <Badge variant="outline">
-                              Cage ID: {qrCode.cageId.substring(0, 8)}
-                            </Badge>
+                        <div className="flex items-start gap-3">
+                          {canPermanentlyDelete && (
+                            <Checkbox
+                              checked={selectedQrCodes.has(qrCode.id)}
+                              onCheckedChange={() => toggleSelection(qrCode.id, 'qrcodes')}
+                              className="mt-1"
+                              data-testid={`checkbox-qrcode-${qrCode.id}`}
+                            />
                           )}
+                          <div className="flex items-start justify-between gap-2 flex-1">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg flex items-center gap-2" data-testid={`text-qrcode-id-${qrCode.id}`}>
+                                <QrCodeIcon className="h-5 w-5" />
+                                QR {qrCode.id.substring(0, 8)}
+                              </CardTitle>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {qrCode.isBlank ? "Blank QR Code" : "Linked QR Code"}
+                              </p>
+                            </div>
+                            {qrCode.cageId && (
+                              <Badge variant="outline">
+                                Cage ID: {qrCode.cageId.substring(0, 8)}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -761,18 +1102,26 @@ export default function Trash() {
                     return (
                       <Card key={user.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-user-${user.id}`}>
                         <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <CardTitle className="text-lg" data-testid={`text-user-name-${user.id}`}>
-                                {user.firstName} {user.lastName}
-                              </CardTitle>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {user.email}
-                              </p>
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={selectedUsers.has(user.id)}
+                              onCheckedChange={() => toggleSelection(user.id, 'users')}
+                              className="mt-1"
+                              data-testid={`checkbox-user-${user.id}`}
+                            />
+                            <div className="flex items-start justify-between gap-2 flex-1">
+                              <div className="flex-1">
+                                <CardTitle className="text-lg" data-testid={`text-user-name-${user.id}`}>
+                                  {user.firstName} {user.lastName}
+                                </CardTitle>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {user.email}
+                                </p>
+                              </div>
+                              <Badge variant="outline">
+                                {user.role}
+                              </Badge>
                             </div>
-                            <Badge variant="outline">
-                              {user.role}
-                            </Badge>
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">

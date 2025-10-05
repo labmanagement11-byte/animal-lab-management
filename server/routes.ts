@@ -274,6 +274,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch permanently delete animals (Admin/Director only)
+  app.post('/api/animals/batch-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
+        return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
+      }
+
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid request: ids array is required" });
+      }
+
+      const results = {
+        success: [] as string[],
+        failed: [] as string[],
+      };
+
+      for (const id of ids) {
+        try {
+          await storage.permanentlyDeleteAnimal(id);
+          await storage.createAuditLog({
+            userId: req.user.claims.sub,
+            action: 'PERMANENT_DELETE',
+            tableName: 'animals',
+            recordId: id,
+            changes: null,
+          });
+          results.success.push(id);
+        } catch (error) {
+          console.error(`Error deleting animal ${id}:`, error);
+          results.failed.push(id);
+        }
+      }
+
+      res.json({ 
+        message: `Deleted ${results.success.length} of ${ids.length} animals`, 
+        results 
+      });
+    } catch (error) {
+      console.error("Error batch deleting animals:", error);
+      res.status(500).json({ message: "Failed to batch delete animals" });
+    }
+  });
+
   // Cage routes
   app.get('/api/cages', isAuthenticated, async (req, res) => {
     try {
@@ -426,6 +471,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error permanently deleting cage:", error);
       res.status(500).json({ message: "Failed to permanently delete cage" });
+    }
+  });
+
+  // Batch permanently delete cages (Admin/Director only)
+  app.post('/api/cages/batch-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
+        return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
+      }
+
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid request: ids array is required" });
+      }
+
+      const results = {
+        success: [] as string[],
+        failed: [] as string[],
+      };
+
+      for (const id of ids) {
+        try {
+          await storage.permanentlyDeleteCage(id);
+          await storage.createAuditLog({
+            userId: req.user.claims.sub,
+            action: 'PERMANENT_DELETE',
+            tableName: 'cages',
+            recordId: id,
+            changes: null,
+          });
+          results.success.push(id);
+        } catch (error) {
+          console.error(`Error deleting cage ${id}:`, error);
+          results.failed.push(id);
+        }
+      }
+
+      res.json({ 
+        message: `Deleted ${results.success.length} of ${ids.length} cages`, 
+        results 
+      });
+    } catch (error) {
+      console.error("Error batch deleting cages:", error);
+      res.status(500).json({ message: "Failed to batch delete cages" });
     }
   });
 
@@ -706,6 +796,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch permanently delete QR codes (Admin only)
+  app.post('/api/qr-codes/batch-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can permanently delete QR codes" });
+      }
+
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid request: ids array is required" });
+      }
+
+      const results = {
+        success: [] as string[],
+        failed: [] as string[],
+      };
+
+      for (const id of ids) {
+        try {
+          await storage.permanentlyDeleteQrCode(id);
+          await storage.createAuditLog({
+            userId: req.user.claims.sub,
+            action: 'PERMANENT_DELETE',
+            tableName: 'qr_codes',
+            recordId: id,
+            changes: { permanentlyDeleted: true },
+          });
+          results.success.push(id);
+        } catch (error) {
+          console.error(`Error deleting QR code ${id}:`, error);
+          results.failed.push(id);
+        }
+      }
+
+      res.json({ 
+        message: `Deleted ${results.success.length} of ${ids.length} QR codes`, 
+        results 
+      });
+    } catch (error) {
+      console.error("Error batch deleting QR codes:", error);
+      res.status(500).json({ message: "Failed to batch delete QR codes" });
+    }
+  });
+
   // Audit log routes (for Success Manager and Admin only)
   app.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
@@ -842,6 +977,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error permanently deleting strain:", error);
       res.status(500).json({ message: "Failed to permanently delete strain" });
+    }
+  });
+
+  // Batch permanently delete strains (Admin/Director only)
+  app.post('/api/strains/batch-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin' && user?.role !== 'Director') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid request: ids array is required" });
+      }
+
+      const results = {
+        success: [] as string[],
+        failed: [] as string[],
+      };
+
+      for (const id of ids) {
+        try {
+          await storage.permanentlyDeleteStrain(id);
+          await storage.createAuditLog({
+            userId: req.user.claims.sub,
+            action: 'PERMANENT_DELETE',
+            tableName: 'strains',
+            recordId: id,
+            changes: null,
+          });
+          results.success.push(id);
+        } catch (error) {
+          console.error(`Error deleting strain ${id}:`, error);
+          results.failed.push(id);
+        }
+      }
+
+      res.json({ 
+        message: `Deleted ${results.success.length} of ${ids.length} strains`, 
+        results 
+      });
+    } catch (error) {
+      console.error("Error batch deleting strains:", error);
+      res.status(500).json({ message: "Failed to batch delete strains" });
     }
   });
 
@@ -1121,6 +1301,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error permanently deleting user:", error);
       res.status(500).json({ message: "Failed to permanently delete user" });
+    }
+  });
+
+  // Batch permanently delete users (Admin only)
+  app.post('/api/users/batch-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can permanently delete users" });
+      }
+
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid request: ids array is required" });
+      }
+
+      const results = {
+        success: [] as string[],
+        failed: [] as string[],
+      };
+
+      for (const id of ids) {
+        try {
+          await storage.permanentlyDeleteUser(id);
+          await storage.createAuditLog({
+            userId: req.user.claims.sub,
+            action: 'DELETE',
+            tableName: 'users',
+            recordId: id,
+            changes: { permanent: true },
+          });
+          results.success.push(id);
+        } catch (error) {
+          console.error(`Error deleting user ${id}:`, error);
+          results.failed.push(id);
+        }
+      }
+
+      res.json({ 
+        message: `Deleted ${results.success.length} of ${ids.length} users`, 
+        results 
+      });
+    } catch (error) {
+      console.error("Error batch deleting users:", error);
+      res.status(500).json({ message: "Failed to batch delete users" });
     }
   });
 

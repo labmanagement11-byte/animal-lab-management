@@ -88,6 +88,28 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('@assets/0b47e439-4a5b-47c4-b4c2-ea206254a130_1759677725070.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  body.dark::before {
+    opacity: 0.05;
   }
 
   /* Mobile touch optimization */
