@@ -230,6 +230,9 @@ export default function StrainDetail() {
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">ID Animal</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Jaula</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Género</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Genotipo</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha Nacimiento</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Edad (semanas)</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Peso</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado de Salud</th>
                   </tr>
@@ -237,6 +240,19 @@ export default function StrainDetail() {
                 <tbody>
                   {strainAnimals.map((animal) => {
                     const cage = cages?.find(c => c.id === animal.cageId);
+                    
+                    // Calculate age in weeks from birth date
+                    const calculateAgeInWeeks = (birthDate: Date | null | undefined): number | null => {
+                      if (!birthDate) return null;
+                      const now = new Date();
+                      const birth = new Date(birthDate);
+                      const diffTime = Math.abs(now.getTime() - birth.getTime());
+                      const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+                      return diffWeeks;
+                    };
+                    
+                    const ageInWeeks = calculateAgeInWeeks(animal.dateOfBirth);
+                    
                     return (
                       <tr 
                         key={animal.id} 
@@ -247,6 +263,13 @@ export default function StrainDetail() {
                         <td className="py-3 px-4 font-medium text-foreground">{animal.animalNumber}</td>
                         <td className="py-3 px-4 text-foreground">{cage?.cageNumber || 'N/A'}</td>
                         <td className="py-3 px-4 text-foreground">{animal.gender || 'N/A'}</td>
+                        <td className="py-3 px-4 text-foreground">{animal.genotype || 'N/A'}</td>
+                        <td className="py-3 px-4 text-foreground">
+                          {animal.dateOfBirth ? formatDate(animal.dateOfBirth) : 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          {ageInWeeks !== null ? `${ageInWeeks} sem.` : 'N/A'}
+                        </td>
                         <td className="py-3 px-4 text-foreground">
                           {animal.weight ? `${animal.weight}g` : 'N/A'}
                         </td>
