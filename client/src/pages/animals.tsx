@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Eye, Edit, Trash2, Calendar, User, Beaker, Grid, List, Table, LayoutGrid, Square } from "lucide-react";
 import AnimalForm from "@/components/animal-form";
+import FloatingActionButton from "@/components/floating-action-button";
 import type { Animal, User as UserType, Cage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -138,14 +140,14 @@ export default function Animals() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Animals</h2>
-          <p className="text-muted-foreground">Manage laboratory animals and their information</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-foreground">Animals</h2>
+          <p className="text-sm text-muted-foreground hidden md:block">Manage laboratory animals and their information</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Button 
               size="sm" 
@@ -163,7 +165,7 @@ export default function Animals() {
               data-testid="button-view-small-cards"
             >
               <Square className="w-4 h-4 mr-2" />
-              Small Cards
+              Small
             </Button>
             <Button 
               size="sm" 
@@ -172,7 +174,7 @@ export default function Animals() {
               data-testid="button-view-large-cards"
             >
               <LayoutGrid className="w-4 h-4 mr-2" />
-              Large Cards
+              Large
             </Button>
             <Button 
               size="sm" 
@@ -191,21 +193,54 @@ export default function Animals() {
         </div>
       </div>
 
+      {/* Mobile View Selector */}
+      <div className="md:hidden mb-4">
+        <Select value={viewMode} onValueChange={(value) => setViewMode(value as typeof viewMode)}>
+          <SelectTrigger className="w-full" data-testid="mobile-view-selector">
+            <SelectValue placeholder="Select view" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="table">
+              <div className="flex items-center gap-2">
+                <Table className="w-4 h-4" />
+                <span>Table View</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="small-cards">
+              <div className="flex items-center gap-2">
+                <Square className="w-4 h-4" />
+                <span>Small Cards</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="large-cards">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4" />
+                <span>Large Cards</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="by-cage">
+              <div className="flex items-center gap-2">
+                <Grid className="w-4 h-4" />
+                <span>By Cage</span>
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Search */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search animals by ID, breed, or notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              data-testid="input-search"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+          <Input
+            placeholder="Search animals..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-12 text-base"
+            data-testid="input-search"
+          />
+        </div>
+      </div>
 
       {/* Animals List */}
       <Card>
@@ -529,9 +564,15 @@ export default function Animals() {
         </CardContent>
       </Card>
 
+      {/* Floating Action Button - Mobile Only */}
+      <FloatingActionButton 
+        onClick={() => setShowAnimalForm(true)}
+        label="Add Animal"
+      />
+
       {/* Animal Form Modal */}
       <Dialog open={showAnimalForm} onOpenChange={handleFormClose}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <AnimalForm 
             animal={editingAnimal}
             onClose={handleFormClose}
