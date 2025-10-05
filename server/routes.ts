@@ -597,6 +597,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/strains/trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedStrains = await storage.getDeletedStrains();
+      res.json(deletedStrains);
+    } catch (error) {
+      console.error("Error fetching deleted strains:", error);
+      res.status(500).json({ message: "Failed to fetch deleted strains" });
+    }
+  });
+
+  app.delete('/api/strains/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteStrain(req.params.id, req.user.claims.sub);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'DELETE',
+        tableName: 'strains',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting strain:", error);
+      res.status(500).json({ message: "Failed to delete strain" });
+    }
+  });
+
+  app.post('/api/strains/:id/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const strain = await storage.restoreStrain(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'RESTORE',
+        tableName: 'strains',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.json(strain);
+    } catch (error) {
+      console.error("Error restoring strain:", error);
+      res.status(500).json({ message: "Failed to restore strain" });
+    }
+  });
+
+  app.delete('/api/strains/:id/permanent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin' && user?.role !== 'Director') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      await storage.permanentlyDeleteStrain(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'PERMANENT_DELETE',
+        tableName: 'strains',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error permanently deleting strain:", error);
+      res.status(500).json({ message: "Failed to permanently delete strain" });
+    }
+  });
+
   // Genotype routes
   app.get('/api/genotypes', isAuthenticated, async (req, res) => {
     try {
