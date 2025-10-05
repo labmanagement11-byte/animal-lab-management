@@ -45,9 +45,14 @@ export async function sendInvitationEmail(
   inviterName?: string
 ): Promise<void> {
   try {
-    const { client: resend, fromEmail } = await getUncachableResendClient();
+    console.log('📧 Attempting to send invitation email...');
+    console.log('- To:', email);
+    console.log('- Role:', role);
     
-    await resend.emails.send({
+    const { client: resend, fromEmail } = await getUncachableResendClient();
+    console.log('- From email configured:', fromEmail || 'Lab Management <onboarding@resend.dev>');
+    
+    const result = await resend.emails.send({
       from: fromEmail || 'Lab Management <onboarding@resend.dev>',
       to: email,
       subject: `You've been invited to join the Laboratory Management System as ${role}`,
@@ -115,8 +120,15 @@ If you didn't expect this invitation, you can safely ignore this email.
 © ${new Date().getFullYear()} Laboratory Management System. All rights reserved.
       `.trim(),
     });
-  } catch (error) {
-    console.error('Error sending invitation email:', error);
-    throw new Error('Failed to send invitation email');
+    
+    console.log('✅ Email sent successfully! Result:', result);
+  } catch (error: any) {
+    console.error('❌ Error sending invitation email:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response,
+      statusCode: error.statusCode
+    });
+    throw error;
   }
 }

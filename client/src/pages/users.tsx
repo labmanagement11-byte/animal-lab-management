@@ -130,9 +130,16 @@ export default function UsersPage() {
       return response.json();
     },
     onSuccess: (data: any) => {
+      const emailStatus = data.emailSent 
+        ? "Email sent successfully!" 
+        : data.emailError 
+          ? `Email failed: ${data.emailError}` 
+          : "Email may not have been sent";
+      
       toast({
-        title: "Invitation Sent",
-        description: `Invitation sent to ${data.invitation.email}`,
+        title: data.emailSent ? "Invitation Sent" : "Invitation Created",
+        description: `Invitation created for ${data.invitation.email}. ${emailStatus}`,
+        variant: data.emailSent ? "default" : "destructive",
       });
       setInvitationLink(data.invitationLink);
       inviteForm.reset();

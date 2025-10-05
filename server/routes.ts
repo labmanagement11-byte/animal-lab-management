@@ -2004,19 +2004,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invitationLink = `${req.protocol}://${req.get('host')}/api/invitations/accept/${token}`;
 
       // Send invitation email
+      let emailSent = false;
+      let emailError = null;
       try {
         const { sendInvitationEmail } = await import('./email.js');
         const inviterName = user.firstName && user.lastName 
           ? `${user.firstName} ${user.lastName}`
           : undefined;
         await sendInvitationEmail(email, role, invitationLink, inviterName);
-      } catch (emailError) {
-        console.error("Error sending invitation email:", emailError);
+        emailSent = true;
+        console.log(`✅ Invitation email sent successfully to ${email}`);
+      } catch (error: any) {
+        emailError = error;
+        console.error("❌ Error sending invitation email:", {
+          message: error.message,
+          stack: error.stack,
+          details: error.response?.body || error
+        });
       }
 
       res.status(201).json({ 
         invitation,
-        invitationLink
+        invitationLink,
+        emailSent,
+        emailError: emailError ? emailError.message : null
       });
     } catch (error) {
       console.error("Error creating invitation:", error);
