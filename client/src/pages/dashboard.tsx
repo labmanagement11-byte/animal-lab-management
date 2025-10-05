@@ -221,7 +221,7 @@ export default function Dashboard() {
                           {animal.animalNumber}
                         </td>
                         <td className="py-3 px-4 text-foreground" data-testid={`text-cage-id-${animal.id}`}>
-                          {animal.cageId || 'N/A'}
+                          {(animal as any).cageNumber || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-foreground" data-testid={`text-breed-${animal.id}`}>
                           {animal.breed}
@@ -276,7 +276,7 @@ export default function Dashboard() {
                           <div>
                             <span className="text-muted-foreground">Cage: </span>
                             <span className="font-medium" data-testid={`text-cage-id-${animal.id}`}>
-                              {animal.cageId || 'N/A'}
+                              {(animal as any).cageNumber || 'N/A'}
                             </span>
                           </div>
                           <div>

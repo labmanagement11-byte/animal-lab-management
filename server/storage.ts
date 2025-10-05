@@ -157,10 +157,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Animal operations
-  async getAnimals(limit = 50, includeDeleted = false): Promise<Animal[]> {
+  async getAnimals(limit = 50, includeDeleted = false): Promise<any[]> {
     const result = await db
-      .select()
+      .select({
+        id: animals.id,
+        animalNumber: animals.animalNumber,
+        cageId: animals.cageId,
+        cageNumber: cages.cageNumber,
+        breed: animals.breed,
+        genotype: animals.genotype,
+        dateOfBirth: animals.dateOfBirth,
+        age: animals.age,
+        weight: animals.weight,
+        gender: animals.gender,
+        color: animals.color,
+        generation: animals.generation,
+        protocol: animals.protocol,
+        breedingStartDate: animals.breedingStartDate,
+        dateOfGenotyping: animals.dateOfGenotyping,
+        genotypingUserId: animals.genotypingUserId,
+        probes: animals.probes,
+        healthStatus: animals.healthStatus,
+        status: animals.status,
+        diseases: animals.diseases,
+        notes: animals.notes,
+        deletedAt: animals.deletedAt,
+        deletedBy: animals.deletedBy,
+        createdAt: animals.createdAt,
+        updatedAt: animals.updatedAt,
+      })
       .from(animals)
+      .leftJoin(cages, eq(animals.cageId, cages.id))
       .where(includeDeleted ? undefined : isNull(animals.deletedAt))
       .orderBy(desc(animals.createdAt))
       .limit(limit);
