@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Building2, Edit, Trash2 } from "lucide-react";
+import { Link } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -166,10 +167,10 @@ export default function Companies() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {companies.map((company) => (
-            <Card key={company.id} className="p-6" data-testid={`card-company-${company.id}`}>
+            <Card key={company.id} className="p-6 hover:shadow-lg transition-shadow" data-testid={`card-company-${company.id}`}>
               <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2" data-testid={`text-company-name-${company.id}`}>
+                <Link href={`/companies/${company.id}`} className="flex-1 cursor-pointer" data-testid={`link-company-${company.id}`}>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 hover:text-primary transition-colors" data-testid={`text-company-name-${company.id}`}>
                     {company.name}
                   </h3>
                   {company.description && (
@@ -182,12 +183,15 @@ export default function Companies() {
                       {company.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                </div>
+                </Link>
                 <div className="flex gap-2 ml-4">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleOpenDialog(company)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenDialog(company);
+                    }}
                     data-testid={`button-edit-${company.id}`}
                   >
                     <Edit className="h-4 w-4" />
@@ -195,7 +199,8 @@ export default function Companies() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (confirm("Are you sure you want to delete this company?")) {
                         deleteMutation.mutate(company.id);
                       }
