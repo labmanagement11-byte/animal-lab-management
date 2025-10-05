@@ -12,11 +12,13 @@ import {
   Dna,
   Moon,
   Sun,
-  Trash2
+  Trash2,
+  Languages
 } from "lucide-react";
 import { useLocation } from "wouter";
 import GlobalSearch from "@/components/global-search";
 import { useTheme } from "@/contexts/theme-context";
+import { useLanguage } from "@/contexts/language-context";
 
 interface SidebarProps {
   onNavigate: (page: string) => void;
@@ -26,6 +28,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage, t } = useLanguage();
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';
@@ -33,30 +36,30 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { id: 'animals', label: 'Animals', icon: QrCode, path: '/animals' },
-    { id: 'cages', label: 'Cages', icon: Home, path: '/cages' },
-    { id: 'strains', label: 'Strains', icon: Dna, path: '/strains' },
-    { id: 'qr-scanner', label: 'QR Scanner', icon: QrCode, path: '/qr-scanner' },
-    { id: 'blank-qr', label: 'Generar QR en Blanco', icon: QrCode, path: '/blank-qr' },
-    { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
-    { id: 'trash', label: 'Trash', icon: Trash2, path: '/trash' },
+    { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard, path: '/' },
+    { id: 'animals', label: t.nav.animals, icon: QrCode, path: '/animals' },
+    { id: 'cages', label: t.nav.cages, icon: Home, path: '/cages' },
+    { id: 'strains', label: t.nav.strains, icon: Dna, path: '/strains' },
+    { id: 'qr-scanner', label: t.qr.qrCodeScanner, icon: QrCode, path: '/qr-scanner' },
+    { id: 'blank-qr', label: t.nav.blankQr, icon: QrCode, path: '/blank-qr' },
+    { id: 'reports', label: t.nav.reports, icon: FileText, path: '/reports' },
+    { id: 'trash', label: t.nav.trash, icon: Trash2, path: '/trash' },
   ];
 
   if ((user as any)?.role === 'Success Manager' || (user as any)?.role === 'Admin') {
-    menuItems.push({ id: 'users', label: 'User Management', icon: Users, path: '/users' });
+    menuItems.push({ id: 'users', label: t.nav.users, icon: Users, path: '/users' });
   }
 
   // Admin-only features - full access to everything
   if ((user as any)?.role === 'Admin') {
-    menuItems.push({ id: 'admin', label: 'Admin Panel', icon: Settings, path: '/admin' });
+    menuItems.push({ id: 'admin', label: t.nav.admin, icon: Settings, path: '/admin' });
   }
 
   return (
     <div className="w-64 bg-card border-r border-border flex-shrink-0">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <h1 className="text-xl font-bold text-primary">Lab Management</h1>
+        <h1 className="text-xl font-bold text-primary">{t.nav.labManagement}</h1>
         {user && (
           <div className="mt-4 flex items-center space-x-3">
             <Avatar className="w-10 h-10">
@@ -114,7 +117,19 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
               ) : (
                 <Moon className="w-4 h-4 mr-3" />
               )}
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+              {theme === "dark" ? t.theme.lightMode : t.theme.darkMode}
+            </Button>
+          </li>
+          
+          <li>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              onClick={toggleLanguage}
+              data-testid="button-toggle-language"
+            >
+              <Languages className="w-4 h-4 mr-3" />
+              {language === "en" ? t.theme.spanish : t.theme.english}
             </Button>
           </li>
           
@@ -126,7 +141,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
               data-testid="button-logout"
             >
               <LogOut className="w-4 h-4 mr-3" />
-              Sign Out
+              {t.actions.signOut}
             </Button>
           </li>
         </ul>
