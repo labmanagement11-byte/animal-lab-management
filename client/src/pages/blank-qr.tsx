@@ -194,7 +194,7 @@ export default function BlankQrPage() {
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-7xl">
-      <div className="mb-6">
+      <div className="mb-6 ml-[122px] mr-[122px]">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
           <QrCodeIcon className="w-7 h-7 md:w-8 md:h-8" />
           Generar QR en Blanco
