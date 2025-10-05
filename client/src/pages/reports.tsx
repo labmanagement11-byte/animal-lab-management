@@ -194,7 +194,7 @@ export default function ReportsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <Select value={reportType} onValueChange={setReportType}>
             <SelectTrigger className="w-full sm:w-auto sm:min-w-[10rem]" data-testid="select-report-type">
-              <SelectValue placeholder="Report Type" />
+              <SelectValue placeholder="Report Type" className="ml-[122px] mr-[122px]" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="animals">Animals</SelectItem>
@@ -217,7 +217,6 @@ export default function ReportsPage() {
           </Select>
         </div>
       </div>
-
       {/* Monthly Activity Report - Admin/Director Only */}
       {isAdminOrDirector && (
         <Card className="border-primary/50">
@@ -361,7 +360,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -418,7 +416,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* Report Content */}
       {reportType === 'animals' && (
         <Card>
@@ -469,7 +466,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-
       {reportType === 'cages' && (
         <Card>
           <CardHeader>
@@ -512,7 +508,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-
       {reportType === 'strains' && (
         <Card>
           <CardHeader>
@@ -548,7 +543,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-
       {reportType === 'health' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
