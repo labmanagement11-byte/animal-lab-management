@@ -1057,6 +1057,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get deleted users (trash)
+  app.get('/api/users-trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedUsers = await storage.getDeletedUsers();
+      res.json(deletedUsers);
+    } catch (error) {
+      console.error("Error fetching deleted users:", error);
+      res.status(500).json({ message: "Failed to fetch deleted users" });
+    }
+  });
+
   // Restore user endpoint (Admin only)
   app.post('/api/users/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
@@ -1084,6 +1095,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error restoring user:", error);
       res.status(500).json({ message: "Failed to restore user" });
+    }
+  });
+
+  // Permanently delete user (Admin only)
+  app.delete('/api/users/:id/permanent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can permanently delete users" });
+      }
+
+      await storage.permanentlyDeleteUser(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'DELETE',
+        tableName: 'users',
+        recordId: req.params.id,
+        changes: { permanent: true },
+      });
+
+      res.json({ message: "User permanently deleted" });
+    } catch (error) {
+      console.error("Error permanently deleting user:", error);
+      res.status(500).json({ message: "Failed to permanently delete user" });
     }
   });
 
