@@ -1060,6 +1060,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/genotypes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteGenotype(req.params.id);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'DELETE',
+        tableName: 'genotypes',
+        recordId: req.params.id,
+        changes: null,
+      });
+
+      res.json({ message: "Genotype deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting genotype:", error);
+      res.status(500).json({ message: "Failed to delete genotype" });
+    }
+  });
+
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);

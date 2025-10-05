@@ -28,7 +28,7 @@ import {
   type InsertUserInvitation,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte } from "drizzle-orm";
+import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -120,6 +120,7 @@ export interface IStorage {
   // Genotype operations
   getGenotypes(): Promise<Genotype[]>;
   createGenotype(genotype: InsertGenotype): Promise<Genotype>;
+  deleteGenotype(id: string): Promise<void>;
 
   // User invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
@@ -937,6 +938,10 @@ export class DatabaseStorage implements IStorage {
       .values(genotypeData)
       .returning();
     return genotype;
+  }
+
+  async deleteGenotype(id: string): Promise<void> {
+    await db.delete(genotypes).where(eq(genotypes.id, id));
   }
 
   // User invitation operations
