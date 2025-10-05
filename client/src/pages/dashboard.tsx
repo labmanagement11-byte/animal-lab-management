@@ -66,12 +66,20 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div 
+      className="p-4 md:p-6 min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{
+        backgroundImage: `url(/attached_assets/0b47e439-4a5b-47c4-b4c2-ea206254a130_1759679399654.jpg)`
+      }}
+    >
+      {/* Overlay para mejorar legibilidad */}
+      <div className="absolute inset-0 bg-black/30 dark:bg-black/50 -z-10"></div>
+      
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 relative z-10">
         <div>
-          <h2 className="text-xl md:text-2xl font-semibold text-foreground">Dashboard</h2>
-          <p className="text-sm text-muted-foreground hidden md:block">Manage your laboratory animals and cages</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-white dark:text-white">Dashboard</h2>
+          <p className="text-sm text-gray-100 dark:text-gray-100 hidden md:block">Manage your laboratory animals and cages</p>
         </div>
         <div className="hidden md:flex items-center space-x-4">
           <Button 
@@ -85,14 +93,14 @@ export default function Dashboard() {
       </div>
 
       {/* Statistics Cards - Horizontal scroll on mobile */}
-      <div className="mb-6 md:mb-8">
+      <div className="mb-6 md:mb-8 relative z-10">
         <div className="md:hidden mb-4">
-          <h3 className="text-sm font-semibold text-muted-foreground px-1">Statistics</h3>
+          <h3 className="text-sm font-semibold text-white px-1">Statistics</h3>
         </div>
         <div className="md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 lg:gap-6">
           <div className="flex md:contents gap-4 overflow-x-auto pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
             <Card 
-              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow" 
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm" 
               onClick={() => setLocation('/animals')}
               data-testid="card-total-animals"
             >
@@ -116,7 +124,7 @@ export default function Dashboard() {
             </Card>
 
             <Card 
-              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow"
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
               onClick={() => setLocation('/cages')}
               data-testid="card-active-cages"
             >
@@ -139,7 +147,7 @@ export default function Dashboard() {
             </Card>
 
             <Card 
-              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow"
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
               onClick={() => setLocation('/qr-codes')}
               data-testid="card-qr-codes"
             >
@@ -162,7 +170,7 @@ export default function Dashboard() {
             </Card>
 
             <Card 
-              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow"
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
               onClick={() => setLocation('/health-alerts')}
               data-testid="card-health-alerts"
             >
@@ -189,7 +197,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Animals */}
-      <Card>
+      <Card className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm relative z-10">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg md:text-xl">Recent Animals</CardTitle>
           <Button variant="outline" size="sm" data-testid="button-view-all-animals">
