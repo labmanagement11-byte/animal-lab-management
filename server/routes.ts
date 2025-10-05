@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema, insertCompanySchema } from "@shared/schema";
+import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema, insertCompanySchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -1594,6 +1594,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Create user endpoint (for Admin and Director only)
+  app.post('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      if (currentUser?.role !== 'Admin' && currentUser?.role !== 'Director') {
+        return res.status(403).json({ message: "Only Admin and Director can create users" });
+      }
+
+      const validatedData = insertUserSchema.parse(req.body);
+
+      // Only admins can assign admin role
+      if (validatedData.role === 'Admin' && currentUser?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only admins can create admin users" });
+      }
+
+      // Security: Build clean payload with enforced company assignment
+      let userPayload: any;
+      
+      if (currentUser?.role === 'Director') {
+        // Directors can only create users in their own company
+        if (!currentUser.companyId) {
+          return res.status(403).json({ message: "Director must have a company assigned to create users" });
+        }
+        // Build payload with Director's company, ignoring client-supplied companyId
+        userPayload = {
+          email: validatedData.email,
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          role: validatedData.role,
+          companyId: currentUser.companyId, // Always use Director's company
+          profileImageUrl: validatedData.profileImageUrl,
+        };
+      } else if (currentUser?.role === 'Admin') {
+        // Admins must explicitly specify a valid company
+        if (!validatedData.companyId) {
+          return res.status(400).json({ message: "Admin must specify a company for the new user" });
+        }
+        // Verify the company exists
+        const company = await storage.getCompany(validatedData.companyId);
+        if (!company) {
+          return res.status(400).json({ message: "Invalid company specified" });
+        }
+        // Use Admin-specified company
+        userPayload = {
+          email: validatedData.email,
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          role: validatedData.role,
+          companyId: validatedData.companyId,
+          profileImageUrl: validatedData.profileImageUrl,
+        };
+      }
+
+      // Check if user already exists
+      const existingUsers = await storage.getAllUsers();
+      const userExists = existingUsers.some(u => u.email === userPayload.email);
+      if (userExists) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      const newUser = await storage.upsertUser(userPayload);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CREATE',
+        tableName: 'users',
+        recordId: newUser.id,
+        changes: userPayload,
+      });
+
+      res.status(201).json({ message: "User created successfully", user: newUser });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 
