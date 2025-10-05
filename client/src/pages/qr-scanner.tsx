@@ -188,7 +188,7 @@ export default function QrScanner() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 ml-[122px] mr-[122px]">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">QR Code Scanner</h2>
           <p className="text-muted-foreground">Scan QR codes to view animal information</p>
