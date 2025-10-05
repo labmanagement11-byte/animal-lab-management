@@ -43,7 +43,6 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
     { id: 'animals', label: t.nav.animals as string, icon: QrCode, path: '/animals' },
     { id: 'cages', label: t.nav.cages as string, icon: Home, path: '/cages' },
     { id: 'strains', label: t.nav.strains as string, icon: Dna, path: '/strains' },
-    { id: 'qr-scanner', label: t.qr.qrCodeScanner as string, icon: QrCode, path: '/qr-scanner' },
     { id: 'blank-qr', label: t.nav.blankQr as string, icon: QrCode, path: '/blank-qr' },
     { id: 'reports', label: t.nav.reports as string, icon: FileText, path: '/reports' },
     { id: 'trash', label: t.nav.trash as string, icon: Trash2, path: '/trash' },
