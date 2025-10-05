@@ -64,6 +64,8 @@ export const strains = pgTable("strains", {
   description: text("description"),
   // category: varchar("category"), // Temporarily commented until DB migration
   isActive: boolean("is_active").default(true),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -266,6 +268,8 @@ export const insertFileAttachmentSchema = createInsertSchema(fileAttachments).om
 export const insertStrainSchema = createInsertSchema(strains).omit({
   id: true,
   createdAt: true,
+  deletedAt: true,
+  deletedBy: true,
 });
 
 export const insertGenotypeSchema = createInsertSchema(genotypes).omit({

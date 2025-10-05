@@ -54,7 +54,7 @@ export interface IStorage {
   restoreCage(id: string): Promise<Cage>;
   permanentlyDeleteCage(id: string): Promise<void>;
   getDeletedCages(): Promise<Cage[]>;
-  cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number }>;
+  cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number }>;
   
   // QR Code operations
   getQrCodes(): Promise<QrCode[]>;
@@ -98,7 +98,10 @@ export interface IStorage {
   getStrain(id: string): Promise<Strain | undefined>;
   createStrain(strain: InsertStrain): Promise<Strain>;
   updateStrain(id: string, strain: Partial<InsertStrain>): Promise<Strain>;
-  deleteStrain(id: string): Promise<void>;
+  deleteStrain(id: string, userId: string): Promise<void>;
+  restoreStrain(id: string): Promise<Strain>;
+  permanentlyDeleteStrain(id: string): Promise<void>;
+  getDeletedStrains(): Promise<Strain[]>;
   
   // Genotype operations
   getGenotypes(): Promise<Genotype[]>;
@@ -302,7 +305,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number }> {
+  async cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number }> {
     const tenDaysAgo = new Date();
     tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
@@ -322,6 +325,14 @@ export class DatabaseStorage implements IStorage {
         lte(cages.deletedAt, tenDaysAgo)
       ));
 
+    const expiredStrains = await db
+      .select({ id: strains.id })
+      .from(strains)
+      .where(and(
+        isNotNull(strains.deletedAt),
+        lte(strains.deletedAt, tenDaysAgo)
+      ));
+
     for (const animal of expiredAnimals) {
       await this.permanentlyDeleteAnimal(animal.id);
     }
@@ -330,9 +341,14 @@ export class DatabaseStorage implements IStorage {
       await this.permanentlyDeleteCage(cage.id);
     }
 
+    for (const strain of expiredStrains) {
+      await this.permanentlyDeleteStrain(strain.id);
+    }
+
     return {
       deletedAnimals: expiredAnimals.length,
       deletedCages: expiredCages.length,
+      deletedStrains: expiredStrains.length,
     };
   }
 
@@ -662,7 +678,12 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .select()
       .from(strains)
-      .where(eq(strains.isActive, true))
+      .where(
+        and(
+          eq(strains.isActive, true),
+          isNull(strains.deletedAt)
+        )
+      )
       .orderBy(strains.name);
     return result;
   }
@@ -689,8 +710,36 @@ export class DatabaseStorage implements IStorage {
     return strain;
   }
 
-  async deleteStrain(id: string): Promise<void> {
+  async deleteStrain(id: string, userId: string): Promise<void> {
+    await db
+      .update(strains)
+      .set({ deletedAt: new Date(), deletedBy: userId })
+      .where(eq(strains.id, id));
+  }
+
+  async restoreStrain(id: string): Promise<Strain> {
+    const [restored] = await db
+      .update(strains)
+      .set({ deletedAt: null, deletedBy: null })
+      .where(eq(strains.id, id))
+      .returning();
+    if (!restored) {
+      throw new Error("Strain not found");
+    }
+    return restored;
+  }
+
+  async permanentlyDeleteStrain(id: string): Promise<void> {
     await db.delete(strains).where(eq(strains.id, id));
+  }
+
+  async getDeletedStrains(): Promise<Strain[]> {
+    const result = await db
+      .select()
+      .from(strains)
+      .where(isNotNull(strains.deletedAt))
+      .orderBy(desc(strains.deletedAt));
+    return result;
   }
 
   // Genotype operations
