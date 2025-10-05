@@ -1,10 +1,17 @@
 import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { QrCode, Camera } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { QrCode, Camera, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import type { Cage, QrCode as QrCodeType } from "@shared/schema";
 
 interface ScannedAnimalData {
   animalId: string;
@@ -19,12 +26,57 @@ interface ScannedAnimalData {
   notes?: string;
 }
 
+interface BlankQrData {
+  id: string;
+  qrData: string;
+  isBlank: boolean;
+}
+
 export default function QrScanner() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedAnimalData | null>(null);
+  const [blankQrData, setBlankQrData] = useState<BlankQrData | null>(null);
+  const [selectedCageId, setSelectedCageId] = useState<string>("");
+  const [qrClaimed, setQrClaimed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { data: cages } = useQuery<Cage[]>({
+    queryKey: ['/api/cages'],
+  });
+
+  const claimQrMutation = useMutation({
+    mutationFn: async ({ qrId, cageId }: { qrId: string; cageId: string }) => {
+      return await apiRequest("POST", `/api/qr-codes/${qrId}/claim`, { cageId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+      setQrClaimed(true);
+      toast({
+        title: "Success",
+        description: "QR code successfully linked to cage",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to link QR code to cage",
+        variant: "destructive",
+      });
+    },
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -85,12 +137,46 @@ export default function QrScanner() {
     };
     
     setScannedData(sampleData);
+    setBlankQrData(null);
+    setQrClaimed(false);
     stopCamera();
     
     toast({
       title: "QR Code Scanned",
       description: "Animal information loaded successfully",
     });
+  };
+
+  const simulateBlankQrScan = () => {
+    // Simulate blank QR code scan
+    const blankData: BlankQrData = {
+      id: "blank-qr-" + Math.random().toString(36).substr(2, 9),
+      qrData: `${window.location.origin}/qr/blank/${Math.random().toString(36).substr(2, 9)}`,
+      isBlank: true,
+    };
+    
+    setBlankQrData(blankData);
+    setScannedData(null);
+    setQrClaimed(false);
+    stopCamera();
+    
+    toast({
+      title: "Blank QR Code Scanned",
+      description: "Link this QR code to a cage below",
+    });
+  };
+
+  const handleClaimQr = () => {
+    if (!blankQrData || !selectedCageId) {
+      toast({
+        title: "Error",
+        description: "Please select a cage",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    claimQrMutation.mutate({ qrId: blankQrData.id, cageId: selectedCageId });
   };
 
   useEffect(() => {
@@ -144,20 +230,30 @@ export default function QrScanner() {
                 </div>
               )}
               
-              <div className="flex space-x-2">
+              <div className="flex flex-col space-y-2">
                 {isScanning ? (
                   <>
                     <Button variant="outline" onClick={stopCamera} data-testid="button-stop-camera">
                       Stop Scanner
                     </Button>
-                    <Button onClick={simulateQrScan} data-testid="button-simulate-scan">
-                      Simulate Scan (Demo)
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button onClick={simulateQrScan} data-testid="button-simulate-scan" className="flex-1">
+                        Demo Animal QR
+                      </Button>
+                      <Button onClick={simulateBlankQrScan} data-testid="button-simulate-blank-qr" className="flex-1" variant="secondary">
+                        Demo Blank QR
+                      </Button>
+                    </div>
                   </>
                 ) : (
-                  <Button onClick={simulateQrScan} variant="outline" data-testid="button-demo-scan">
-                    Demo Scan
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button onClick={simulateQrScan} variant="outline" data-testid="button-demo-scan" className="flex-1">
+                      Demo Animal QR
+                    </Button>
+                    <Button onClick={simulateBlankQrScan} variant="outline" data-testid="button-demo-blank-scan" className="flex-1">
+                      Demo Blank QR
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -167,10 +263,79 @@ export default function QrScanner() {
         {/* Scanned Data */}
         <Card>
           <CardHeader>
-            <CardTitle>Scanned Animal Information</CardTitle>
+            <CardTitle>
+              {blankQrData ? "Link Blank QR Code" : "Scanned Animal Information"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {scannedData ? (
+            {blankQrData ? (
+              <div className="space-y-4" data-testid="blank-qr-data">
+                {qrClaimed ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">QR Code Successfully Linked!</h3>
+                    <p className="text-muted-foreground mb-4">
+                      This QR code is now linked to the selected cage
+                    </p>
+                    <Button 
+                      onClick={() => {
+                        setBlankQrData(null);
+                        setQrClaimed(false);
+                        setSelectedCageId("");
+                      }}
+                      data-testid="button-scan-another"
+                    >
+                      Scan Another QR
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">QR Code ID</Label>
+                      <p className="text-foreground font-medium mt-1" data-testid="text-blank-qr-id">
+                        {blankQrData.id}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="cage-select">Select Cage to Link</Label>
+                      <Select
+                        value={selectedCageId}
+                        onValueChange={setSelectedCageId}
+                      >
+                        <SelectTrigger id="cage-select" data-testid="select-cage-for-qr">
+                          <SelectValue placeholder="Select a cage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cages?.filter(c => c.isActive).map((cage) => (
+                            <SelectItem key={cage.id} value={cage.id}>
+                              {cage.cageNumber} - {cage.roomNumber} ({cage.location})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex space-x-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setBlankQrData(null)}
+                        data-testid="button-cancel-claim"
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleClaimQr}
+                        disabled={!selectedCageId || claimQrMutation.isPending}
+                        data-testid="button-link-qr"
+                      >
+                        {claimQrMutation.isPending ? "Linking..." : "Link to Cage"}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : scannedData ? (
               <div className="space-y-4" data-testid="scanned-data">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
