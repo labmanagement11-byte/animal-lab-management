@@ -81,14 +81,16 @@ export default function UsersPage() {
   });
 
   const inviteUserMutation = useMutation({
-    mutationFn: (data: InviteUserForm) => 
-      apiRequest('POST', '/api/invitations', data),
-    onSuccess: (response: any) => {
+    mutationFn: async (data: InviteUserForm) => {
+      const response = await apiRequest('POST', '/api/invitations', data);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
       toast({
         title: "Invitation Sent",
-        description: `Invitation sent to ${response.invitation.email}`,
+        description: `Invitation sent to ${data.invitation.email}`,
       });
-      setInvitationLink(response.invitationLink);
+      setInvitationLink(data.invitationLink);
       inviteForm.reset();
     },
     onError: (error: any) => {
