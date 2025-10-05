@@ -166,7 +166,7 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return user;
+    return user as User;
   }
 
   async updateUserRole(email: string, role: 'Admin' | 'Success Manager' | 'Director' | 'Employee'): Promise<User | undefined> {
@@ -911,7 +911,7 @@ export class DatabaseStorage implements IStorage {
         cage: row.cages
       })),
       cages: cagesResult,
-      users: usersResult,
+      users: usersResult as User[],
       strains: strainsResult,
       genotypes: genotypesResult,
       qrCodes: qrCodesResult.map(row => ({
