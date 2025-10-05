@@ -584,8 +584,14 @@ export default function Trash() {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-background">
-      <div className="p-4 md:p-6 space-y-6">
+    <div 
+      className="flex-1 overflow-auto bg-cover bg-center bg-no-repeat relative"
+      style={{
+        backgroundImage: `url(/attached_assets/c524eee6-37c9-42cd-9754-07e7e4ac2dcd_1759682477394.jpg)`
+      }}
+    >
+      <div className="absolute inset-0 bg-black/30 dark:bg-black/50"></div>
+      <div className="p-4 md:p-6 space-y-6 relative z-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 ml-[122px] mr-[122px]">
           <div>
