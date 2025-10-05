@@ -45,7 +45,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const stats = await storage.getDashboardStats(companyId);
       res.json(stats);
     } catch (error) {
@@ -126,7 +131,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const animals = await storage.getAnimals(limit, false, companyId);
       res.json(animals);
@@ -139,7 +149,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/animals/search', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
@@ -156,7 +171,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/animals/trash', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const deletedAnimals = await storage.getDeletedAnimals(companyId);
       res.json(deletedAnimals);
     } catch (error) {
@@ -402,7 +422,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cages', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const cages = await storage.getCages(false, companyId);
       res.json(cages);
     } catch (error) {
@@ -415,7 +440,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cages/trash', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const deletedCages = await storage.getDeletedCages(companyId);
       res.json(deletedCages);
     } catch (error) {
@@ -424,9 +454,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/cages/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/cages/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const cage = await storage.getCage(req.params.id);
+      // Validate user has access to this cage
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      const cage = await storage.getCage(req.params.id, companyId);
       if (!cage) {
         return res.status(404).json({ message: "Cage not found" });
       }
@@ -472,9 +510,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/cages/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const cage = await storage.getCage(req.params.id, companyId);
+      if (!cage) {
+        return res.status(404).json({ message: "Cage not found" });
+      }
+
       const partialSchema = insertCageSchema.partial();
       const validatedData = partialSchema.parse(req.body);
-      const cage = await storage.updateCage(req.params.id, validatedData);
+      const updatedCage = await storage.updateCage(req.params.id, validatedData);
       
       // Create audit log
       await storage.createAuditLog({
@@ -485,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: validatedData,
       });
 
-      res.json(cage);
+      res.json(updatedCage);
     } catch (error) {
       console.error("Error updating cage:", error);
       if (error instanceof z.ZodError) {
@@ -497,6 +549,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/cages/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const cage = await storage.getCage(req.params.id, companyId);
+      if (!cage) {
+        return res.status(404).json({ message: "Cage not found" });
+      }
+
       const userId = req.user.claims.sub;
       await storage.deleteCage(req.params.id, userId);
       
@@ -644,7 +710,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/qr-codes', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const qrCodes = await storage.getQrCodes(false, companyId);
       res.json(qrCodes);
     } catch (error) {
@@ -795,9 +866,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific QR code by ID
-  app.get('/api/qr-codes/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/qr-codes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const qrCode = await storage.getQrCode(req.params.id);
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const qrCode = await storage.getQrCode(req.params.id, companyId);
       if (!qrCode) {
         return res.status(404).json({ message: "QR code not found" });
       }
@@ -811,6 +891,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete QR code (soft delete)
   app.delete('/api/qr-codes/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const qrCode = await storage.getQrCode(req.params.id, companyId);
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+
       const userId = req.user.claims.sub;
       await storage.deleteQrCode(req.params.id, userId);
 
@@ -867,7 +961,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/qr-codes-trash', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const deletedQrCodes = await storage.getDeletedQrCodes(companyId);
       res.json(deletedQrCodes);
     } catch (error) {
@@ -980,7 +1079,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/strains', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const strains = await storage.getStrains(companyId);
       res.json(strains);
     } catch (error) {
@@ -1025,7 +1129,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/strains/trash', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const deletedStrains = await storage.getDeletedStrains(companyId);
       res.json(deletedStrains);
     } catch (error) {
@@ -1036,6 +1145,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/strains/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const strain = await storage.getStrain(req.params.id, companyId);
+      if (!strain) {
+        return res.status(404).json({ message: "Strain not found" });
+      }
+
       await storage.deleteStrain(req.params.id, req.user.claims.sub);
       
       // Create audit log
@@ -1148,7 +1271,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/genotypes', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || undefined;
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const genotypes = await storage.getGenotypes(companyId);
       res.json(genotypes);
     } catch (error) {
@@ -1196,6 +1324,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/genotypes/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this resource
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const genotype = await storage.getGenotype(req.params.id, companyId);
+      if (!genotype) {
+        return res.status(404).json({ message: "Genotype not found" });
+      }
+
       await storage.deleteGenotype(req.params.id);
       
       // Create audit log

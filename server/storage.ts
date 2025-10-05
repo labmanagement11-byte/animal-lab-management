@@ -122,6 +122,7 @@ export interface IStorage {
   
   // Genotype operations
   getGenotypes(companyId?: string): Promise<Genotype[]>;
+  getGenotype(id: string, companyId?: string): Promise<Genotype | undefined>;
   createGenotype(genotype: InsertGenotype): Promise<Genotype>;
   deleteGenotype(id: string): Promise<void>;
 
@@ -1094,6 +1095,13 @@ export class DatabaseStorage implements IStorage {
       .where(companyId ? and(eq(genotypes.isActive, true), eq(genotypes.companyId, companyId)) : eq(genotypes.isActive, true))
       .orderBy(genotypes.name);
     return result;
+  }
+
+  async getGenotype(id: string, companyId?: string): Promise<Genotype | undefined> {
+    const [genotype] = await db.select().from(genotypes).where(
+      companyId ? and(eq(genotypes.id, id), eq(genotypes.companyId, companyId)) : eq(genotypes.id, id)
+    );
+    return genotype;
   }
 
   async createGenotype(genotypeData: InsertGenotype): Promise<Genotype> {
