@@ -28,6 +28,7 @@ import MobileBottomNav from "@/components/mobile-bottom-nav";
 import MobileMenu from "@/components/mobile-menu";
 import { useLocation } from "wouter";
 import { ThemeProvider } from "@/contexts/theme-context";
+import { LanguageProvider } from "@/contexts/language-context";
 import { useState } from "react";
 
 function AppContent() {
@@ -100,10 +101,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <AppContent />
-        </TooltipProvider>
+        <LanguageProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AppContent />
+          </TooltipProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
