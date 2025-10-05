@@ -13,10 +13,12 @@ import {
   Moon,
   Sun,
   Trash2,
-  ChevronRight
+  ChevronRight,
+  Languages
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/theme-context";
+import { useLanguage } from "@/contexts/language-context";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 
@@ -30,6 +32,7 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
   const { user } = useAuth();
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage, t } = useLanguage();
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';
@@ -37,21 +40,21 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { id: 'animals', label: 'Animals', icon: QrCode, path: '/animals' },
-    { id: 'cages', label: 'Cages', icon: Home, path: '/cages' },
-    { id: 'strains', label: 'Strains', icon: Dna, path: '/strains' },
-    { id: 'blank-qr', label: 'Generar QR en Blanco', icon: QrCode, path: '/blank-qr' },
-    { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
-    { id: 'trash', label: 'Trash', icon: Trash2, path: '/trash' },
+    { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard, path: '/' },
+    { id: 'animals', label: t.nav.animals, icon: QrCode, path: '/animals' },
+    { id: 'cages', label: t.nav.cages, icon: Home, path: '/cages' },
+    { id: 'strains', label: t.nav.strains, icon: Dna, path: '/strains' },
+    { id: 'blank-qr', label: t.nav.blankQr, icon: QrCode, path: '/blank-qr' },
+    { id: 'reports', label: t.nav.reports, icon: FileText, path: '/reports' },
+    { id: 'trash', label: t.nav.trash, icon: Trash2, path: '/trash' },
   ];
 
   if ((user as any)?.role === 'Success Manager' || (user as any)?.role === 'Admin') {
-    menuItems.push({ id: 'users', label: 'User Management', icon: Users, path: '/users' });
+    menuItems.push({ id: 'users', label: t.nav.users, icon: Users, path: '/users' });
   }
 
   if ((user as any)?.role === 'Admin') {
-    menuItems.push({ id: 'admin', label: 'Admin Panel', icon: Settings, path: '/admin' });
+    menuItems.push({ id: 'admin', label: t.nav.admin, icon: Settings, path: '/admin' });
   }
 
   const handleNavigate = (path: string) => {
@@ -63,7 +66,7 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
         <SheetHeader className="p-6 pb-4">
-          <SheetTitle className="text-left">Menu</SheetTitle>
+          <SheetTitle className="text-left">{t.nav.menu}</SheetTitle>
         </SheetHeader>
         
         {user && (
@@ -133,7 +136,17 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
             ) : (
               <Moon className="w-5 h-5 mr-3" />
             )}
-            <span className="font-medium">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+            <span className="font-medium">{theme === "dark" ? t.theme.lightMode : t.theme.darkMode}</span>
+          </Button>
+          
+          <Button
+            variant="ghost"
+            className="w-full justify-start h-12"
+            onClick={toggleLanguage}
+            data-testid="mobile-menu-language"
+          >
+            <Languages className="w-5 h-5 mr-3" />
+            <span className="font-medium">{language === "en" ? t.theme.spanish : t.theme.english}</span>
           </Button>
           
           <Button
@@ -143,7 +156,7 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
             data-testid="mobile-menu-logout"
           >
             <LogOut className="w-5 h-5 mr-3" />
-            <span className="font-medium">Sign Out</span>
+            <span className="font-medium">{t.actions.signOut}</span>
           </Button>
         </div>
       </SheetContent>
