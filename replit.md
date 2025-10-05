@@ -54,9 +54,21 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication & Authorization
 - Replit-based authentication with role-based permissions
-- Three user roles: Employee, Director, and Success Manager
+- Three user roles: Employee, Director, and Admin
 - Session-based authentication with secure cookie handling
 - Protected API routes with middleware validation
+
+### Multi-Tenancy Architecture (Latest Implementation)
+- **Company-based data isolation**: Every data table includes a `companyId` foreign key for strict tenant separation
+- **Admin role bypass**: Admin users can access all companies' data; non-admin users are restricted to their own company
+- **Security model**:
+  - All READ operations filter by companyId (Admin gets undefined for global access)
+  - All CREATE operations require valid companyId assignment
+  - All UPDATE/DELETE operations validate resource ownership before mutation
+  - RESTORE and PERMANENT-DELETE operations validate from deleted items list
+  - Global search and reports filter results by company
+- **Company management**: Admin-only UI at `/companies` route for managing organizations
+- **Data isolation enforcement**: Users without companyId assignment receive 403 errors to prevent unauthorized access
 
 ### QR Code Integration
 - Dynamic QR code generation containing animal and cage metadata
