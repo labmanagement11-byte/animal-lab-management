@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp, Check, Grid3X3, List, LayoutGrid, Maximize2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Home, MapPin, QrCode, Users, ChevronDown, ChevronUp, Check, Grid3X3, List, LayoutGrid, Maximize2, Printer } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -20,6 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import CageQrCodeGenerator from "@/components/cage-qr-code-generator";
+import BlankQrGenerator from "@/components/blank-qr-generator";
 import FloatingActionButton from "@/components/floating-action-button";
 
 const cageFormSchema = z.object({
@@ -47,6 +48,7 @@ export default function Cages() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCageForm, setShowCageForm] = useState(false);
   const [showQrGenerator, setShowQrGenerator] = useState(false);
+  const [showBlankQrGenerator, setShowBlankQrGenerator] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("medium-cards");
   const [editingCage, setEditingCage] = useState<Cage | null>(null);
   const [selectedCage, setSelectedCage] = useState<Cage | null>(null);
@@ -380,10 +382,21 @@ export default function Cages() {
           <h2 className="text-xl md:text-2xl font-semibold text-foreground">Cages</h2>
           <p className="text-sm text-muted-foreground hidden md:block">Manage laboratory animal housing</p>
         </div>
-        <Button onClick={() => setShowCageForm(true)} data-testid="button-add-cage" className="hidden md:flex">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Cage
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setShowBlankQrGenerator(true)} 
+            data-testid="button-generate-blank-qr" 
+            className="hidden md:flex"
+            variant="outline"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Generate Blank QR
+          </Button>
+          <Button onClick={() => setShowCageForm(true)} data-testid="button-add-cage" className="hidden md:flex">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Cage
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -1087,6 +1100,13 @@ export default function Cages() {
               onClose={() => setShowQrGenerator(false)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Blank QR Code Generator Modal */}
+      <Dialog open={showBlankQrGenerator} onOpenChange={setShowBlankQrGenerator}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <BlankQrGenerator onClose={() => setShowBlankQrGenerator(false)} />
         </DialogContent>
       </Dialog>
     </div>

@@ -510,6 +510,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate multiple blank QR codes for printing
+  app.post('/api/qr-codes/generate-blank', isAuthenticated, async (req: any, res) => {
+    try {
+      const { count } = req.body;
+      if (!count || count < 1 || count > 20) {
+        return res.status(400).json({ message: "Count must be between 1 and 20" });
+      }
+
+      const qrCodes = [];
+      const userId = req.user.claims.sub;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      for (let i = 0; i < count; i++) {
+        const randomId = crypto.randomUUID();
+        const qrCode = await storage.createQrCode({
+          qrData: `${baseUrl}/qr/blank/${randomId}`,
+          isBlank: true,
+          generatedBy: userId,
+        });
+        qrCodes.push(qrCode);
+      }
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId,
+        action: 'GENERATE_BLANK_QR',
+        tableName: 'qr_codes',
+        recordId: 'multiple',
+        changes: { count, qrCodeIds: qrCodes.map(q => q.id) },
+      });
+
+      res.status(201).json(qrCodes);
+    } catch (error) {
+      console.error("Error generating blank QR codes:", error);
+      res.status(500).json({ message: "Failed to generate blank QR codes" });
+    }
+  });
+
+  // Get blank QR codes (unclaimed)
+  app.get('/api/qr-codes/blank', isAuthenticated, async (req, res) => {
+    try {
+      const allQrCodes = await storage.getQrCodes();
+      const blankQrCodes = allQrCodes.filter(qr => qr.isBlank && !qr.cageId);
+      res.json(blankQrCodes);
+    } catch (error) {
+      console.error("Error fetching blank QR codes:", error);
+      res.status(500).json({ message: "Failed to fetch blank QR codes" });
+    }
+  });
+
   // Claim a blank QR code - fill in cage information after scanning
   app.post('/api/qr-codes/:id/claim', isAuthenticated, async (req: any, res) => {
     try {
