@@ -398,7 +398,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number }> {
+  async cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number; deletedUsers: number }> {
     const tenDaysAgo = new Date();
     tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
@@ -426,6 +426,14 @@ export class DatabaseStorage implements IStorage {
         lte(strains.deletedAt, tenDaysAgo)
       ));
 
+    const expiredUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(
+        isNotNull(users.deletedAt),
+        lte(users.deletedAt, tenDaysAgo)
+      ));
+
     for (const animal of expiredAnimals) {
       await this.permanentlyDeleteAnimal(animal.id);
     }
@@ -438,10 +446,15 @@ export class DatabaseStorage implements IStorage {
       await this.permanentlyDeleteStrain(strain.id);
     }
 
+    for (const user of expiredUsers) {
+      await this.permanentlyDeleteUser(user.id);
+    }
+
     return {
       deletedAnimals: expiredAnimals.length,
       deletedCages: expiredCages.length,
       deletedStrains: expiredStrains.length,
+      deletedUsers: expiredUsers.length,
     };
   }
 
