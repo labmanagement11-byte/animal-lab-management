@@ -34,7 +34,7 @@ const cageFormSchema = z.object({
     const num = parseInt(val);
     return !isNaN(num) && num > 0;
   }, "Capacity must be a positive number"),
-  status: z.enum(['Active', 'Breeding', 'Holding']).default('Active'),
+  status: z.enum(['Active', 'Breeding', 'Holding', 'Experimental']).default('Active'),
   isActive: z.boolean().default(true),
   strainInput: z.string().optional(),
 });
@@ -285,6 +285,7 @@ export default function Cages() {
       location: cage.location,
       capacity: cage.capacity?.toString() || "",
       status: cage.status || "Active",
+      isActive: cage.isActive ?? true,
       strainInput: currentStrain?.name || "",
     });
     setShowCageForm(true);
@@ -325,6 +326,8 @@ export default function Cages() {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200';
       case 'Holding':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200';
+      case 'Experimental':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 border-gray-200';
     }
@@ -1001,6 +1004,7 @@ export default function Cages() {
                         <SelectItem value="Active">General Use (Green)</SelectItem>
                         <SelectItem value="Breeding">Breeding (Blue)</SelectItem>
                         <SelectItem value="Holding">Holding (Purple)</SelectItem>
+                        <SelectItem value="Experimental">Experimental (Yellow)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1012,18 +1016,27 @@ export default function Cages() {
                 control={form.control}
                 name="isActive"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-cage-active"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
+                  <FormItem>
+                    <FormLabel>Cage State</FormLabel>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={field.value ? "default" : "outline"}
+                        className={field.value ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                        onClick={() => field.onChange(true)}
+                        data-testid="button-cage-active"
+                      >
                         Active
-                      </FormLabel>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={!field.value ? "default" : "outline"}
+                        className={!field.value ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+                        onClick={() => field.onChange(false)}
+                        data-testid="button-cage-inactive"
+                      >
+                        Inactive
+                      </Button>
                     </div>
                   </FormItem>
                 )}

@@ -262,6 +262,7 @@ export default function ClaimBlankQr() {
                     <SelectItem value="Active">Active</SelectItem>
                     <SelectItem value="Breeding">Breeding</SelectItem>
                     <SelectItem value="Holding">Holding</SelectItem>
+                    <SelectItem value="Experimental">Experimental</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

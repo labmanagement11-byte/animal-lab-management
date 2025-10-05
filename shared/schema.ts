@@ -77,7 +77,7 @@ export const cages = pgTable("cages", {
   capacity: integer("capacity"),
   isActive: boolean("is_active").default(true),
   status: varchar("status", {
-    enum: ['Active', 'Breeding', 'Holding']
+    enum: ['Active', 'Breeding', 'Holding', 'Experimental']
   }).default('Active'),
   strainId: varchar("strain_id").references(() => strains.id),
   notes: text("notes"),
@@ -148,7 +148,7 @@ export const animals = pgTable("animals", {
     enum: ['Healthy', 'Monitoring', 'Sick', 'Quarantine'] 
   }).default('Healthy'),
   status: varchar("status", {
-    enum: ['Active', 'Reserved', 'Transferred', 'Sacrificed', 'Breeding', 'Replaced']
+    enum: ['Active', 'Reserved', 'Transferred', 'Sacrificed', 'Replaced']
   }).default('Active'),
   diseases: text("diseases"),
   notes: text("notes"),
