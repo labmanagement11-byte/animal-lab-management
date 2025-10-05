@@ -1093,7 +1093,8 @@ export default function Cages() {
 
       {/* Cage QR Code Generator Modal */}
       <Dialog open={showQrGenerator} onOpenChange={setShowQrGenerator}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" aria-describedby="qr-generator-description">
+          <span id="qr-generator-description" className="sr-only">Generate and print QR code for this cage</span>
           {selectedCage && (
             <CageQrCodeGenerator 
               cage={selectedCage}
@@ -1105,7 +1106,8 @@ export default function Cages() {
 
       {/* Blank QR Code Generator Modal */}
       <Dialog open={showBlankQrGenerator} onOpenChange={setShowBlankQrGenerator}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="blank-qr-generator-description">
+          <span id="blank-qr-generator-description" className="sr-only">Generate blank QR codes for cages</span>
           <BlankQrGenerator onClose={() => setShowBlankQrGenerator(false)} />
         </DialogContent>
       </Dialog>

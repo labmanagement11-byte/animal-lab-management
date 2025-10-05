@@ -4,7 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import GlobalSearch from "@/components/global-search";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
@@ -57,6 +57,10 @@ export default function MobileHeader({ onMenuClick, onNavigate }: MobileHeaderPr
 
       <Dialog open={showSearch} onOpenChange={setShowSearch}>
         <DialogContent className="p-4 max-w-[calc(100vw-2rem)] mx-4">
+          <DialogHeader>
+            <DialogTitle>Search</DialogTitle>
+            <DialogDescription>Search for animals, cages, and users</DialogDescription>
+          </DialogHeader>
           <GlobalSearch onNavigate={(path) => {
             onNavigate(path);
             setShowSearch(false);
