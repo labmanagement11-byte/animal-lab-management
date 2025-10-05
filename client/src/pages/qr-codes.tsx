@@ -270,7 +270,7 @@ export default function QrCodes() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 ml-[122px] mr-[122px]">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold text-foreground">QR Codes</h2>
           <p className="text-sm text-muted-foreground">View and manage all generated QR codes</p>
