@@ -29,7 +29,11 @@ export default function StrainsPage() {
 
   // Create strain mutation
   const createStrainMutation = useMutation({
-    mutationFn: (name: string) => apiRequest('POST', '/api/strains', { name }),
+    mutationFn: (name: string) => apiRequest('/api/strains', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+      headers: { 'Content-Type': 'application/json' }
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/strains'] });
       toast({
@@ -49,7 +53,7 @@ export default function StrainsPage() {
 
   // Delete strain mutation
   const deleteStrainMutation = useMutation({
-    mutationFn: (id: string) => apiRequest('DELETE', `/api/strains/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/strains/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/strains'] });
       toast({

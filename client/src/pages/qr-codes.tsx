@@ -30,7 +30,7 @@ export default function QrCodes() {
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
   const deleteQrMutation = useMutation({
-    mutationFn: (id: string) => apiRequest('DELETE', `/api/qr-codes/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/qr-codes/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       toast({
         title: "Success",
@@ -49,7 +49,7 @@ export default function QrCodes() {
   });
 
   const restoreQrMutation = useMutation({
-    mutationFn: (id: string) => apiRequest('POST', `/api/qr-codes/${id}/restore`),
+    mutationFn: (id: string) => apiRequest(`/api/qr-codes/${id}/restore`, { method: 'POST' }),
     onSuccess: () => {
       toast({
         title: "Success",

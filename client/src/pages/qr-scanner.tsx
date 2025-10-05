@@ -48,7 +48,11 @@ export default function QrScanner() {
 
   const claimQrMutation = useMutation({
     mutationFn: async ({ qrId, cageId }: { qrId: string; cageId: string }) => {
-      return await apiRequest("POST", `/api/qr-codes/${qrId}/claim`, { cageId });
+      return await apiRequest(`/api/qr-codes/${qrId}/claim`, {
+        method: "POST",
+        body: JSON.stringify({ cageId }),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });

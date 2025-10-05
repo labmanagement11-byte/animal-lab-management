@@ -53,9 +53,17 @@ export default function ClaimBlankQr() {
 
   const createCageAndClaimMutation = useMutation({
     mutationFn: async () => {
-      const cageResponse = await apiRequest("POST", "/api/cages", formData);
+      const cageResponse = await apiRequest("/api/cages", {
+        method: "POST",
+        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" }
+      });
       const newCage = await cageResponse.json();
-      await apiRequest("POST", `/api/qr-codes/${qrCode?.id}/claim`, { cageId: newCage.id });
+      await apiRequest(`/api/qr-codes/${qrCode?.id}/claim`, {
+        method: "POST",
+        body: JSON.stringify({ cageId: newCage.id }),
+        headers: { "Content-Type": "application/json" }
+      });
       return newCage;
     },
     onSuccess: (cage) => {

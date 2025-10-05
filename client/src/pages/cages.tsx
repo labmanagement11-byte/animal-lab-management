@@ -106,7 +106,11 @@ export default function Cages() {
           strainId = existingStrain.id;
         } else {
           // Create new strain
-          const response = await apiRequest("POST", "/api/strains", { name: normalized });
+          const response = await apiRequest("/api/strains", {
+            method: "POST",
+            body: JSON.stringify({ name: normalized }),
+            headers: { "Content-Type": "application/json" }
+          });
           const newStrain = await response.json();
           strainId = newStrain.id;
         }
@@ -121,7 +125,11 @@ export default function Cages() {
         isActive: data.isActive,
         strainId,
       };
-      await apiRequest("POST", "/api/cages", payload);
+      await apiRequest("/api/cages", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -172,7 +180,11 @@ export default function Cages() {
           strainId = existingStrain.id;
         } else {
           // Create new strain
-          const response = await apiRequest("POST", "/api/strains", { name: normalized });
+          const response = await apiRequest("/api/strains", {
+            method: "POST",
+            body: JSON.stringify({ name: normalized }),
+            headers: { "Content-Type": "application/json" }
+          });
           const newStrain = await response.json();
           strainId = newStrain.id;
         }
@@ -187,7 +199,11 @@ export default function Cages() {
         isActive: data.isActive,
         strainId,
       };
-      await apiRequest("PUT", `/api/cages/${editingCage!.id}`, payload);
+      await apiRequest(`/api/cages/${editingCage!.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -224,7 +240,7 @@ export default function Cages() {
 
   const deleteCageMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/cages/${id}`);
+      await apiRequest(`/api/cages/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 

@@ -41,9 +41,13 @@ export default function CageQrCodeGenerator({ cage, onClose }: CageQrCodeGenerat
 
   const createQrCodeMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/qr-codes", {
-        cageId: cage.id,
-        qrData: qrData,
+      await apiRequest("/api/qr-codes", {
+        method: "POST",
+        body: JSON.stringify({
+          cageId: cage.id,
+          qrData: qrData,
+        }),
+        headers: { "Content-Type": "application/json" }
       });
     },
     onSuccess: () => {

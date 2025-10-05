@@ -26,10 +26,14 @@ export default function QrCodeGenerator({ animal, onClose }: QrCodeGeneratorProp
 
   const createQrCodeMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/qr-codes", {
-        animalId: animal.id,
-        cageId: animal.cageId,
-        qrData: qrData,
+      await apiRequest("/api/qr-codes", {
+        method: "POST",
+        body: JSON.stringify({
+          animalId: animal.id,
+          cageId: animal.cageId,
+          qrData: qrData,
+        }),
+        headers: { "Content-Type": "application/json" }
       });
     },
     onSuccess: () => {

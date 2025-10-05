@@ -28,7 +28,11 @@ export default function BlankQrPage() {
 
   const generateQrMutation = useMutation({
     mutationFn: async (count: number) => {
-      const response = await apiRequest("POST", "/api/qr-codes/generate-blank", { count });
+      const response = await apiRequest("/api/qr-codes/generate-blank", {
+        method: "POST",
+        body: JSON.stringify({ count }),
+        headers: { "Content-Type": "application/json" }
+      });
       return response.json() as Promise<QrCode[]>;
     },
     onSuccess: (data: QrCode[]) => {

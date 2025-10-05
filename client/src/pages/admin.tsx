@@ -13,7 +13,7 @@ export default function Admin() {
   const queryClient = useQueryClient();
 
   const setupAdminMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/setup-admin'),
+    mutationFn: () => apiRequest('/api/setup-admin', { method: 'POST' }),
     onSuccess: () => {
       toast({
         title: "Success",

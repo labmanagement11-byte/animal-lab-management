@@ -80,7 +80,7 @@ export default function Trash() {
 
   const restoreAnimalMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("POST", `/api/animals/${id}/restore`);
+      await apiRequest(`/api/animals/${id}/restore`, { method: "POST" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/animals/trash'] });
@@ -101,7 +101,7 @@ export default function Trash() {
 
   const permanentDeleteAnimalMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/animals/${id}/permanent`);
+      await apiRequest(`/api/animals/${id}/permanent`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/animals/trash'] });
@@ -123,7 +123,7 @@ export default function Trash() {
 
   const restoreCageMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("POST", `/api/cages/${id}/restore`);
+      await apiRequest(`/api/cages/${id}/restore`, { method: "POST" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cages/trash'] });
@@ -144,7 +144,7 @@ export default function Trash() {
 
   const permanentDeleteCageMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/cages/${id}/permanent`);
+      await apiRequest(`/api/cages/${id}/permanent`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cages/trash'] });
@@ -166,7 +166,7 @@ export default function Trash() {
 
   const restoreStrainMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("POST", `/api/strains/${id}/restore`);
+      await apiRequest(`/api/strains/${id}/restore`, { method: "POST" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/strains/trash'] });
@@ -187,7 +187,7 @@ export default function Trash() {
 
   const permanentDeleteStrainMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/strains/${id}/permanent`);
+      await apiRequest(`/api/strains/${id}/permanent`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/strains/trash'] });
@@ -209,7 +209,7 @@ export default function Trash() {
 
   const restoreQrCodeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("POST", `/api/qr-codes/${id}/restore`);
+      await apiRequest(`/api/qr-codes/${id}/restore`, { method: "POST" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/trash'] });
@@ -230,7 +230,7 @@ export default function Trash() {
 
   const permanentDeleteQrCodeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/qr-codes/${id}/permanent`);
+      await apiRequest(`/api/qr-codes/${id}/permanent`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/trash'] });
@@ -252,7 +252,7 @@ export default function Trash() {
 
   const restoreUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("POST", `/api/users/${id}/restore`);
+      await apiRequest(`/api/users/${id}/restore`, { method: "POST" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/trash'] });
@@ -273,7 +273,7 @@ export default function Trash() {
 
   const permanentDeleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/users/${id}/permanent`);
+      await apiRequest(`/api/users/${id}/permanent`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/trash'] });
@@ -295,7 +295,11 @@ export default function Trash() {
 
   const batchDeleteAnimalsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      return await apiRequest("POST", "/api/animals/batch-delete", { ids });
+      return await apiRequest("/api/animals/batch-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/animals/trash'] });
@@ -318,7 +322,11 @@ export default function Trash() {
 
   const batchDeleteCagesMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      return await apiRequest("POST", "/api/cages/batch-delete", { ids });
+      return await apiRequest("/api/cages/batch-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cages/trash'] });
@@ -341,7 +349,11 @@ export default function Trash() {
 
   const batchDeleteStrainsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      return await apiRequest("POST", "/api/strains/batch-delete", { ids });
+      return await apiRequest("/api/strains/batch-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/strains/trash'] });
@@ -364,7 +376,11 @@ export default function Trash() {
 
   const batchDeleteQrCodesMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      return await apiRequest("POST", "/api/qr-codes/batch-delete", { ids });
+      return await apiRequest("/api/qr-codes/batch-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/trash'] });
@@ -387,7 +403,11 @@ export default function Trash() {
 
   const batchDeleteUsersMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      return await apiRequest("POST", "/api/users/batch-delete", { ids });
+      return await apiRequest("/api/users/batch-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/trash'] });

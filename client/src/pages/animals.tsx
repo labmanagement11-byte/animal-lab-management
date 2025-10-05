@@ -48,7 +48,7 @@ export default function Animals() {
 
   const deleteAnimalMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/animals/${id}`);
+      await apiRequest(`/api/animals/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 

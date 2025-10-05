@@ -61,7 +61,11 @@ export default function UsersPage() {
 
   const updateRoleMutation = useMutation({
     mutationFn: (data: { email: string; role: string }) => 
-      apiRequest('PUT', `/api/users/${data.email}/role`, { role: data.role }),
+      apiRequest(`/api/users/${data.email}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: data.role }),
+        headers: { 'Content-Type': 'application/json' }
+      }),
     onSuccess: () => {
       toast({
         title: "Success",
@@ -82,7 +86,11 @@ export default function UsersPage() {
 
   const inviteUserMutation = useMutation({
     mutationFn: async (data: InviteUserForm) => {
-      const response = await apiRequest('POST', '/api/invitations', data);
+      const response = await apiRequest('/api/invitations', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -104,7 +112,11 @@ export default function UsersPage() {
 
   const blockUserMutation = useMutation({
     mutationFn: (userId: string) => 
-      apiRequest('POST', `/api/users/${userId}/block`, {}),
+      apiRequest(`/api/users/${userId}/block`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' }
+      }),
     onSuccess: () => {
       toast({
         title: "Success",
@@ -123,7 +135,11 @@ export default function UsersPage() {
 
   const unblockUserMutation = useMutation({
     mutationFn: (userId: string) => 
-      apiRequest('POST', `/api/users/${userId}/unblock`, {}),
+      apiRequest(`/api/users/${userId}/unblock`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' }
+      }),
     onSuccess: () => {
       toast({
         title: "Success",
@@ -142,7 +158,7 @@ export default function UsersPage() {
 
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => 
-      apiRequest('DELETE', `/api/users/${userId}`, {}),
+      apiRequest(`/api/users/${userId}`, { method: 'DELETE' }),
     onSuccess: () => {
       toast({
         title: "Success",

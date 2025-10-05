@@ -134,7 +134,11 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
         genotype: data.genotype === "none" ? undefined : data.genotype,
       };
-      await apiRequest("POST", "/api/animals", payload);
+      await apiRequest("/api/animals", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -182,7 +186,11 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
         genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
         genotype: data.genotype === "none" ? undefined : data.genotype,
       };
-      await apiRequest("PUT", `/api/animals/${animal!.id}`, payload);
+      await apiRequest(`/api/animals/${animal!.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 

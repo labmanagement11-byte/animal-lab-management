@@ -26,7 +26,11 @@ export default function GenotypesPage() {
   });
 
   const createGenotypeMutation = useMutation({
-    mutationFn: (name: string) => apiRequest('POST', '/api/genotypes', { name }),
+    mutationFn: (name: string) => apiRequest('/api/genotypes', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+      headers: { 'Content-Type': 'application/json' }
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/genotypes'] });
       toast({
@@ -45,7 +49,7 @@ export default function GenotypesPage() {
   });
 
   const deleteGenotypeMutation = useMutation({
-    mutationFn: (id: string) => apiRequest('DELETE', `/api/genotypes/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/genotypes/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/genotypes'] });
       toast({
