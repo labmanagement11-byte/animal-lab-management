@@ -22,7 +22,7 @@ export default function MobileHeader({ onMenuClick, onNavigate }: MobileHeaderPr
 
   return (
     <>
-      <header className="md:hidden sticky top-0 z-40 bg-card border-b border-border">
+      <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <Button

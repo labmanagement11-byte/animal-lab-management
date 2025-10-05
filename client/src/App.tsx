@@ -14,6 +14,7 @@ import Reports from "@/pages/reports";
 import Trash from "@/pages/trash";
 import Admin from "@/pages/admin";
 import Users from "@/pages/users";
+import BlankQr from "@/pages/blank-qr";
 import CageQrDetail from "@/pages/cage-qr-detail";
 import AnimalQrDetail from "@/pages/animal-qr-detail";
 import NotFound from "@/pages/not-found";
@@ -48,10 +49,6 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-background">
-      <div className="hidden md:block">
-        <Sidebar onNavigate={handleNavigate} />
-      </div>
-      
       <div className="flex-1 flex flex-col overflow-hidden">
         <MobileHeader 
           onMenuClick={() => setMobileMenuOpen(true)} 
@@ -65,6 +62,7 @@ function AppContent() {
             <Route path="/cages" component={Cages} />
             <Route path="/strains" component={Strains} />
             <Route path="/qr-scanner" component={QrScanner} />
+            <Route path="/blank-qr" component={BlankQr} />
             <Route path="/reports" component={Reports} />
             <Route path="/trash" component={Trash} />
             <Route path="/admin" component={Admin} />
