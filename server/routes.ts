@@ -55,14 +55,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Global search
-  app.get('/api/search', isAuthenticated, async (req, res) => {
+  app.get('/api/search', isAuthenticated, async (req: any, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
 
-      const results = await storage.globalSearch(query);
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      const results = await storage.globalSearch(query, companyId);
       
       // Format results for frontend
       const formattedResults = [
@@ -133,9 +135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/animals/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const animal = await storage.getAnimal(req.params.id);
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      const animal = await storage.getAnimal(req.params.id, companyId);
       if (!animal) {
         return res.status(404).json({ message: "Animal not found" });
       }
@@ -183,6 +187,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this animal
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      const existing = await storage.getAnimal(req.params.id, companyId);
+      if (!existing) {
+        return res.status(404).json({ message: "Animal not found" });
+      }
+
       // Transform date strings to Date objects
       const transformedData = {
         ...req.body,
@@ -216,6 +228,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Validate user has access to this animal
+      const user = await storage.getUser(req.user.claims.sub);
+      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      const existing = await storage.getAnimal(req.params.id, companyId);
+      if (!existing) {
+        return res.status(404).json({ message: "Animal not found" });
+      }
+
       const userId = req.user.claims.sub;
       await storage.deleteAnimal(req.params.id, userId);
       

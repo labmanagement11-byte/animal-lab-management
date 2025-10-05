@@ -100,7 +100,7 @@ export interface IStorage {
   }>;
   
   // Global search
-  globalSearch(query: string): Promise<{
+  globalSearch(query: string, companyId?: string): Promise<{
     animals: Animal[];
     cages: Cage[];
     users: User[];
@@ -783,7 +783,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Global search
-  async globalSearch(query: string): Promise<{
+  async globalSearch(query: string, companyId?: string): Promise<{
     animals: Animal[];
     cages: Cage[];
     users: User[];
@@ -800,22 +800,40 @@ export class DatabaseStorage implements IStorage {
       .from(animals)
       .leftJoin(cages, eq(animals.cageId, cages.id))
       .where(
-        and(
-          isNull(animals.deletedAt),
-          or(
-            ilike(animals.animalNumber, searchTerm),
-            ilike(animals.breed, searchTerm),
-            ilike(animals.genotype, searchTerm),
-            ilike(animals.color, searchTerm),
-            ilike(animals.protocol, searchTerm),
-            ilike(animals.diseases, searchTerm),
-            ilike(animals.notes, searchTerm),
-            ilike(animals.healthStatus, searchTerm),
-            ilike(animals.status, searchTerm),
-            ilike(cages.cageNumber, searchTerm),
-            ilike(cages.location, searchTerm)
-          )
-        )
+        companyId
+          ? and(
+              isNull(animals.deletedAt),
+              eq(animals.companyId, companyId),
+              or(
+                ilike(animals.animalNumber, searchTerm),
+                ilike(animals.breed, searchTerm),
+                ilike(animals.genotype, searchTerm),
+                ilike(animals.color, searchTerm),
+                ilike(animals.protocol, searchTerm),
+                ilike(animals.diseases, searchTerm),
+                ilike(animals.notes, searchTerm),
+                ilike(animals.healthStatus, searchTerm),
+                ilike(animals.status, searchTerm),
+                ilike(cages.cageNumber, searchTerm),
+                ilike(cages.location, searchTerm)
+              )
+            )
+          : and(
+              isNull(animals.deletedAt),
+              or(
+                ilike(animals.animalNumber, searchTerm),
+                ilike(animals.breed, searchTerm),
+                ilike(animals.genotype, searchTerm),
+                ilike(animals.color, searchTerm),
+                ilike(animals.protocol, searchTerm),
+                ilike(animals.diseases, searchTerm),
+                ilike(animals.notes, searchTerm),
+                ilike(animals.healthStatus, searchTerm),
+                ilike(animals.status, searchTerm),
+                ilike(cages.cageNumber, searchTerm),
+                ilike(cages.location, searchTerm)
+              )
+            )
       )
       .limit(10);
 
@@ -824,16 +842,28 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(cages)
       .where(
-        and(
-          isNull(cages.deletedAt),
-          or(
-            ilike(cages.cageNumber, searchTerm),
-            ilike(cages.roomNumber, searchTerm),
-            ilike(cages.location, searchTerm),
-            ilike(cages.status, searchTerm),
-            ilike(cages.notes, searchTerm)
-          )
-        )
+        companyId
+          ? and(
+              isNull(cages.deletedAt),
+              eq(cages.companyId, companyId),
+              or(
+                ilike(cages.cageNumber, searchTerm),
+                ilike(cages.roomNumber, searchTerm),
+                ilike(cages.location, searchTerm),
+                ilike(cages.status, searchTerm),
+                ilike(cages.notes, searchTerm)
+              )
+            )
+          : and(
+              isNull(cages.deletedAt),
+              or(
+                ilike(cages.cageNumber, searchTerm),
+                ilike(cages.roomNumber, searchTerm),
+                ilike(cages.location, searchTerm),
+                ilike(cages.status, searchTerm),
+                ilike(cages.notes, searchTerm)
+              )
+            )
       )
       .limit(10);
 
@@ -856,10 +886,18 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(strains)
       .where(
-        or(
-          ilike(strains.name, searchTerm),
-          ilike(strains.description, searchTerm)
-        )
+        companyId
+          ? and(
+              eq(strains.companyId, companyId),
+              or(
+                ilike(strains.name, searchTerm),
+                ilike(strains.description, searchTerm)
+              )
+            )
+          : or(
+              ilike(strains.name, searchTerm),
+              ilike(strains.description, searchTerm)
+            )
       )
       .limit(10);
 
@@ -868,10 +906,18 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(genotypes)
       .where(
-        or(
-          ilike(genotypes.name, searchTerm),
-          ilike(genotypes.description, searchTerm)
-        )
+        companyId
+          ? and(
+              eq(genotypes.companyId, companyId),
+              or(
+                ilike(genotypes.name, searchTerm),
+                ilike(genotypes.description, searchTerm)
+              )
+            )
+          : or(
+              ilike(genotypes.name, searchTerm),
+              ilike(genotypes.description, searchTerm)
+            )
       )
       .limit(10);
 
@@ -881,10 +927,18 @@ export class DatabaseStorage implements IStorage {
       .from(qrCodes)
       .leftJoin(cages, eq(qrCodes.cageId, cages.id))
       .where(
-        or(
-          ilike(qrCodes.qrData, searchTerm),
-          ilike(cages.cageNumber, searchTerm)
-        )
+        companyId
+          ? and(
+              eq(qrCodes.companyId, companyId),
+              or(
+                ilike(qrCodes.qrData, searchTerm),
+                ilike(cages.cageNumber, searchTerm)
+              )
+            )
+          : or(
+              ilike(qrCodes.qrData, searchTerm),
+              ilike(cages.cageNumber, searchTerm)
+            )
       )
       .limit(10);
 
@@ -895,13 +949,24 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(animals, eq(fileAttachments.animalId, animals.id))
       .leftJoin(cages, eq(fileAttachments.cageId, cages.id))
       .where(
-        or(
-          ilike(fileAttachments.fileName, searchTerm),
-          ilike(fileAttachments.originalName, searchTerm),
-          ilike(fileAttachments.fileType, searchTerm),
-          ilike(animals.animalNumber, searchTerm),
-          ilike(cages.cageNumber, searchTerm)
-        )
+        companyId
+          ? and(
+              eq(fileAttachments.companyId, companyId),
+              or(
+                ilike(fileAttachments.fileName, searchTerm),
+                ilike(fileAttachments.originalName, searchTerm),
+                ilike(fileAttachments.fileType, searchTerm),
+                ilike(animals.animalNumber, searchTerm),
+                ilike(cages.cageNumber, searchTerm)
+              )
+            )
+          : or(
+              ilike(fileAttachments.fileName, searchTerm),
+              ilike(fileAttachments.originalName, searchTerm),
+              ilike(fileAttachments.fileType, searchTerm),
+              ilike(animals.animalNumber, searchTerm),
+              ilike(cages.cageNumber, searchTerm)
+            )
       )
       .limit(10);
 

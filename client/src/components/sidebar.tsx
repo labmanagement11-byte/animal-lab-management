@@ -18,7 +18,6 @@ import {
   Building2
 } from "lucide-react";
 import { useLocation } from "wouter";
-import GlobalSearch from "@/components/global-search";
 import { useTheme } from "@/contexts/theme-context";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -116,11 +115,7 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
           )}
         </div>
 
-        <div className="p-4 border-b border-border">
-          <GlobalSearch onNavigate={handleNavigate} />
-        </div>
-
-        <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+        <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
           <ul className="space-y-2">
             {menuItems.map((item) => (
               <li key={item.id}>
