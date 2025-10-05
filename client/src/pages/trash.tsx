@@ -31,14 +31,15 @@ import {
 
 export default function Trash() {
   const { toast } = useToast();
-  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" | "strain" | "qrcode" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"animals" | "cages" | "strains" | "qrcodes">("animals");
+  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" | "strain" | "qrcode" | "user" } | null>(null);
+  const [activeTab, setActiveTab] = useState<"animals" | "cages" | "strains" | "qrcodes" | "users">("animals");
 
   const { data: currentUser } = useQuery<UserType>({
     queryKey: ['/api/auth/user'],
   });
 
   const canPermanentlyDelete = currentUser?.role === 'Admin' || currentUser?.role === 'Director';
+  const isAdmin = currentUser?.role === 'Admin';
 
   const { data: deletedAnimals = [], isLoading: loadingAnimals } = useQuery<Animal[]>({
     queryKey: ['/api/animals/trash'],
@@ -54,6 +55,11 @@ export default function Trash() {
 
   const { data: deletedQrCodes = [], isLoading: loadingQrCodes } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes-trash'],
+  });
+
+  const { data: deletedUsers = [], isLoading: loadingUsers } = useQuery<UserType[]>({
+    queryKey: ['/api/users-trash'],
+    enabled: isAdmin,
   });
 
   const canViewUsers = currentUser?.role === 'Success Manager' || currentUser?.role === 'Admin';
@@ -235,6 +241,49 @@ export default function Trash() {
     },
   });
 
+  const restoreUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("POST", `/api/users/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users-trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      toast({
+        title: "Success",
+        description: "User restored successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to restore user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const permanentDeleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/users/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users-trash'] });
+      setDeletingItem(null);
+      toast({
+        title: "Success",
+        description: "User permanently deleted",
+      });
+    },
+    onError: () => {
+      setDeletingItem(null);
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getUserName = (userId: string | null | undefined) => {
     if (!userId) return 'N/A';
     if (!canViewUsers) return userId.substring(0, 8);
@@ -265,7 +314,7 @@ export default function Trash() {
     return calculateDaysUntilPermanentDeletion(deletedAt);
   };
 
-  const isLoading = loadingAnimals || loadingCages || loadingStrains || loadingQrCodes;
+  const isLoading = loadingAnimals || loadingCages || loadingStrains || loadingQrCodes || (isAdmin && loadingUsers);
 
   if (isLoading) {
     return (
@@ -309,8 +358,8 @@ export default function Trash() {
         </Card>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "animals" | "cages" | "strains" | "qrcodes")} className="w-full">
-          <TabsList className="grid w-full md:w-[800px] grid-cols-4">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "animals" | "cages" | "strains" | "qrcodes" | "users")} className="w-full">
+          <TabsList className={`grid w-full ${isAdmin ? 'md:w-[1000px] grid-cols-5' : 'md:w-[800px] grid-cols-4'}`}>
             <TabsTrigger value="animals" data-testid="tab-animals">
               Animals ({deletedAnimals.length})
             </TabsTrigger>
@@ -323,6 +372,11 @@ export default function Trash() {
             <TabsTrigger value="qrcodes" data-testid="tab-qrcodes">
               QR Codes ({deletedQrCodes.length})
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="users" data-testid="tab-users">
+                Users ({deletedUsers.length})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Animals Tab */}
@@ -685,6 +739,95 @@ export default function Trash() {
               </div>
             )}
           </TabsContent>
+
+          {/* Users Tab */}
+          {isAdmin && (
+            <TabsContent value="users" className="space-y-4 mt-6">
+              {deletedUsers.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground" data-testid="text-no-deleted-users">
+                      No deleted users
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                  {deletedUsers.map((user) => {
+                    const daysLeft = getDaysUntilDeletion(user.deletedAt);
+                    const isExpiringSoon = daysLeft !== null && daysLeft <= 3;
+                    
+                    return (
+                      <Card key={user.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-user-${user.id}`}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg" data-testid={`text-user-name-${user.id}`}>
+                                {user.firstName} {user.lastName}
+                              </CardTitle>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {user.email}
+                              </p>
+                            </div>
+                            <Badge variant="outline">
+                              {user.role}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {/* Deletion Info */}
+                          <div className="bg-muted p-3 rounded-md space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">Deleted:</span>
+                              <span className="font-medium">{formatDate(user.deletedAt)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Activity className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">By:</span>
+                              <span className="font-medium">{getUserName(user.deletedBy)}</span>
+                            </div>
+                            {daysLeft !== null && (
+                              <div className={`flex items-center gap-2 text-sm ${isExpiringSoon ? 'text-red-600 dark:text-red-400 font-semibold' : ''}`}>
+                                {isExpiringSoon && <AlertTriangle className="h-4 w-4" />}
+                                <span>Permanent deletion in: {daysLeft} days</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => restoreUserMutation.mutate(user.id)}
+                              disabled={restoreUserMutation.isPending}
+                              className="flex-1"
+                              data-testid={`button-restore-user-${user.id}`}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Restore
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeletingItem({ id: user.id, type: "user" })}
+                              className="flex-1"
+                              data-testid={`button-permanent-delete-user-${user.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Forever
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Confirmation Dialog */}
@@ -697,6 +840,7 @@ export default function Trash() {
                   deletingItem?.type === "animal" ? "animal" : 
                   deletingItem?.type === "cage" ? "cage" : 
                   deletingItem?.type === "qrcode" ? "QR code" : 
+                  deletingItem?.type === "user" ? "user" :
                   "strain"
                 } from the database.
                 Are you sure you want to continue?
@@ -713,6 +857,8 @@ export default function Trash() {
                       permanentDeleteCageMutation.mutate(deletingItem.id);
                     } else if (deletingItem.type === "qrcode") {
                       permanentDeleteQrCodeMutation.mutate(deletingItem.id);
+                    } else if (deletingItem.type === "user") {
+                      permanentDeleteUserMutation.mutate(deletingItem.id);
                     } else {
                       permanentDeleteStrainMutation.mutate(deletingItem.id);
                     }
