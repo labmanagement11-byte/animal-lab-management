@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema } from "@shared/schema";
+import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema, insertCompanySchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -1470,6 +1470,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying invitation:", error);
       res.status(500).json({ message: "Failed to verify invitation" });
+    }
+  });
+
+  // Company management routes (Admin only)
+  app.get('/api/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can manage companies" });
+      }
+
+      const companies = await storage.getCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  });
+
+  app.get('/api/companies/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can manage companies" });
+      }
+
+      const company = await storage.getCompany(req.params.id);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company:", error);
+      res.status(500).json({ message: "Failed to fetch company" });
+    }
+  });
+
+  app.post('/api/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can create companies" });
+      }
+
+      const result = insertCompanySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: fromZodError(result.error).message 
+        });
+      }
+
+      const company = await storage.createCompany(result.data);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CREATE',
+        tableName: 'companies',
+        recordId: company.id,
+        changes: result.data,
+      });
+
+      res.status(201).json(company);
+    } catch (error) {
+      console.error("Error creating company:", error);
+      res.status(500).json({ message: "Failed to create company" });
+    }
+  });
+
+  app.patch('/api/companies/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can update companies" });
+      }
+
+      const result = insertCompanySchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: fromZodError(result.error).message 
+        });
+      }
+
+      const company = await storage.updateCompany(req.params.id, result.data);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'companies',
+        recordId: company.id,
+        changes: result.data,
+      });
+
+      res.json(company);
+    } catch (error) {
+      console.error("Error updating company:", error);
+      res.status(500).json({ message: "Failed to update company" });
+    }
+  });
+
+  app.delete('/api/companies/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can delete companies" });
+      }
+
+      await storage.deleteCompany(req.params.id);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'DELETE',
+        tableName: 'companies',
+        recordId: req.params.id,
+        changes: {},
+      });
+
+      res.json({ message: "Company deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting company:", error);
+      res.status(500).json({ message: "Failed to delete company" });
     }
   });
 
