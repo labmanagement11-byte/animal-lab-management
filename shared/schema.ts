@@ -36,6 +36,18 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User invitations table
+export const userInvitations = pgTable("user_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  role: varchar("role", { enum: ['Admin', 'Success Manager', 'Director', 'Employee'] }).notNull(),
+  invitedBy: varchar("invited_by").references(() => users.id).notNull(),
+  token: varchar("token").notNull().unique(),
+  status: varchar("status", { enum: ['pending', 'accepted', 'expired'] }).default('pending').notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Cages table
 export const cages = pgTable("cages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -277,6 +289,11 @@ export const insertGenotypeSchema = createInsertSchema(genotypes).omit({
   createdAt: true,
 });
 
+export const insertUserInvitationSchema = createInsertSchema(userInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -302,3 +319,6 @@ export type InsertStrain = z.infer<typeof insertStrainSchema>;
 
 export type Genotype = typeof genotypes.$inferSelect;
 export type InsertGenotype = z.infer<typeof insertGenotypeSchema>;
+
+export type UserInvitation = typeof userInvitations.$inferSelect;
+export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;

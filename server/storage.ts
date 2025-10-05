@@ -7,6 +7,7 @@ import {
   fileAttachments,
   strains,
   genotypes,
+  userInvitations,
   type User,
   type UpsertUser,
   type Animal,
@@ -23,6 +24,8 @@ import {
   type InsertStrain,
   type Genotype,
   type InsertGenotype,
+  type UserInvitation,
+  type InsertUserInvitation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte } from "drizzle-orm";
@@ -107,6 +110,13 @@ export interface IStorage {
   // Genotype operations
   getGenotypes(): Promise<Genotype[]>;
   createGenotype(genotype: InsertGenotype): Promise<Genotype>;
+
+  // User invitation operations
+  createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
+  getInvitations(): Promise<UserInvitation[]>;
+  getInvitationByToken(token: string): Promise<UserInvitation | undefined>;
+  acceptInvitation(token: string, userId: string): Promise<void>;
+  expireInvitation(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -771,6 +781,45 @@ export class DatabaseStorage implements IStorage {
       .values(genotypeData)
       .returning();
     return genotype;
+  }
+
+  // User invitation operations
+  async createInvitation(invitationData: InsertUserInvitation): Promise<UserInvitation> {
+    const [invitation] = await db
+      .insert(userInvitations)
+      .values(invitationData)
+      .returning();
+    return invitation;
+  }
+
+  async getInvitations(): Promise<UserInvitation[]> {
+    const result = await db
+      .select()
+      .from(userInvitations)
+      .orderBy(desc(userInvitations.createdAt));
+    return result;
+  }
+
+  async getInvitationByToken(token: string): Promise<UserInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(userInvitations)
+      .where(eq(userInvitations.token, token));
+    return invitation;
+  }
+
+  async acceptInvitation(token: string, userId: string): Promise<void> {
+    await db
+      .update(userInvitations)
+      .set({ status: 'accepted' })
+      .where(eq(userInvitations.token, token));
+  }
+
+  async expireInvitation(id: string): Promise<void> {
+    await db
+      .update(userInvitations)
+      .set({ status: 'expired' })
+      .where(eq(userInvitations.id, id));
   }
 }
 

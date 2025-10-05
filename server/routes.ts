@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema } from "@shared/schema";
+import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -850,6 +850,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting up admin:", error);
       res.status(500).json({ message: "Failed to set up admin" });
+    }
+  });
+
+  // User invitation endpoints (Admin only)
+  app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only admins can create invitations" });
+      }
+
+      const { email, role } = req.body;
+      if (!email || !role) {
+        return res.status(400).json({ message: "Email and role are required" });
+      }
+
+      // Generate unique token
+      const token = crypto.randomUUID();
+      
+      // Set expiration date (7 days from now)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const invitation = await storage.createInvitation({
+        email,
+        role,
+        invitedBy: req.user.claims.sub,
+        token,
+        status: 'pending',
+        expiresAt,
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CREATE',
+        tableName: 'user_invitations',
+        recordId: invitation.id,
+        changes: { email, role },
+      });
+
+      res.status(201).json({ 
+        invitation,
+        invitationLink: `${req.protocol}://${req.get('host')}/api/invitations/accept/${token}`
+      });
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  app.get('/api/invitations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only admins can view invitations" });
+      }
+
+      const invitations = await storage.getInvitations();
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ message: "Failed to fetch invitations" });
+    }
+  });
+
+  app.get('/api/invitations/verify/:token', async (req, res) => {
+    try {
+      const invitation = await storage.getInvitationByToken(req.params.token);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+
+      if (invitation.status !== 'pending') {
+        return res.status(400).json({ message: "Invitation already used or expired" });
+      }
+
+      if (new Date() > new Date(invitation.expiresAt)) {
+        await storage.expireInvitation(invitation.id);
+        return res.status(400).json({ message: "Invitation has expired" });
+      }
+
+      res.json({ 
+        valid: true, 
+        email: invitation.email, 
+        role: invitation.role 
+      });
+    } catch (error) {
+      console.error("Error verifying invitation:", error);
+      res.status(500).json({ message: "Failed to verify invitation" });
     }
   });
 
