@@ -965,6 +965,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Block user endpoint (Admin only)
+  app.post('/api/users/:id/block', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can block users" });
+      }
+
+      const blockedUser = await storage.blockUser(req.params.id, req.user.claims.sub);
+      
+      if (!blockedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: blockedUser.id,
+        changes: { isBlocked: true },
+      });
+
+      res.json({ message: "User blocked successfully", user: blockedUser });
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      res.status(500).json({ message: "Failed to block user" });
+    }
+  });
+
+  // Unblock user endpoint (Admin only)
+  app.post('/api/users/:id/unblock', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can unblock users" });
+      }
+
+      const unblockedUser = await storage.unblockUser(req.params.id);
+      
+      if (!unblockedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: unblockedUser.id,
+        changes: { isBlocked: false },
+      });
+
+      res.json({ message: "User unblocked successfully", user: unblockedUser });
+    } catch (error) {
+      console.error("Error unblocking user:", error);
+      res.status(500).json({ message: "Failed to unblock user" });
+    }
+  });
+
+  // Delete user endpoint (Admin only)
+  app.delete('/api/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can delete users" });
+      }
+
+      // Check if target user exists
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.deleteUser(req.params.id, req.user.claims.sub);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'DELETE',
+        tableName: 'users',
+        recordId: req.params.id,
+        changes: { deletedAt: new Date() },
+      });
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Restore user endpoint (Admin only)
+  app.post('/api/users/:id/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can restore users" });
+      }
+
+      const restoredUser = await storage.restoreUser(req.params.id);
+      
+      if (!restoredUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: restoredUser.id,
+        changes: { deletedAt: null },
+      });
+
+      res.json({ message: "User restored successfully", user: restoredUser });
+    } catch (error) {
+      console.error("Error restoring user:", error);
+      res.status(500).json({ message: "Failed to restore user" });
+    }
+  });
+
   // User invitation endpoints (Admin and Director only)
   app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {

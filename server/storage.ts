@@ -36,6 +36,10 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(email: string, role: 'Admin' | 'Success Manager' | 'Director' | 'Employee'): Promise<User | undefined>;
+  blockUser(id: string, blockedBy: string): Promise<User | undefined>;
+  unblockUser(id: string): Promise<User | undefined>;
+  deleteUser(id: string, deletedBy: string): Promise<void>;
+  restoreUser(id: string): Promise<User | undefined>;
   
   // Animal operations
   getAnimals(limit?: number, includeDeleted?: boolean): Promise<Animal[]>;
@@ -155,6 +159,40 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ role, updatedAt: new Date() })
       .where(eq(users.email, email))
+      .returning();
+    return user;
+  }
+
+  async blockUser(id: string, blockedBy: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ isBlocked: true, blockedAt: new Date(), blockedBy, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async unblockUser(id: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ isBlocked: false, blockedAt: null, blockedBy: null, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async deleteUser(id: string, deletedBy: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ deletedAt: new Date(), deletedBy, updatedAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  async restoreUser(id: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ deletedAt: null, deletedBy: null, updatedAt: new Date() })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }

@@ -32,6 +32,11 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role", { enum: ['Admin', 'Success Manager', 'Director', 'Employee'] }).default('Employee').notNull(),
+  isBlocked: boolean("is_blocked").default(false),
+  blockedAt: timestamp("blocked_at"),
+  blockedBy: varchar("blocked_by").references(() => users.id),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

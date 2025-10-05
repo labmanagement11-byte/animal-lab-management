@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Users, UserCheck, Shield, Crown, Briefcase, UserPlus, Copy, Mail } from "lucide-react";
+import { Users, UserCheck, Shield, Crown, Briefcase, UserPlus, Copy, Mail, Ban, Unlock, Trash2, MoreVertical } from "lucide-react";
 import { useState } from "react";
 
 const updateRoleSchema = z.object({
@@ -94,6 +95,63 @@ export default function UsersPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to send invitation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const blockUserMutation = useMutation({
+    mutationFn: (userId: string) => 
+      apiRequest('POST', `/api/users/${userId}/block`, {}),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User blocked successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to block user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unblockUserMutation = useMutation({
+    mutationFn: (userId: string) => 
+      apiRequest('POST', `/api/users/${userId}/unblock`, {}),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User unblocked successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unblock user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => 
+      apiRequest('DELETE', `/api/users/${userId}`, {}),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User deleted successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
         variant: "destructive",
       });
     },
@@ -207,6 +265,7 @@ export default function UsersPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -242,20 +301,80 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {(isCurrentUserAdmin || isCurrentUserSuccessManager) && 
-                     user.email !== (currentUser as any)?.email && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openRoleDialog(user)}
-                        disabled={updateRoleMutation.isPending}
-                        data-testid={`button-edit-role-${user.id}`}
-                      >
-                        Edit Role
-                      </Button>
+                    {user.isBlocked ? (
+                      <Badge variant="destructive" className="flex items-center w-fit">
+                        <Ban className="w-3 h-3 mr-1" />
+                        Blocked
+                      </Badge>
+                    ) : user.deletedAt ? (
+                      <Badge variant="secondary" className="flex items-center w-fit">
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Deleted
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="flex items-center w-fit">
+                        <UserCheck className="w-3 h-3 mr-1" />
+                        Active
+                      </Badge>
                     )}
-                    {user.email === (currentUser as any)?.email && (
+                  </TableCell>
+                  <TableCell>
+                    {user.email === (currentUser as any)?.email ? (
                       <span className="text-sm text-muted-foreground">Current User</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {(isCurrentUserAdmin || isCurrentUserSuccessManager) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openRoleDialog(user)}
+                            disabled={updateRoleMutation.isPending}
+                            data-testid={`button-edit-role-${user.id}`}
+                          >
+                            Edit Role
+                          </Button>
+                        )}
+                        {isCurrentUserAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`button-actions-${user.id}`}>
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {user.isBlocked ? (
+                                <DropdownMenuItem 
+                                  onClick={() => unblockUserMutation.mutate(user.id)}
+                                  disabled={unblockUserMutation.isPending}
+                                  data-testid={`menu-unblock-${user.id}`}
+                                >
+                                  <Unlock className="w-4 h-4 mr-2" />
+                                  Unblock User
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  onClick={() => blockUserMutation.mutate(user.id)}
+                                  disabled={blockUserMutation.isPending}
+                                  data-testid={`menu-block-${user.id}`}
+                                >
+                                  <Ban className="w-4 h-4 mr-2" />
+                                  Block User
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => deleteUserMutation.mutate(user.id)}
+                                disabled={deleteUserMutation.isPending}
+                                className="text-destructive focus:text-destructive"
+                                data-testid={`menu-delete-${user.id}`}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
