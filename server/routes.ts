@@ -855,9 +855,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get QR code by scan data
-  app.get('/api/qr-codes/scan/:qrData', isAuthenticated, async (req, res) => {
+  app.get('/api/qr-codes/scan/:qrData', isAuthenticated, async (req: any, res) => {
     try {
-      const qrCode = await storage.getQrCodeByData(req.params.qrData);
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      const qrCode = await storage.getQrCodeByData(req.params.qrData, companyId);
       if (!qrCode) {
         return res.status(404).json({ message: "QR code not found" });
       }
@@ -918,9 +925,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get blank QR codes (unclaimed)
-  app.get('/api/qr-codes/blank', isAuthenticated, async (req, res) => {
+  app.get('/api/qr-codes/blank', isAuthenticated, async (req: any, res) => {
     try {
-      const allQrCodes = await storage.getQrCodes();
+      const user = await storage.getUser(req.user.claims.sub);
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      const allQrCodes = await storage.getQrCodes(false, companyId);
       const blankQrCodes = allQrCodes.filter(qr => qr.isBlank && !qr.cageId);
       res.json(blankQrCodes);
     } catch (error) {
@@ -1201,8 +1215,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       
+      // Admin can see all logs, Success Manager only sees logs from their company
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-      const logs = await storage.getAuditLogs(limit);
+      const logs = await storage.getAuditLogs(limit, companyId);
       res.json(logs);
     } catch (error) {
       console.error("Error fetching audit logs:", error);
@@ -1559,7 +1581,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       
-      const users = await storage.getAllUsers();
+      // Admin can see all users, Success Manager only sees users from their company
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      
+      const users = await storage.getAllUsers(companyId);
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -1730,9 +1760,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get deleted users (trash)
-  app.get('/api/users-trash', isAuthenticated, async (req, res) => {
+  app.get('/api/users-trash', isAuthenticated, async (req: any, res) => {
     try {
-      const deletedUsers = await storage.getDeletedUsers();
+      const user = await storage.getUser(req.user.claims.sub);
+      
+      // Admin can see all deleted users, others only see their company's deleted users
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      
+      const deletedUsers = await storage.getDeletedUsers(companyId);
       res.json(deletedUsers);
     } catch (error) {
       console.error("Error fetching deleted users:", error);
@@ -1913,7 +1953,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only Admin and Director can view invitations" });
       }
 
-      const invitations = await storage.getInvitations();
+      // Admin can see all invitations, Director only sees invitations from their company
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const invitations = await storage.getInvitations(companyId);
       res.json(invitations);
     } catch (error) {
       console.error("Error fetching invitations:", error);

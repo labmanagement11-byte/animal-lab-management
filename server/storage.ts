@@ -36,14 +36,14 @@ import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt } from "
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(companyId?: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(email: string, role: 'Admin' | 'Success Manager' | 'Director' | 'Employee'): Promise<User | undefined>;
   blockUser(id: string, blockedBy: string): Promise<User | undefined>;
   unblockUser(id: string): Promise<User | undefined>;
   deleteUser(id: string, deletedBy: string): Promise<void>;
   restoreUser(id: string): Promise<User | undefined>;
-  getDeletedUsers(): Promise<User[]>;
+  getDeletedUsers(companyId?: string): Promise<User[]>;
   permanentlyDeleteUser(id: string): Promise<void>;
   
   // Animal operations
@@ -82,7 +82,7 @@ export interface IStorage {
   
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
-  getAuditLogs(limit?: number): Promise<AuditLog[]>;
+  getAuditLogs(limit?: number, companyId?: string): Promise<AuditLog[]>;
   getAuditLogsByRecord(tableName: string, recordId: string): Promise<AuditLog[]>;
   getMonthlyActivityReport(year: number, month: number, companyId?: string): Promise<{
     animalActivity: { created: number; updated: number; deleted: number; restored: number };
@@ -128,7 +128,7 @@ export interface IStorage {
 
   // User invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
-  getInvitations(): Promise<UserInvitation[]>;
+  getInvitations(companyId?: string): Promise<UserInvitation[]>;
   getInvitationByToken(token: string): Promise<UserInvitation | undefined>;
   acceptInvitation(token: string, userId: string): Promise<void>;
   expireInvitation(id: string): Promise<void>;
@@ -166,9 +166,13 @@ export class DatabaseStorage implements IStorage {
     return user as User | undefined;
   }
 
-  async getAllUsers(): Promise<User[]> {
+  async getAllUsers(companyId?: string): Promise<User[]> {
+    const conditions = companyId 
+      ? and(isNull(users.deletedAt), eq(users.companyId, companyId))
+      : isNull(users.deletedAt);
+    
     const allUsers = await db.select().from(users)
-      .where(isNull(users.deletedAt))
+      .where(conditions)
       .orderBy(users.email);
     return allUsers as User[];
   }
@@ -241,11 +245,15 @@ export class DatabaseStorage implements IStorage {
     return user as User | undefined;
   }
 
-  async getDeletedUsers(): Promise<User[]> {
+  async getDeletedUsers(companyId?: string): Promise<User[]> {
+    const conditions = companyId 
+      ? and(isNotNull(users.deletedAt), eq(users.companyId, companyId))
+      : isNotNull(users.deletedAt);
+    
     const result = await db
       .select()
       .from(users)
-      .where(isNotNull(users.deletedAt))
+      .where(conditions)
       .orderBy(desc(users.deletedAt));
     return result as User[];
   }
@@ -672,10 +680,16 @@ export class DatabaseStorage implements IStorage {
     return newLog;
   }
 
-  async getAuditLogs(limit = 100): Promise<AuditLog[]> {
-    const result = await db
+  async getAuditLogs(limit = 100, companyId?: string): Promise<AuditLog[]> {
+    let query = db
       .select()
-      .from(auditLogs)
+      .from(auditLogs);
+    
+    if (companyId) {
+      query = query.where(eq(auditLogs.companyId, companyId));
+    }
+    
+    const result = await query
       .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
     return result;
@@ -1153,10 +1167,16 @@ export class DatabaseStorage implements IStorage {
     return invitation;
   }
 
-  async getInvitations(): Promise<UserInvitation[]> {
-    const result = await db
+  async getInvitations(companyId?: string): Promise<UserInvitation[]> {
+    let query = db
       .select()
-      .from(userInvitations)
+      .from(userInvitations);
+    
+    if (companyId) {
+      query = query.where(eq(userInvitations.companyId, companyId));
+    }
+    
+    const result = await query
       .orderBy(desc(userInvitations.createdAt));
     return result;
   }
