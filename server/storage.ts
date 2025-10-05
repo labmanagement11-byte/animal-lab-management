@@ -8,6 +8,7 @@ import {
   strains,
   genotypes,
   userInvitations,
+  companies,
   type User,
   type UpsertUser,
   type Animal,
@@ -26,6 +27,8 @@ import {
   type InsertGenotype,
   type UserInvitation,
   type InsertUserInvitation,
+  type Company,
+  type InsertCompany,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt } from "drizzle-orm";
@@ -44,38 +47,38 @@ export interface IStorage {
   permanentlyDeleteUser(id: string): Promise<void>;
   
   // Animal operations
-  getAnimals(limit?: number, includeDeleted?: boolean): Promise<Animal[]>;
-  getAnimal(id: string): Promise<Animal | undefined>;
+  getAnimals(limit?: number, includeDeleted?: boolean, companyId?: string): Promise<Animal[]>;
+  getAnimal(id: string, companyId?: string): Promise<Animal | undefined>;
   createAnimal(animal: InsertAnimal): Promise<Animal>;
   updateAnimal(id: string, animal: Partial<InsertAnimal>): Promise<Animal>;
   deleteAnimal(id: string, userId: string): Promise<void>;
   restoreAnimal(id: string): Promise<Animal>;
   permanentlyDeleteAnimal(id: string): Promise<void>;
-  getDeletedAnimals(): Promise<Animal[]>;
-  searchAnimals(query: string): Promise<Animal[]>;
+  getDeletedAnimals(companyId?: string): Promise<Animal[]>;
+  searchAnimals(query: string, companyId?: string): Promise<Animal[]>;
   
   // Cage operations
-  getCages(includeDeleted?: boolean): Promise<Cage[]>;
-  getCage(id: string): Promise<Cage | undefined>;
+  getCages(includeDeleted?: boolean, companyId?: string): Promise<Cage[]>;
+  getCage(id: string, companyId?: string): Promise<Cage | undefined>;
   createCage(cage: InsertCage): Promise<Cage>;
   updateCage(id: string, cage: Partial<InsertCage>): Promise<Cage>;
   deleteCage(id: string, userId: string): Promise<void>;
   restoreCage(id: string): Promise<Cage>;
   permanentlyDeleteCage(id: string): Promise<void>;
-  getDeletedCages(): Promise<Cage[]>;
+  getDeletedCages(companyId?: string): Promise<Cage[]>;
   cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number; deletedUsers: number }>;
   
   // QR Code operations
-  getQrCodes(includeDeleted?: boolean): Promise<QrCode[]>;
-  getQrCode(id: string): Promise<QrCode | undefined>;
-  getQrCodeByData(qrData: string): Promise<QrCode | undefined>;
+  getQrCodes(includeDeleted?: boolean, companyId?: string): Promise<QrCode[]>;
+  getQrCode(id: string, companyId?: string): Promise<QrCode | undefined>;
+  getQrCodeByData(qrData: string, companyId?: string): Promise<QrCode | undefined>;
   createQrCode(qrCode: InsertQrCode): Promise<QrCode>;
   updateQrCode(id: string, updates: Partial<InsertQrCode>): Promise<QrCode>;
   claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode>;
   deleteQrCode(id: string, userId: string): Promise<void>;
   restoreQrCode(id: string): Promise<QrCode>;
   permanentlyDeleteQrCode(id: string): Promise<void>;
-  getDeletedQrCodes(): Promise<QrCode[]>;
+  getDeletedQrCodes(companyId?: string): Promise<QrCode[]>;
   
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
@@ -89,7 +92,7 @@ export interface IStorage {
   }>;
   
   // Dashboard statistics
-  getDashboardStats(): Promise<{
+  getDashboardStats(companyId?: string): Promise<{
     totalAnimals: number;
     activeCages: number;
     qrCodes: number;
@@ -108,17 +111,17 @@ export interface IStorage {
   }>;
   
   // Strain operations
-  getStrains(): Promise<Strain[]>;
-  getStrain(id: string): Promise<Strain | undefined>;
+  getStrains(companyId?: string): Promise<Strain[]>;
+  getStrain(id: string, companyId?: string): Promise<Strain | undefined>;
   createStrain(strain: InsertStrain): Promise<Strain>;
   updateStrain(id: string, strain: Partial<InsertStrain>): Promise<Strain>;
   deleteStrain(id: string, userId: string): Promise<void>;
   restoreStrain(id: string): Promise<Strain>;
   permanentlyDeleteStrain(id: string): Promise<void>;
-  getDeletedStrains(): Promise<Strain[]>;
+  getDeletedStrains(companyId?: string): Promise<Strain[]>;
   
   // Genotype operations
-  getGenotypes(): Promise<Genotype[]>;
+  getGenotypes(companyId?: string): Promise<Genotype[]>;
   createGenotype(genotype: InsertGenotype): Promise<Genotype>;
   deleteGenotype(id: string): Promise<void>;
 
@@ -128,20 +131,27 @@ export interface IStorage {
   getInvitationByToken(token: string): Promise<UserInvitation | undefined>;
   acceptInvitation(token: string, userId: string): Promise<void>;
   expireInvitation(id: string): Promise<void>;
+  
+  // Company operations
+  getCompanies(): Promise<Company[]>;
+  getCompany(id: string): Promise<Company | undefined>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company>;
+  deleteCompany(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations (mandatory for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user as User | undefined;
   }
 
   async getAllUsers(): Promise<User[]> {
     const allUsers = await db.select().from(users)
       .where(isNull(users.deletedAt))
       .orderBy(users.email);
-    return allUsers;
+    return allUsers as User[];
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -165,7 +175,7 @@ export class DatabaseStorage implements IStorage {
       .set({ role, updatedAt: new Date() })
       .where(eq(users.email, email))
       .returning();
-    return user;
+    return user as User | undefined;
   }
 
   async blockUser(id: string, blockedBy: string): Promise<User | undefined> {
@@ -174,7 +184,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isBlocked: true, blockedAt: new Date(), blockedBy, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user;
+    return user as User | undefined;
   }
 
   async unblockUser(id: string): Promise<User | undefined> {
@@ -183,7 +193,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isBlocked: false, blockedAt: null, blockedBy: null, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user;
+    return user as User | undefined;
   }
 
   async deleteUser(id: string, deletedBy: string): Promise<void> {
@@ -199,7 +209,7 @@ export class DatabaseStorage implements IStorage {
       .set({ deletedAt: null, deletedBy: null, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user;
+    return user as User | undefined;
   }
 
   async getDeletedUsers(): Promise<User[]> {
@@ -208,7 +218,7 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(isNotNull(users.deletedAt))
       .orderBy(desc(users.deletedAt));
-    return result;
+    return result as User[];
   }
 
   async permanentlyDeleteUser(id: string): Promise<void> {
@@ -217,7 +227,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Animal operations
-  async getAnimals(limit = 50, includeDeleted = false): Promise<any[]> {
+  async getAnimals(limit = 50, includeDeleted = false, companyId?: string): Promise<any[]> {
+    const conditions = includeDeleted 
+      ? (companyId ? eq(animals.companyId, companyId) : undefined)
+      : (companyId ? and(isNull(animals.deletedAt), eq(animals.companyId, companyId)) : isNull(animals.deletedAt));
+    
     const result = await db
       .select({
         id: animals.id,
@@ -248,19 +262,37 @@ export class DatabaseStorage implements IStorage {
       })
       .from(animals)
       .leftJoin(cages, eq(animals.cageId, cages.id))
-      .where(includeDeleted ? undefined : isNull(animals.deletedAt))
+      .where(conditions)
       .orderBy(desc(animals.createdAt))
       .limit(limit);
     return result;
   }
 
-  async getAnimal(id: string): Promise<Animal | undefined> {
-    const [animal] = await db.select().from(animals).where(eq(animals.id, id));
+  async getAnimal(id: string, companyId?: string): Promise<Animal | undefined> {
+    const [animal] = await db.select().from(animals).where(
+      companyId ? and(eq(animals.id, id), eq(animals.companyId, companyId)) : eq(animals.id, id)
+    );
     return animal;
   }
 
   async createAnimal(animal: InsertAnimal): Promise<Animal> {
-    const [newAnimal] = await db.insert(animals).values(animal).returning();
+    const insertData = {
+      ...animal,
+      dateOfBirth: animal.dateOfBirth instanceof Date ? animal.dateOfBirth : 
+        (animal.dateOfBirth ? new Date(animal.dateOfBirth) : undefined),
+      breedingStartDate: animal.breedingStartDate instanceof Date ? animal.breedingStartDate : 
+        (animal.breedingStartDate ? new Date(animal.breedingStartDate) : undefined),
+      dateOfGenotyping: animal.dateOfGenotyping instanceof Date ? animal.dateOfGenotyping : 
+        (animal.dateOfGenotyping ? new Date(animal.dateOfGenotyping) : undefined),
+    };
+    
+    Object.keys(insertData).forEach(key => {
+      if (insertData[key as keyof typeof insertData] === undefined) {
+        delete insertData[key as keyof typeof insertData];
+      }
+    });
+
+    const [newAnimal] = await db.insert(animals).values(insertData).returning();
     return newAnimal;
   }
 
@@ -315,22 +347,20 @@ export class DatabaseStorage implements IStorage {
     await db.delete(animals).where(eq(animals.id, id));
   }
 
-  async getDeletedAnimals(): Promise<Animal[]> {
+  async getDeletedAnimals(companyId?: string): Promise<Animal[]> {
     const result = await db
       .select()
       .from(animals)
-      .where(isNotNull(animals.deletedAt))
+      .where(companyId ? and(isNotNull(animals.deletedAt), eq(animals.companyId, companyId)) : isNotNull(animals.deletedAt))
       .orderBy(desc(animals.deletedAt));
     return result;
   }
 
-  async searchAnimals(query: string): Promise<Animal[]> {
-    const result = await db
-      .select()
-      .from(animals)
-      .where(
-        and(
+  async searchAnimals(query: string, companyId?: string): Promise<Animal[]> {
+    const conditions = companyId 
+      ? and(
           isNull(animals.deletedAt),
+          eq(animals.companyId, companyId),
           or(
             ilike(animals.animalNumber, `%${query}%`),
             ilike(animals.breed, `%${query}%`),
@@ -338,23 +368,42 @@ export class DatabaseStorage implements IStorage {
             ilike(animals.notes, `%${query}%`)
           )
         )
-      )
+      : and(
+          isNull(animals.deletedAt),
+          or(
+            ilike(animals.animalNumber, `%${query}%`),
+            ilike(animals.breed, `%${query}%`),
+            ilike(animals.genotype, `%${query}%`),
+            ilike(animals.notes, `%${query}%`)
+          )
+        );
+    
+    const result = await db
+      .select()
+      .from(animals)
+      .where(conditions)
       .orderBy(desc(animals.createdAt));
     return result;
   }
 
   // Cage operations
-  async getCages(includeDeleted = false): Promise<Cage[]> {
+  async getCages(includeDeleted = false, companyId?: string): Promise<Cage[]> {
+    const conditions = includeDeleted 
+      ? (companyId ? eq(cages.companyId, companyId) : undefined)
+      : (companyId ? and(isNull(cages.deletedAt), eq(cages.companyId, companyId)) : isNull(cages.deletedAt));
+    
     const result = await db
       .select()
       .from(cages)
-      .where(includeDeleted ? undefined : isNull(cages.deletedAt))
+      .where(conditions)
       .orderBy(cages.cageNumber);
     return result;
   }
 
-  async getCage(id: string): Promise<Cage | undefined> {
-    const [cage] = await db.select().from(cages).where(eq(cages.id, id));
+  async getCage(id: string, companyId?: string): Promise<Cage | undefined> {
+    const [cage] = await db.select().from(cages).where(
+      companyId ? and(eq(cages.id, id), eq(cages.companyId, companyId)) : eq(cages.id, id)
+    );
     return cage;
   }
 
@@ -395,11 +444,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(cages).where(eq(cages.id, id));
   }
 
-  async getDeletedCages(): Promise<Cage[]> {
+  async getDeletedCages(companyId?: string): Promise<Cage[]> {
     const result = await db
       .select()
       .from(cages)
-      .where(isNotNull(cages.deletedAt))
+      .where(companyId ? and(isNotNull(cages.deletedAt), eq(cages.companyId, companyId)) : isNotNull(cages.deletedAt))
       .orderBy(desc(cages.deletedAt));
     return result;
   }
@@ -465,22 +514,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   // QR Code operations
-  async getQrCodes(includeDeleted = false): Promise<QrCode[]> {
+  async getQrCodes(includeDeleted = false, companyId?: string): Promise<QrCode[]> {
+    const conditions = includeDeleted 
+      ? (companyId ? eq(qrCodes.companyId, companyId) : undefined)
+      : (companyId ? and(isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId)) : isNull(qrCodes.deletedAt));
+    
     const result = await db
       .select()
       .from(qrCodes)
-      .where(includeDeleted ? undefined : isNull(qrCodes.deletedAt))
+      .where(conditions)
       .orderBy(desc(qrCodes.createdAt));
     return result;
   }
 
-  async getQrCode(id: string): Promise<QrCode | undefined> {
-    const [qrCode] = await db.select().from(qrCodes).where(eq(qrCodes.id, id));
+  async getQrCode(id: string, companyId?: string): Promise<QrCode | undefined> {
+    const [qrCode] = await db.select().from(qrCodes).where(
+      companyId ? and(eq(qrCodes.id, id), eq(qrCodes.companyId, companyId)) : eq(qrCodes.id, id)
+    );
     return qrCode;
   }
 
-  async getQrCodeByData(qrData: string): Promise<QrCode | undefined> {
-    const [qrCode] = await db.select().from(qrCodes).where(eq(qrCodes.qrData, qrData));
+  async getQrCodeByData(qrData: string, companyId?: string): Promise<QrCode | undefined> {
+    const [qrCode] = await db.select().from(qrCodes).where(
+      companyId ? and(eq(qrCodes.qrData, qrData), eq(qrCodes.companyId, companyId)) : eq(qrCodes.qrData, qrData)
+    );
     return qrCode;
   }
 
@@ -571,11 +628,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(qrCodes).where(eq(qrCodes.id, id));
   }
 
-  async getDeletedQrCodes(): Promise<QrCode[]> {
+  async getDeletedQrCodes(companyId?: string): Promise<QrCode[]> {
     const result = await db
       .select()
       .from(qrCodes)
-      .where(isNotNull(qrCodes.deletedAt))
+      .where(companyId ? and(isNotNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId)) : isNotNull(qrCodes.deletedAt))
       .orderBy(desc(qrCodes.deletedAt));
     return result;
   }
@@ -649,9 +706,12 @@ export class DatabaseStorage implements IStorage {
     const userActivity = await Promise.all(
       Array.from(userActivityMap.entries()).map(async ([userId, count]) => {
         const user = await this.getUser(userId);
+        const fullName = user 
+          ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown'
+          : 'Unknown';
         return {
           userId,
-          username: user?.username || 'Unknown',
+          username: fullName,
           actionCount: count,
         };
       })
@@ -668,7 +728,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard statistics
-  async getDashboardStats(): Promise<{
+  async getDashboardStats(companyId?: string): Promise<{
     totalAnimals: number;
     activeCages: number;
     qrCodes: number;
@@ -677,28 +737,41 @@ export class DatabaseStorage implements IStorage {
     const [totalAnimals] = await db
       .select({ count: sql<number>`count(*)` })
       .from(animals)
-      .where(isNull(animals.deletedAt));
+      .where(companyId ? and(isNull(animals.deletedAt), eq(animals.companyId, companyId)) : isNull(animals.deletedAt));
 
     const [activeCages] = await db
       .select({ count: sql<number>`count(*)` })
       .from(cages)
-      .where(and(eq(cages.isActive, true), isNull(cages.deletedAt)));
+      .where(companyId 
+        ? and(eq(cages.isActive, true), isNull(cages.deletedAt), eq(cages.companyId, companyId)) 
+        : and(eq(cages.isActive, true), isNull(cages.deletedAt))
+      );
 
     const [qrCodesCount] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(qrCodes);
+      .from(qrCodes)
+      .where(companyId ? eq(qrCodes.companyId, companyId) : sql`true`);
 
     const [healthAlerts] = await db
       .select({ count: sql<number>`count(*)` })
       .from(animals)
       .where(
-        and(
-          isNull(animals.deletedAt),
-          or(
-            eq(animals.healthStatus, 'Sick'),
-            eq(animals.healthStatus, 'Quarantine')
-          )
-        )
+        companyId
+          ? and(
+              isNull(animals.deletedAt),
+              eq(animals.companyId, companyId),
+              or(
+                eq(animals.healthStatus, 'Sick'),
+                eq(animals.healthStatus, 'Quarantine')
+              )
+            )
+          : and(
+              isNull(animals.deletedAt),
+              or(
+                eq(animals.healthStatus, 'Sick'),
+                eq(animals.healthStatus, 'Quarantine')
+              )
+            )
       );
 
     return {
@@ -854,22 +927,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Strain operations
-  async getStrains(): Promise<Strain[]> {
+  async getStrains(companyId?: string): Promise<Strain[]> {
     const result = await db
       .select()
       .from(strains)
       .where(
-        and(
-          eq(strains.isActive, true),
-          isNull(strains.deletedAt)
-        )
+        companyId
+          ? and(
+              eq(strains.isActive, true),
+              isNull(strains.deletedAt),
+              eq(strains.companyId, companyId)
+            )
+          : and(
+              eq(strains.isActive, true),
+              isNull(strains.deletedAt)
+            )
       )
       .orderBy(strains.name);
     return result;
   }
 
-  async getStrain(id: string): Promise<Strain | undefined> {
-    const [strain] = await db.select().from(strains).where(eq(strains.id, id));
+  async getStrain(id: string, companyId?: string): Promise<Strain | undefined> {
+    const [strain] = await db.select().from(strains).where(
+      companyId ? and(eq(strains.id, id), eq(strains.companyId, companyId)) : eq(strains.id, id)
+    );
     return strain;
   }
 
@@ -913,21 +994,21 @@ export class DatabaseStorage implements IStorage {
     await db.delete(strains).where(eq(strains.id, id));
   }
 
-  async getDeletedStrains(): Promise<Strain[]> {
+  async getDeletedStrains(companyId?: string): Promise<Strain[]> {
     const result = await db
       .select()
       .from(strains)
-      .where(isNotNull(strains.deletedAt))
+      .where(companyId ? and(isNotNull(strains.deletedAt), eq(strains.companyId, companyId)) : isNotNull(strains.deletedAt))
       .orderBy(desc(strains.deletedAt));
     return result;
   }
 
   // Genotype operations
-  async getGenotypes(): Promise<Genotype[]> {
+  async getGenotypes(companyId?: string): Promise<Genotype[]> {
     const result = await db
       .select()
       .from(genotypes)
-      .where(eq(genotypes.isActive, true))
+      .where(companyId ? and(eq(genotypes.isActive, true), eq(genotypes.companyId, companyId)) : eq(genotypes.isActive, true))
       .orderBy(genotypes.name);
     return result;
   }
@@ -981,6 +1062,48 @@ export class DatabaseStorage implements IStorage {
       .update(userInvitations)
       .set({ status: 'expired' })
       .where(eq(userInvitations.id, id));
+  }
+
+  // Company operations
+  async getCompanies(): Promise<Company[]> {
+    const result = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.isActive, true))
+      .orderBy(companies.name);
+    return result;
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id));
+    return company;
+  }
+
+  async createCompany(companyData: InsertCompany): Promise<Company> {
+    const [company] = await db
+      .insert(companies)
+      .values(companyData)
+      .returning();
+    return company;
+  }
+
+  async updateCompany(id: string, companyData: Partial<InsertCompany>): Promise<Company> {
+    const [company] = await db
+      .update(companies)
+      .set({ ...companyData, updatedAt: new Date() })
+      .where(eq(companies.id, id))
+      .returning();
+    return company;
+  }
+
+  async deleteCompany(id: string): Promise<void> {
+    await db
+      .update(companies)
+      .set({ isActive: false })
+      .where(eq(companies.id, id));
   }
 }
 
