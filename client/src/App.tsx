@@ -62,11 +62,11 @@ function AppContent() {
         {/* Desktop Hamburger Button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border hover:bg-accent transition-colors"
+          className="fixed top-6 left-20 z-50 p-3 rounded-lg bg-card border-2 border-border hover:bg-accent transition-colors shadow-lg"
           data-testid="button-toggle-sidebar"
         >
           <svg
-            className="w-6 h-6 text-foreground"
+            className="w-8 h-8 text-foreground"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -74,7 +74,7 @@ function AppContent() {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={2}
+              strokeWidth={2.5}
               d="M4 6h16M4 12h16M4 18h16"
             />
           </svg>
