@@ -56,12 +56,12 @@ export default function StrainDetail() {
         <Card>
           <CardContent className="py-12 text-center">
             <Beaker className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Cepa no encontrada</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Strain not found</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              La cepa que buscas no existe o fue eliminada
+              The strain you're looking for doesn't exist or was deleted
             </p>
             <Button onClick={() => setLocation('/strains')}>
-              Volver a Cepas
+              Back to Strains
             </Button>
           </CardContent>
         </Card>
@@ -160,7 +160,7 @@ export default function StrainDetail() {
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver a Cepas
+          Back to Strains
         </Button>
 
         <div className="flex items-start justify-between">
@@ -176,7 +176,7 @@ export default function StrainDetail() {
             )}
           </div>
           <Badge variant={strain.isActive ? "default" : "secondary"} data-testid="badge-status">
-            {strain.isActive ? "Activa" : "Inactiva"}
+            {strain.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function StrainDetail() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Jaulas</p>
+                <p className="text-sm text-muted-foreground">Total Cages</p>
                 <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-total-cages">
                   {strainCages.length}
                 </p>
@@ -203,7 +203,7 @@ export default function StrainDetail() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Animales</p>
+                <p className="text-sm text-muted-foreground">Total Animals</p>
                 <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-total-animals">
                   {strainAnimals.length}
                 </p>
@@ -219,7 +219,7 @@ export default function StrainDetail() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Jaulas Activas</p>
+                <p className="text-sm text-muted-foreground">Active Cages</p>
                 <p className="text-3xl font-bold text-foreground mt-2">
                   {strainCages.filter(c => c.isActive).length}
                 </p>
@@ -235,7 +235,7 @@ export default function StrainDetail() {
       {/* Cages */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Jaulas con esta Cepa ({strainCages.length})</CardTitle>
+          <CardTitle>Cages with this Strain ({strainCages.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {strainCages.length > 0 ? (
@@ -243,12 +243,12 @@ export default function StrainDetail() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Número</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Sala</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ubicación</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Capacidad</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Animales</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Number</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Room</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Location</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Capacity</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Animals</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -280,7 +280,7 @@ export default function StrainDetail() {
           ) : (
             <div className="text-center py-8">
               <Box className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No hay jaulas con esta cepa</p>
+              <p className="text-sm text-muted-foreground">No cages with this strain</p>
             </div>
           )}
         </CardContent>
@@ -289,7 +289,7 @@ export default function StrainDetail() {
       {/* Animals */}
       <Card>
         <CardHeader>
-          <CardTitle>Animales con esta Cepa ({strainAnimals.length})</CardTitle>
+          <CardTitle>Animals with this Strain ({strainAnimals.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {strainAnimals.length > 0 ? (
@@ -297,14 +297,14 @@ export default function StrainDetail() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">ID Animal</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Jaula</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Género</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Genotipo</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha Nacimiento</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Edad (semanas)</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Peso</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado de Salud</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Animal ID</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cage</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Gender</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Genotype</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Birth Date</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Age (weeks)</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Weight</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Health Status</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -402,7 +402,7 @@ export default function StrainDetail() {
           ) : (
             <div className="text-center py-8">
               <Users className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No hay animales con esta cepa</p>
+              <p className="text-sm text-muted-foreground">No animals with this strain</p>
             </div>
           )}
         </CardContent>

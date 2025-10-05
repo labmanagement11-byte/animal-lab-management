@@ -26,7 +26,7 @@ const animalFormSchema = z.object({
   cageId: z.string().optional(),
   breed: z.string().min(1, "Please select a strain from the dropdown"),
   genotype: z.string().optional(),
-  status: z.enum(["Active", "Reserved", "Transferred", "Sacrificed", "Breeding", "Replaced"]).default("Active"),
+  status: z.enum(["Active", "Reserved", "Transferred", "Sacrificed", "Replaced"]).default("Active"),
   dateOfBirth: z.string().optional().refine((val) => {
     if (!val) return true;
     const date = new Date(val);
@@ -65,14 +65,6 @@ const animalFormSchema = z.object({
   healthStatus: z.enum(["Healthy", "Monitoring", "Sick", "Quarantine"]).default("Healthy"),
   diseases: z.string().optional(),
   notes: z.string().optional(),
-}).refine((data) => {
-  if (data.status === "Breeding" && !data.breedingStartDate) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Breeding start date is required when status is set to 'Breeding'",
-  path: ["breedingStartDate"]
 });
 
 type AnimalFormData = z.infer<typeof animalFormSchema>;
@@ -637,7 +629,6 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
                   <SelectItem value="Reserved">Reserved</SelectItem>
                   <SelectItem value="Transferred">Transferred</SelectItem>
                   <SelectItem value="Sacrificed">Sacrificed</SelectItem>
-                  <SelectItem value="Breeding">Breeding</SelectItem>
                   <SelectItem value="Replaced">Replaced</SelectItem>
                 </SelectContent>
               </Select>
