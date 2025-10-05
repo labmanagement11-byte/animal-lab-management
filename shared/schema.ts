@@ -24,9 +24,20 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Companies table - for multi-tenancy
+export const companies = pgTable("companies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // User storage table for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -44,6 +55,7 @@ export const users = pgTable("users", {
 // User invitations table
 export const userInvitations = pgTable("user_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
   email: varchar("email").notNull(),
   role: varchar("role", { enum: ['Admin', 'Success Manager', 'Director', 'Employee'] }).notNull(),
   invitedBy: varchar("invited_by").references(() => users.id).notNull(),
@@ -56,7 +68,8 @@ export const userInvitations = pgTable("user_invitations", {
 // Cages table
 export const cages = pgTable("cages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cageNumber: varchar("cage_number").notNull().unique(),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  cageNumber: varchar("cage_number").notNull(),
   roomNumber: varchar("room_number", { 
     enum: ['BB00028', 'ZRC-C61', 'ZRC-SC14'] 
   }).notNull(),
@@ -77,7 +90,8 @@ export const cages = pgTable("cages", {
 // Strains table - for managing laboratory animal strains
 export const strains = pgTable("strains", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull().unique(),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  name: varchar("name").notNull(),
   description: text("description"),
   // category: varchar("category"), // Temporarily commented until DB migration
   isActive: boolean("is_active").default(true),
@@ -89,7 +103,8 @@ export const strains = pgTable("strains", {
 // Genotypes table - for managing genotype options
 export const genotypes = pgTable("genotypes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull().unique(),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  name: varchar("name").notNull(),
   description: text("description"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -98,6 +113,7 @@ export const genotypes = pgTable("genotypes", {
 // File attachments table
 export const fileAttachments = pgTable("file_attachments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
   fileName: varchar("file_name").notNull(),
   originalName: varchar("original_name").notNull(),
   fileType: varchar("file_type").notNull(), // image/jpeg, application/pdf, etc.
@@ -112,7 +128,8 @@ export const fileAttachments = pgTable("file_attachments", {
 // Animals table
 export const animals = pgTable("animals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  animalNumber: varchar("animal_number").notNull().unique(),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  animalNumber: varchar("animal_number").notNull(),
   cageId: varchar("cage_id").references(() => cages.id),
   breed: varchar("breed").notNull(), // Will change to strain later
   genotype: varchar("genotype"), // Will change to reference later
@@ -144,6 +161,7 @@ export const animals = pgTable("animals", {
 // QR Codes table - Only for cages
 export const qrCodes = pgTable("qr_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
   cageId: varchar("cage_id").references(() => cages.id),
   qrData: text("qr_data").notNull(),
   isBlank: boolean("is_blank").default(true), // Blank QR codes can be filled later
@@ -158,6 +176,7 @@ export const qrCodes = pgTable("qr_codes", {
 // Audit logs for tracking changes
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id),
   userId: varchar("user_id").references(() => users.id),
   action: varchar("action").notNull(), // CREATE, UPDATE, DELETE
   tableName: varchar("table_name").notNull(),
@@ -331,3 +350,12 @@ export type InsertGenotype = z.infer<typeof insertGenotypeSchema>;
 
 export type UserInvitation = typeof userInvitations.$inferSelect;
 export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;
+
+export const insertCompanySchema = createInsertSchema(companies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
