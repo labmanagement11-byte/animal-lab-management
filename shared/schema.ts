@@ -144,6 +144,8 @@ export const animals = pgTable("animals", {
   dateOfGenotyping: timestamp("date_of_genotyping"), // DOG
   genotypingUserId: varchar("genotyping_user_id").references(() => users.id),
   probes: boolean("probes").default(false),
+  probeType: varchar("probe_type"),
+  allele: varchar("allele"),
   healthStatus: varchar("health_status", { 
     enum: ['Healthy', 'Monitoring', 'Sick', 'Quarantine'] 
   }).default('Healthy'),

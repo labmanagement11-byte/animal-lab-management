@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -57,6 +60,8 @@ const animalFormSchema = z.object({
   }, "Genotyping date cannot be in the future"),
   genotypingUserId: z.string().optional(),
   probes: z.boolean().default(false),
+  probeType: z.string().optional(),
+  allele: z.string().optional(),
   healthStatus: z.enum(["Healthy", "Monitoring", "Sick", "Quarantine"]).default("Healthy"),
   diseases: z.string().optional(),
   notes: z.string().optional(),
@@ -80,6 +85,8 @@ interface AnimalFormProps {
 export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [cageComboOpen, setCageComboOpen] = useState(false);
+  const [genotypeComboOpen, setGenotypeComboOpen] = useState(false);
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -114,6 +121,8 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
       dateOfGenotyping: animal?.dateOfGenotyping ? new Date(animal.dateOfGenotyping).toISOString().split('T')[0] : "",
       genotypingUserId: animal?.genotypingUserId || "none",
       probes: animal?.probes || false,
+      probeType: animal?.probeType || "",
+      allele: animal?.allele || "",
       healthStatus: animal?.healthStatus || "Healthy",
       status: animal?.status || "Active",
       diseases: animal?.diseases || "",
@@ -264,22 +273,63 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
 
             <div>
               <Label htmlFor="cageId">Cage</Label>
-              <Select 
-                value={form.watch("cageId")} 
-                onValueChange={(value) => form.setValue("cageId", value)}
-              >
-                <SelectTrigger data-testid="select-cage">
-                  <SelectValue placeholder="Select cage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No cage assigned</SelectItem>
-                  {cages?.map((cage) => (
-                    <SelectItem key={cage.id} value={cage.id}>
-                      {cage.cageNumber} - {cage.location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={cageComboOpen} onOpenChange={setCageComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={cageComboOpen}
+                    className="w-full justify-between"
+                    data-testid="button-cage-combobox"
+                  >
+                    {form.watch("cageId") && form.watch("cageId") !== "none"
+                      ? (() => {
+                          const selectedCage = cages?.find((c) => c.id === form.watch("cageId"));
+                          return selectedCage ? `${selectedCage.cageNumber} - ${selectedCage.location}` : "Select cage";
+                        })()
+                      : "Select cage or type to search..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Type cage number or location..."
+                      data-testid="input-cage-search"
+                    />
+                    <CommandList>
+                      <CommandEmpty>No cage found</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => {
+                            form.setValue("cageId", "none");
+                            setCageComboOpen(false);
+                          }}
+                          data-testid="option-no-cage"
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${form.watch("cageId") === "none" ? "opacity-100" : "opacity-0"}`} />
+                          No cage assigned
+                        </CommandItem>
+                        {cages?.map((cage) => (
+                          <CommandItem
+                            key={cage.id}
+                            value={`${cage.cageNumber} ${cage.location}`}
+                            onSelect={() => {
+                              form.setValue("cageId", cage.id);
+                              setCageComboOpen(false);
+                            }}
+                            data-testid={`option-cage-${cage.id}`}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${form.watch("cageId") === cage.id ? "opacity-100" : "opacity-0"}`} />
+                            {cage.cageNumber} - {cage.location}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div>
@@ -308,22 +358,63 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
 
             <div>
               <Label htmlFor="genotype">Genotype</Label>
-              <Select
-                value={form.watch("genotype") || ""}
-                onValueChange={(value) => form.setValue("genotype", value)}
-              >
-                <SelectTrigger data-testid="select-genotype">
-                  <SelectValue placeholder="Select genotype" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No genotype</SelectItem>
-                  {genotypes?.map((genotype) => (
-                    <SelectItem key={genotype.id} value={genotype.name}>
-                      {genotype.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={genotypeComboOpen} onOpenChange={setGenotypeComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={genotypeComboOpen}
+                    className="w-full justify-between"
+                    data-testid="button-genotype-combobox"
+                  >
+                    {form.watch("genotype") && form.watch("genotype") !== "none"
+                      ? (() => {
+                          const selectedGenotype = genotypes?.find((g) => g.name === form.watch("genotype"));
+                          return selectedGenotype ? selectedGenotype.name : "Select genotype";
+                        })()
+                      : "Select genotype or type to search..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Type genotype name..."
+                      data-testid="input-genotype-search"
+                    />
+                    <CommandList>
+                      <CommandEmpty>No genotype found</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => {
+                            form.setValue("genotype", "none");
+                            setGenotypeComboOpen(false);
+                          }}
+                          data-testid="option-no-genotype"
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${form.watch("genotype") === "none" ? "opacity-100" : "opacity-0"}`} />
+                          No genotype
+                        </CommandItem>
+                        {genotypes?.map((genotype) => (
+                          <CommandItem
+                            key={genotype.id}
+                            value={genotype.name}
+                            onSelect={() => {
+                              form.setValue("genotype", genotype.name);
+                              setGenotypeComboOpen(false);
+                            }}
+                            data-testid={`option-genotype-${genotype.id}`}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${form.watch("genotype") === genotype.name ? "opacity-100" : "opacity-0"}`} />
+                            {genotype.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div>
@@ -473,14 +564,39 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="probes"
-                checked={form.watch("probes")}
-                onCheckedChange={(checked) => form.setValue("probes", !!checked)}
-                data-testid="checkbox-probes"
-              />
-              <Label htmlFor="probes">Probes</Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="probes"
+                  checked={form.watch("probes")}
+                  onCheckedChange={(checked) => form.setValue("probes", !!checked)}
+                  data-testid="checkbox-probes"
+                />
+                <Label htmlFor="probes">Probes</Label>
+              </div>
+              
+              {form.watch("probes") && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6 mt-2">
+                  <div>
+                    <Label htmlFor="probeType">Probe Type</Label>
+                    <Input
+                      id="probeType"
+                      placeholder="Enter probe type..."
+                      {...form.register("probeType")}
+                      data-testid="input-probe-type"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="allele">Allele</Label>
+                    <Input
+                      id="allele"
+                      placeholder="Enter allele..."
+                      {...form.register("allele")}
+                      data-testid="input-allele"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

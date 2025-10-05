@@ -1,15 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Beaker, Box, Users } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Beaker, Box, Users, MoreVertical } from "lucide-react";
 import type { Strain, Cage, Animal } from "@shared/schema";
 import { formatDate } from "@/utils/dateUtils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function StrainDetail() {
   const [, params] = useRoute("/strains/:id");
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const strainId = params?.id;
 
   const { data: strains, isLoading: strainsLoading } = useQuery<Strain[]>({
@@ -64,6 +69,56 @@ export default function StrainDetail() {
     );
   }
 
+  const updateAnimalStatusMutation = useMutation({
+    mutationFn: async ({ animal, status }: { animal: Animal; status: string }) => {
+      const payload = {
+        animalNumber: animal.animalNumber,
+        cageId: animal.cageId || undefined,
+        breed: animal.breed,
+        genotype: animal.genotype || undefined,
+        dateOfBirth: animal.dateOfBirth || undefined,
+        weight: animal.weight || undefined,
+        gender: animal.gender || undefined,
+        color: animal.color || undefined,
+        generation: animal.generation || undefined,
+        protocol: animal.protocol || undefined,
+        breedingStartDate: animal.breedingStartDate || undefined,
+        dateOfGenotyping: animal.dateOfGenotyping || undefined,
+        genotypingUserId: animal.genotypingUserId || undefined,
+        probes: animal.probes || false,
+        probeType: animal.probeType || undefined,
+        allele: animal.allele || undefined,
+        healthStatus: animal.healthStatus,
+        status: status,
+        diseases: animal.diseases || undefined,
+        notes: animal.notes || undefined,
+      };
+      await apiRequest(`/api/animals/${animal.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/animals'] });
+      toast({
+        title: "Success",
+        description: "Animal status updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update animal status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStatusChange = (animal: Animal, newStatus: string) => {
+    updateAnimalStatusMutation.mutate({ animal, status: newStatus });
+  };
+
   const getHealthStatusColor = (status: string) => {
     switch (status) {
       case 'Healthy':
@@ -76,6 +131,21 @@ export default function StrainDetail() {
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const getAnimalStatusColor = (status: string) => {
+    switch (status) {
+      case 'Reserved':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200';
+      case 'Transferred':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200';
+      case 'Sacrificed':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200';
+      case 'Replaced':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-200';
+      default:
+        return '';
     }
   };
 
@@ -235,6 +305,8 @@ export default function StrainDetail() {
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Edad (semanas)</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Peso</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado de Salud</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -277,6 +349,49 @@ export default function StrainDetail() {
                           <Badge className={getHealthStatusColor(animal.healthStatus || 'Healthy')}>
                             {animal.healthStatus || 'Healthy'}
                           </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          {animal.status && animal.status !== 'Active' && (
+                            <Badge className={getAnimalStatusColor(animal.status)}>
+                              {animal.status}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`button-actions-${animal.id}`}>
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(animal, 'Reserved')}
+                                data-testid={`action-reserve-${animal.id}`}
+                              >
+                                Reserve
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(animal, 'Transferred')}
+                                data-testid={`action-transfer-${animal.id}`}
+                              >
+                                Transfer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(animal, 'Sacrificed')}
+                                data-testid={`action-sacrifice-${animal.id}`}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                Sacrifice
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(animal, 'Replaced')}
+                                data-testid={`action-replace-${animal.id}`}
+                              >
+                                Replace
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     );
