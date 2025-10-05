@@ -14,7 +14,8 @@ import {
   Sun,
   Trash2,
   Languages,
-  X
+  X,
+  Building2
 } from "lucide-react";
 import { useLocation } from "wouter";
 import GlobalSearch from "@/components/global-search";
@@ -54,6 +55,7 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
   }
 
   if ((user as any)?.role === 'Admin') {
+    menuItems.push({ id: 'companies', label: 'Compañías', icon: Building2, path: '/companies' });
     menuItems.push({ id: 'admin', label: t.nav.admin as string, icon: Settings, path: '/admin' });
   }
 

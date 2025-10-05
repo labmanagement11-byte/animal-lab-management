@@ -1080,9 +1080,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/genotypes', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
       const dataWithCompany = {
         ...req.body,
-        companyId: user?.companyId || 'default-company-id'
+        companyId: user.companyId || 'default-company-id'
       };
       
       const validatedData = insertGenotypeSchema.parse(dataWithCompany);

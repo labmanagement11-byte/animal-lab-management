@@ -11,6 +11,7 @@ import Cages from "@/pages/cages";
 import Strains from "@/pages/strains";
 import StrainDetail from "@/pages/strain-detail";
 import Genotypes from "@/pages/genotypes";
+import Companies from "@/pages/companies";
 import QrScanner from "@/pages/qr-scanner";
 import QrCodes from "@/pages/qr-codes";
 import HealthAlerts from "@/pages/health-alerts";
@@ -107,6 +108,7 @@ function AppContent() {
             <Route path="/trash" component={Trash} />
             <Route path="/admin" component={Admin} />
             <Route path="/users" component={Users} />
+            <Route path="/companies" component={Companies} />
             <Route path="/qr/blank/:qrId" component={ClaimBlankQr} />
             <Route path="/qr/cage/:id" component={CageQrDetail} />
             <Route path="/qr/animal/:id" component={AnimalQrDetail} />
