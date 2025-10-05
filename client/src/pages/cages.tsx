@@ -334,14 +334,8 @@ export default function Cages() {
   };
 
   const getStatusDisplayInfo = (status: string, isActive: boolean) => {
-    const activityStatus = isActive ? 'Active' : 'Deactivated';
-    
-    let purpose = '';
-    if (status === 'Breeding') purpose = 'Breeding';
-    else if (status === 'Holding') purpose = 'Holding';
-    else if (status === 'Active') purpose = 'General Use';
-    
-    return { isActive, activityStatus, purpose, originalStatus: status };
+    const activityStatus = isActive ? 'Activated' : 'Deactivated';
+    return { isActive, activityStatus, originalStatus: status };
   };
 
   const getHealthStatusColor = (status: string) => {
@@ -542,15 +536,14 @@ export default function Cages() {
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
-                          {!statusInfo.isActive ? (
-                            <Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'>
-                              {statusInfo.activityStatus}
-                            </Badge>
-                          ) : (
-                            <Badge className={getStatusColor(statusInfo.originalStatus)}>
-                              {statusInfo.originalStatus}
-                            </Badge>
-                          )}
+                          <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                            {statusInfo.originalStatus}
+                          </Badge>
+                          <Badge className={statusInfo.isActive 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
+                            {statusInfo.activityStatus}
+                          </Badge>
                         </div>
                       </td>
                       <td className="p-4" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</td>
@@ -600,15 +593,14 @@ export default function Cages() {
                     <span className="font-medium">Cage {cage.cageNumber}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {!statusInfo.isActive ? (
-                      <Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'>
-                        {statusInfo.activityStatus}
-                      </Badge>
-                    ) : (
-                      <Badge className={getStatusColor(statusInfo.originalStatus)}>
-                        {statusInfo.originalStatus}
-                      </Badge>
-                    )}
+                    <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                      {statusInfo.originalStatus}
+                    </Badge>
+                    <Badge className={statusInfo.isActive 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' 
+                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
+                      {statusInfo.activityStatus}
+                    </Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Room: <span className="text-foreground" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</span>
@@ -664,15 +656,14 @@ export default function Cages() {
                     const statusInfo = getStatusDisplayInfo(cage.status || 'Active', cage.isActive ?? true);
                     return (
                       <>
-                        {!statusInfo.isActive ? (
-                          <Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'>
-                            {statusInfo.activityStatus}
-                          </Badge>
-                        ) : (
-                          <Badge className={getStatusColor(statusInfo.originalStatus)}>
-                            {statusInfo.originalStatus}
-                          </Badge>
-                        )}
+                        <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                          {statusInfo.originalStatus}
+                        </Badge>
+                        <Badge className={statusInfo.isActive 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' 
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
+                          {statusInfo.activityStatus}
+                        </Badge>
                       </>
                     );
                   })()}
@@ -1001,7 +992,7 @@ export default function Cages() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Active">General Use (Green)</SelectItem>
+                        <SelectItem value="Active">Active (Green)</SelectItem>
                         <SelectItem value="Breeding">Breeding (Blue)</SelectItem>
                         <SelectItem value="Holding">Holding (Purple)</SelectItem>
                         <SelectItem value="Experimental">Experimental (Yellow)</SelectItem>
