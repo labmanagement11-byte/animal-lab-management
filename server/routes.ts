@@ -1608,7 +1608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertUserSchema.parse(req.body);
 
       // Only admins can assign admin role
-      if (validatedData.role === 'Admin' && currentUser?.role !== 'Admin') {
+      if ((validatedData.role as unknown as string) === 'Admin' && currentUser?.role !== 'Admin') {
         return res.status(403).json({ message: "Only admins can create admin users" });
       }
 
@@ -1635,7 +1635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Admin must specify a company for the new user" });
         }
         // Verify the company exists
-        const company = await storage.getCompany(validatedData.companyId);
+        const company = await storage.getCompany(validatedData.companyId as unknown as string);
         if (!company) {
           return res.status(400).json({ message: "Invalid company specified" });
         }

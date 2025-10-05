@@ -84,13 +84,13 @@ export default function UsersPage() {
   });
 
   // Fetch all users (we'll need to create this endpoint)
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading } = useQuery<any[]>({
     queryKey: ['/api/users'],
     retry: false,
   });
 
   // Fetch all companies
-  const { data: companies } = useQuery({
+  const { data: companies } = useQuery<any[]>({
     queryKey: ['/api/companies'],
     retry: false,
   });
