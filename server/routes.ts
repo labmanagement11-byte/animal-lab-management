@@ -6,6 +6,25 @@ import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainS
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
+// Helper function to safely get companyId with security check
+function getCompanyIdForUser(user: any | null | undefined): string | undefined {
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  // Admin users can access all companies
+  if (user.role === 'Admin') {
+    return undefined;
+  }
+  
+  // Non-admin users must have a companyId
+  if (!user.companyId) {
+    throw new Error('User has no company assigned');
+  }
+  
+  return user.companyId;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -46,8 +65,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
       const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
       
-      // Admin can see all companies, others only their own company
-      const companyId = user.role === 'Admin' ? undefined : user.companyId || 'default-company-id';
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const report = await storage.getMonthlyActivityReport(year, month, companyId);
       res.json(report);
     } catch (error) {
@@ -65,7 +88,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const results = await storage.globalSearch(query, companyId);
       
       // Format results for frontend
@@ -140,7 +168,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const animal = await storage.getAnimal(req.params.id, companyId);
       if (!animal) {
         return res.status(404).json({ message: "Animal not found" });
@@ -159,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transform date strings to Date objects
       const transformedData = {
         ...req.body,
-        companyId: user?.companyId || 'default-company-id',
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
         dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : undefined,
         breedingStartDate: req.body.breedingStartDate ? new Date(req.body.breedingStartDate) : undefined,
         dateOfGenotyping: req.body.dateOfGenotyping ? new Date(req.body.dateOfGenotyping) : undefined,
@@ -183,6 +216,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
       }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       res.status(500).json({ message: "Failed to create animal" });
     }
   });
@@ -191,7 +227,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate user has access to this animal
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const existing = await storage.getAnimal(req.params.id, companyId);
       if (!existing) {
         return res.status(404).json({ message: "Animal not found" });
@@ -232,7 +273,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate user has access to this animal
       const user = await storage.getUser(req.user.claims.sub);
-      const companyId = user?.role === 'Admin' ? undefined : user?.companyId || 'default-company-id';
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       const existing = await storage.getAnimal(req.params.id, companyId);
       if (!existing) {
         return res.status(404).json({ message: "Animal not found" });
@@ -396,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       const dataWithCompany = {
         ...req.body,
-        companyId: user?.companyId || 'default-company-id'
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })()
       };
       
       const validatedData = insertCageSchema.parse(dataWithCompany);
@@ -416,6 +462,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating cage:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
       }
       res.status(500).json({ message: "Failed to create cage" });
     }
@@ -610,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertQrCodeSchema.parse({
         ...req.body,
         generatedBy: req.user.claims.sub,
-        companyId: user?.companyId || 'default-company-id',
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
       });
       const qrCode = await storage.createQrCode(validatedData);
       
@@ -628,6 +677,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating QR code:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
       }
       res.status(500).json({ message: "Failed to create QR code" });
     }
@@ -666,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           qrData: 'temp',
           isBlank: true,
           generatedBy: userId,
-          companyId: user?.companyId || 'default-company-id',
+          companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
         });
         
         // Now update with correct URL using the actual ID
@@ -689,6 +741,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(qrCodes);
     } catch (error) {
       console.error("Error generating blank QR codes:", error);
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       res.status(500).json({ message: "Failed to generate blank QR codes" });
     }
   });
@@ -939,7 +994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       const dataWithCompany = {
         ...req.body,
-        companyId: user?.companyId || 'default-company-id'
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })()
       };
       
       const validatedData = insertStrainSchema.parse(dataWithCompany);
@@ -959,6 +1014,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating strain:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
       }
       res.status(500).json({ message: "Failed to create strain" });
     }
@@ -1108,7 +1166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const dataWithCompany = {
         ...req.body,
-        companyId: user.companyId || 'default-company-id'
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })()
       };
       
       const validatedData = insertGenotypeSchema.parse(dataWithCompany);
@@ -1128,6 +1186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating genotype:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
       }
       res.status(500).json({ message: "Failed to create genotype" });
     }
@@ -1469,7 +1530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token,
         status: 'pending',
         expiresAt,
-        companyId: user?.companyId || 'default-company-id',
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
       });
 
       // Create audit log
@@ -1500,6 +1561,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating invitation:", error);
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
       res.status(500).json({ message: "Failed to create invitation" });
     }
   });
