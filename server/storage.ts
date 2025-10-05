@@ -60,13 +60,16 @@ export interface IStorage {
   cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number }>;
   
   // QR Code operations
-  getQrCodes(): Promise<QrCode[]>;
+  getQrCodes(includeDeleted?: boolean): Promise<QrCode[]>;
   getQrCode(id: string): Promise<QrCode | undefined>;
   getQrCodeByData(qrData: string): Promise<QrCode | undefined>;
   createQrCode(qrCode: InsertQrCode): Promise<QrCode>;
   updateQrCode(id: string, updates: Partial<InsertQrCode>): Promise<QrCode>;
   claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode>;
-  deleteQrCode(id: string): Promise<void>;
+  deleteQrCode(id: string, userId: string): Promise<void>;
+  restoreQrCode(id: string): Promise<QrCode>;
+  permanentlyDeleteQrCode(id: string): Promise<void>;
+  getDeletedQrCodes(): Promise<QrCode[]>;
   
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
@@ -392,10 +395,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // QR Code operations
-  async getQrCodes(): Promise<QrCode[]> {
+  async getQrCodes(includeDeleted = false): Promise<QrCode[]> {
     const result = await db
       .select()
       .from(qrCodes)
+      .where(includeDeleted ? undefined : isNull(qrCodes.deletedAt))
       .orderBy(desc(qrCodes.createdAt));
     return result;
   }
@@ -459,8 +463,51 @@ export class DatabaseStorage implements IStorage {
     return claimedCode;
   }
 
-  async deleteQrCode(id: string): Promise<void> {
+  async deleteQrCode(id: string, userId: string): Promise<void> {
+    // First check if the QR code exists and is not already deleted
+    const [existing] = await db.select().from(qrCodes).where(eq(qrCodes.id, id));
+    if (!existing) {
+      throw new Error("QR Code not found");
+    }
+    if (existing.deletedAt) {
+      throw new Error("QR Code is already deleted");
+    }
+
+    await db
+      .update(qrCodes)
+      .set({ deletedAt: new Date(), deletedBy: userId })
+      .where(eq(qrCodes.id, id));
+  }
+
+  async restoreQrCode(id: string): Promise<QrCode> {
+    // First check if the QR code exists and is deleted
+    const [existing] = await db.select().from(qrCodes).where(eq(qrCodes.id, id));
+    if (!existing) {
+      throw new Error("QR Code not found");
+    }
+    if (!existing.deletedAt) {
+      throw new Error("QR Code is not deleted");
+    }
+
+    const [restored] = await db
+      .update(qrCodes)
+      .set({ deletedAt: null, deletedBy: null })
+      .where(eq(qrCodes.id, id))
+      .returning();
+    return restored;
+  }
+
+  async permanentlyDeleteQrCode(id: string): Promise<void> {
     await db.delete(qrCodes).where(eq(qrCodes.id, id));
+  }
+
+  async getDeletedQrCodes(): Promise<QrCode[]> {
+    const result = await db
+      .select()
+      .from(qrCodes)
+      .where(isNotNull(qrCodes.deletedAt))
+      .orderBy(desc(qrCodes.deletedAt));
+    return result;
   }
 
   // Audit log operations

@@ -1,16 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, QrCode as QrCodeIcon, Calendar, Box } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Printer, QrCode as QrCodeIcon, Calendar, Box, Trash2, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import type { QrCode, Cage } from "@shared/schema";
 import { formatDate } from "@/utils/dateUtils";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function QrCodes() {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<string>("active");
+  
   const { data: qrCodes, isLoading } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes'],
+  });
+
+  const { data: deletedQrCodes, isLoading: isLoadingDeleted } = useQuery<QrCode[]>({
+    queryKey: ['/api/qr-codes-trash'],
   });
 
   const { data: cages } = useQuery<Cage[]>({
@@ -19,9 +29,48 @@ export default function QrCodes() {
 
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
+  const deleteQrMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/qr-codes/${id}`),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "QR Code deleted successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete QR code",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const restoreQrMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('POST', `/api/qr-codes/${id}/restore`),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "QR Code restored successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore QR code",
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
-    if (qrCodes && qrCodes.length > 0) {
-      qrCodes.forEach((qrCode) => {
+    const allQrCodes = [...(qrCodes || []), ...(deletedQrCodes || [])];
+    if (allQrCodes.length > 0) {
+      allQrCodes.forEach((qrCode) => {
         const canvas = canvasRefs.current[qrCode.id];
         if (canvas && qrCode.qrData) {
           QRCode.toCanvas(canvas, qrCode.qrData, {
@@ -35,7 +84,7 @@ export default function QrCodes() {
         }
       });
     }
-  }, [qrCodes]);
+  }, [qrCodes, deletedQrCodes]);
 
   const getCageName = (cageId: string | null) => {
     if (!cageId || !cages) return 'Blank QR';
@@ -117,7 +166,84 @@ export default function QrCodes() {
     printWindow.document.close();
   };
 
-  if (isLoading) {
+  const renderQrCodeCard = (qrCode: QrCode, isDeleted: boolean = false) => (
+    <Card key={qrCode.id} className="hover:shadow-lg transition-shadow" data-testid={`card-qr-${qrCode.id}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-medium">
+            {getCageName(qrCode.cageId)}
+          </CardTitle>
+          <Badge variant={qrCode.isBlank ? "secondary" : "default"} data-testid={`badge-type-${qrCode.id}`}>
+            {qrCode.isBlank ? 'Blank' : 'Assigned'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* QR Code Display */}
+        <div className="flex justify-center mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg">
+          <canvas
+            ref={(el) => {
+              canvasRefs.current[qrCode.id] = el;
+            }}
+            data-testid={`canvas-qr-${qrCode.id}`}
+          />
+        </div>
+
+        {/* Info */}
+        <div className="space-y-2 text-sm mb-4">
+          {qrCode.cageId && cages && (
+            <div className="flex items-center text-muted-foreground">
+              <Box className="w-4 h-4 mr-2" />
+              <span>{cages.find(c => c.id === qrCode.cageId)?.roomNumber || 'N/A'}</span>
+            </div>
+          )}
+          <div className="flex items-center text-muted-foreground">
+            <Calendar className="w-4 h-4 mr-2" />
+            <span>{formatDate(qrCode.createdAt)}</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          {!isDeleted ? (
+            <>
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() => handlePrint(qrCode)}
+                data-testid={`button-print-${qrCode.id}`}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => deleteQrMutation.mutate(qrCode.id)}
+                disabled={deleteQrMutation.isPending}
+                data-testid={`button-delete-${qrCode.id}`}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => restoreQrMutation.mutate(qrCode.id)}
+              disabled={restoreQrMutation.isPending}
+              data-testid={`button-restore-${qrCode.id}`}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Restore
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (isLoading || isLoadingDeleted) {
     return (
       <div className="p-6">
         <div className="mb-6">
@@ -147,83 +273,75 @@ export default function QrCodes() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold text-foreground">QR Codes</h2>
-          <p className="text-sm text-muted-foreground">View and print all generated QR codes</p>
+          <p className="text-sm text-muted-foreground">View and manage all generated QR codes</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm" data-testid="badge-total-qr-codes">
             <QrCodeIcon className="w-4 h-4 mr-1" />
-            {qrCodes?.length || 0} Total
+            {qrCodes?.length || 0} Active
           </Badge>
+          {(deletedQrCodes?.length || 0) > 0 && (
+            <Badge variant="secondary" className="text-sm" data-testid="badge-deleted-qr-codes">
+              <Trash2 className="w-4 h-4 mr-1" />
+              {deletedQrCodes?.length || 0} Deleted
+            </Badge>
+          )}
         </div>
       </div>
 
-      {/* QR Codes Grid */}
-      {qrCodes && qrCodes.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {qrCodes.map((qrCode) => (
-            <Card key={qrCode.id} className="hover:shadow-lg transition-shadow" data-testid={`card-qr-${qrCode.id}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-medium">
-                    {getCageName(qrCode.cageId)}
-                  </CardTitle>
-                  <Badge variant={qrCode.isBlank ? "secondary" : "default"} data-testid={`badge-type-${qrCode.id}`}>
-                    {qrCode.isBlank ? 'Blank' : 'Assigned'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* QR Code Display */}
-                <div className="flex justify-center mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg">
-                  <canvas
-                    ref={(el) => {
-                      canvasRefs.current[qrCode.id] = el;
-                    }}
-                    data-testid={`canvas-qr-${qrCode.id}`}
-                  />
-                </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="active" data-testid="tab-active">
+            Active QR Codes
+          </TabsTrigger>
+          <TabsTrigger value="trash" data-testid="tab-trash">
+            Trash ({deletedQrCodes?.length || 0})
+          </TabsTrigger>
+        </TabsList>
 
-                {/* Info */}
-                <div className="space-y-2 text-sm mb-4">
-                  {qrCode.cageId && cages && (
-                    <div className="flex items-center text-muted-foreground">
-                      <Box className="w-4 h-4 mr-2" />
-                      <span>{cages.find(c => c.id === qrCode.cageId)?.roomNumber || 'N/A'}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    <span>{formatDate(qrCode.createdAt)}</span>
-                  </div>
+        {/* Active QR Codes */}
+        <TabsContent value="active">
+          {qrCodes && qrCodes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {qrCodes.map((qrCode) => renderQrCodeCard(qrCode, false))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No QR Codes Found</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-qr-codes">
+                    Generate QR codes from the Blank QR page
+                  </p>
                 </div>
-
-                {/* Actions */}
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handlePrint(qrCode)}
-                  data-testid={`button-print-${qrCode.id}`}
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print QR Code
-                </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No QR Codes Found</h3>
-              <p className="text-sm text-muted-foreground" data-testid="text-no-qr-codes">
-                Generate QR codes from the Animals or Cages pages
-              </p>
+          )}
+        </TabsContent>
+
+        {/* Trash */}
+        <TabsContent value="trash">
+          {deletedQrCodes && deletedQrCodes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {deletedQrCodes.map((qrCode) => renderQrCodeCard(qrCode, true))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <Trash2 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Trash is Empty</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-deleted-qr-codes">
+                    No deleted QR codes found
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

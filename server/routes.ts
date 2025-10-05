@@ -600,6 +600,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get specific QR code by ID
+  app.get('/api/qr-codes/:id', isAuthenticated, async (req, res) => {
+    try {
+      const qrCode = await storage.getQrCode(req.params.id);
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+      res.json(qrCode);
+    } catch (error) {
+      console.error("Error fetching QR code:", error);
+      res.status(500).json({ message: "Failed to fetch QR code" });
+    }
+  });
+
+  // Delete QR code (soft delete)
+  app.delete('/api/qr-codes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteQrCode(req.params.id, userId);
+
+      // Create audit log only after successful deletion
+      await storage.createAuditLog({
+        userId,
+        action: 'DELETE',
+        tableName: 'qr_codes',
+        recordId: req.params.id,
+        changes: { deletedBy: userId },
+      });
+
+      res.json({ message: "QR code deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting QR code:", error);
+      if (error.message.includes("not found")) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message.includes("already deleted")) {
+        return res.status(409).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to delete QR code" });
+    }
+  });
+
+  // Restore deleted QR code
+  app.post('/api/qr-codes/:id/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const qrCode = await storage.restoreQrCode(req.params.id);
+
+      // Create audit log only after successful restoration
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'RESTORE',
+        tableName: 'qr_codes',
+        recordId: req.params.id,
+        changes: { restored: true },
+      });
+
+      res.json(qrCode);
+    } catch (error: any) {
+      console.error("Error restoring QR code:", error);
+      if (error.message.includes("not found")) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message.includes("not deleted")) {
+        return res.status(409).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to restore QR code" });
+    }
+  });
+
+  // Get deleted QR codes (trash)
+  app.get('/api/qr-codes-trash', isAuthenticated, async (req, res) => {
+    try {
+      const deletedQrCodes = await storage.getDeletedQrCodes();
+      res.json(deletedQrCodes);
+    } catch (error) {
+      console.error("Error fetching deleted QR codes:", error);
+      res.status(500).json({ message: "Failed to fetch deleted QR codes" });
+    }
+  });
+
+  // Permanently delete QR code (Admin only)
+  app.delete('/api/qr-codes/:id/permanent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can permanently delete QR codes" });
+      }
+
+      await storage.permanentlyDeleteQrCode(req.params.id);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'PERMANENT_DELETE',
+        tableName: 'qr_codes',
+        recordId: req.params.id,
+        changes: { permanentlyDeleted: true },
+      });
+
+      res.json({ message: "QR code permanently deleted" });
+    } catch (error) {
+      console.error("Error permanently deleting QR code:", error);
+      res.status(500).json({ message: "Failed to permanently delete QR code" });
+    }
+  });
+
   // Audit log routes (for Success Manager and Admin only)
   app.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
