@@ -103,13 +103,13 @@
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    opacity: 0.08;
+    opacity: 0.15;
     pointer-events: none;
     z-index: -1;
   }
 
   body.dark::before {
-    opacity: 0.12;
+    opacity: 0.20;
   }
 
   /* Mobile touch optimization */
