@@ -1,19 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, QrCodeIcon, Eye, Edit, QrCode as QrCodeLucide, TrendingUp, AlertTriangle, Dna } from "lucide-react";
+import { Plus, QrCodeIcon, Eye, Edit, QrCode as QrCodeLucide, TrendingUp, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import AnimalForm from "@/components/animal-form";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import FloatingActionButton from "@/components/floating-action-button";
 import type { Animal } from "@shared/schema";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
 
 interface DashboardStats {
   totalAnimals: number;
@@ -24,10 +20,8 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [showAnimalForm, setShowAnimalForm] = useState(false);
-  const [strainInput, setStrainInput] = useState("");
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['/api/dashboard/stats'],
@@ -36,46 +30,6 @@ export default function Dashboard() {
   const { data: animals, isLoading: animalsLoading } = useQuery<Animal[]>({
     queryKey: ['/api/animals'],
   });
-
-  const createStrainMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const response = await apiRequest("POST", "/api/strains", { name });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/strains'] });
-      toast({
-        title: "¡Éxito!",
-        description: "Cepa agregada correctamente",
-      });
-      setStrainInput("");
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Sesión expirada. Redirigiendo...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "No se pudo agregar la cepa",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmitStrain = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (strainInput.trim()) {
-      createStrainMutation.mutate(strainInput.trim());
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -135,7 +89,7 @@ export default function Dashboard() {
         <div className="md:hidden mb-4">
           <h3 className="text-sm font-semibold text-muted-foreground px-1">Statistics</h3>
         </div>
-        <div className="md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 md:gap-4 lg:gap-6">
+        <div className="md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 lg:gap-6">
           <div className="flex md:contents gap-4 overflow-x-auto pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
             <Card 
               className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow" 
@@ -227,40 +181,6 @@ export default function Dashboard() {
                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-2xl flex items-center justify-center">
                     <QrCodeIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card 
-              className="flex-shrink-0 w-72 md:w-auto snap-center"
-              data-testid="card-quick-strain"
-            >
-              <CardContent className="pt-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Dna className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    <p className="text-sm text-muted-foreground font-medium">Agregar Cepa</p>
-                  </div>
-                  <form onSubmit={handleSubmitStrain} className="space-y-3">
-                    <Input
-                      id="strain-name"
-                      placeholder="Nombre de cepa"
-                      value={strainInput}
-                      onChange={(e) => setStrainInput(e.target.value)}
-                      data-testid="input-quick-strain-name"
-                      disabled={createStrainMutation.isPending}
-                      className="h-9"
-                    />
-                    <Button 
-                      type="submit" 
-                      disabled={createStrainMutation.isPending || !strainInput.trim()}
-                      data-testid="button-quick-save-strain"
-                      className="w-full"
-                      size="sm"
-                    >
-                      {createStrainMutation.isPending ? "Guardando..." : "Guardar"}
-                    </Button>
-                  </form>
                 </div>
               </CardContent>
             </Card>
