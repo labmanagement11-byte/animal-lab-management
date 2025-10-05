@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Dna, Trash2 } from "lucide-react";
+import { Plus, Dna, Trash2, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -17,6 +18,7 @@ interface Strain {
 }
 
 export default function StrainsPage() {
+  const [, setLocation] = useLocation();
   const [strainInput, setStrainInput] = useState("");
   const { toast } = useToast();
 
@@ -190,12 +192,14 @@ export default function StrainsPage() {
               {strains.map((strain) => (
                 <div
                   key={strain.id}
-                  className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                   data-testid={`strain-item-${strain.id}`}
+                  onClick={() => setLocation(`/strains/${strain.id}`)}
                 >
                   <div className="flex-1">
-                    <div className="font-medium" data-testid={`strain-name-${strain.id}`}>
+                    <div className="font-medium flex items-center gap-2" data-testid={`strain-name-${strain.id}`}>
                       {strain.name}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Added {new Date(strain.createdAt).toLocaleDateString()}
@@ -204,7 +208,10 @@ export default function StrainsPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleDelete(strain.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(strain.id);
+                    }}
                     disabled={deleteStrainMutation.isPending}
                     data-testid={`button-delete-strain-${strain.id}`}
                     className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"

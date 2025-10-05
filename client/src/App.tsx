@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import Animals from "@/pages/animals";
 import Cages from "@/pages/cages";
 import Strains from "@/pages/strains";
+import StrainDetail from "@/pages/strain-detail";
 import QrScanner from "@/pages/qr-scanner";
 import QrCodes from "@/pages/qr-codes";
 import HealthAlerts from "@/pages/health-alerts";
@@ -17,6 +18,7 @@ import Trash from "@/pages/trash";
 import Admin from "@/pages/admin";
 import Users from "@/pages/users";
 import BlankQr from "@/pages/blank-qr";
+import ClaimBlankQr from "@/pages/claim-blank-qr";
 import CageQrDetail from "@/pages/cage-qr-detail";
 import AnimalQrDetail from "@/pages/animal-qr-detail";
 import NotFound from "@/pages/not-found";
@@ -62,6 +64,7 @@ function AppContent() {
             <Route path="/" component={Dashboard} />
             <Route path="/animals" component={Animals} />
             <Route path="/cages" component={Cages} />
+            <Route path="/strains/:id" component={StrainDetail} />
             <Route path="/strains" component={Strains} />
             <Route path="/qr-scanner" component={QrScanner} />
             <Route path="/qr-codes" component={QrCodes} />
@@ -71,6 +74,7 @@ function AppContent() {
             <Route path="/trash" component={Trash} />
             <Route path="/admin" component={Admin} />
             <Route path="/users" component={Users} />
+            <Route path="/qr/blank/:qrId" component={ClaimBlankQr} />
             <Route path="/qr/cage/:id" component={CageQrDetail} />
             <Route path="/qr/animal/:id" component={AnimalQrDetail} />
             <Route component={NotFound} />
