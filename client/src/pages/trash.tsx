@@ -13,7 +13,7 @@ import {
   Activity,
   AlertTriangle
 } from "lucide-react";
-import type { Animal, Cage, User as UserType } from "@shared/schema";
+import type { Animal, Cage, Strain, User as UserType } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, calculateDaysUntilPermanentDeletion } from "@/utils/dateUtils";
@@ -30,8 +30,8 @@ import {
 
 export default function Trash() {
   const { toast } = useToast();
-  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"animals" | "cages">("animals");
+  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" | "strain" } | null>(null);
+  const [activeTab, setActiveTab] = useState<"animals" | "cages" | "strains">("animals");
 
   const { data: currentUser } = useQuery<UserType>({
     queryKey: ['/api/auth/user'],
@@ -45,6 +45,10 @@ export default function Trash() {
 
   const { data: deletedCages = [], isLoading: loadingCages } = useQuery<Cage[]>({
     queryKey: ['/api/cages/trash'],
+  });
+
+  const { data: deletedStrains = [], isLoading: loadingStrains } = useQuery<Strain[]>({
+    queryKey: ['/api/strains/trash'],
   });
 
   const canViewUsers = currentUser?.role === 'Success Manager' || currentUser?.role === 'Admin';
@@ -140,6 +144,49 @@ export default function Trash() {
     },
   });
 
+  const restoreStrainMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("POST", `/api/strains/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/strains/trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/strains'] });
+      toast({
+        title: "Success",
+        description: "Strain restored successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to restore strain",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const permanentDeleteStrainMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/strains/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/strains/trash'] });
+      setDeletingItem(null);
+      toast({
+        title: "Success",
+        description: "Strain permanently deleted",
+      });
+    },
+    onError: () => {
+      setDeletingItem(null);
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete strain",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getUserName = (userId: string | null | undefined) => {
     if (!userId) return 'N/A';
     if (!canViewUsers) return userId.substring(0, 8);
@@ -170,7 +217,7 @@ export default function Trash() {
     return calculateDaysUntilPermanentDeletion(deletedAt);
   };
 
-  const isLoading = loadingAnimals || loadingCages;
+  const isLoading = loadingAnimals || loadingCages || loadingStrains;
 
   if (isLoading) {
     return (
@@ -214,13 +261,16 @@ export default function Trash() {
         </Card>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "animals" | "cages")} className="w-full">
-          <TabsList className="grid w-full md:w-[400px] grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "animals" | "cages" | "strains")} className="w-full">
+          <TabsList className="grid w-full md:w-[600px] grid-cols-3">
             <TabsTrigger value="animals" data-testid="tab-animals">
               Animals ({deletedAnimals.length})
             </TabsTrigger>
             <TabsTrigger value="cages" data-testid="tab-cages">
               Cages ({deletedCages.length})
+            </TabsTrigger>
+            <TabsTrigger value="strains" data-testid="tab-strains">
+              Strains ({deletedStrains.length})
             </TabsTrigger>
           </TabsList>
 
@@ -404,6 +454,94 @@ export default function Trash() {
               </div>
             )}
           </TabsContent>
+
+          {/* Strains Tab */}
+          <TabsContent value="strains" className="space-y-4 mt-6">
+            {deletedStrains.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground" data-testid="text-no-deleted-strains">
+                    No deleted strains
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                {deletedStrains.map((strain) => {
+                  const daysLeft = getDaysUntilDeletion(strain.deletedAt);
+                  const isExpiringSoon = daysLeft !== null && daysLeft <= 3;
+                  
+                  return (
+                    <Card key={strain.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-strain-${strain.id}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg" data-testid={`text-strain-name-${strain.id}`}>
+                              {strain.name}
+                            </CardTitle>
+                            {strain.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {strain.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Deletion Info */}
+                        <div className="bg-muted p-3 rounded-md space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Deleted:</span>
+                            <span className="font-medium">{formatDate(strain.deletedAt)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Activity className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">By:</span>
+                            <span className="font-medium">{getUserName(strain.deletedBy)}</span>
+                          </div>
+                          {daysLeft !== null && (
+                            <div className={`flex items-center gap-2 text-sm ${isExpiringSoon ? 'text-red-600 dark:text-red-400 font-semibold' : ''}`}>
+                              {isExpiringSoon && <AlertTriangle className="h-4 w-4" />}
+                              <span>Permanent deletion in: {daysLeft} days</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => restoreStrainMutation.mutate(strain.id)}
+                            disabled={restoreStrainMutation.isPending}
+                            className="flex-1"
+                            data-testid={`button-restore-strain-${strain.id}`}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Restore
+                          </Button>
+                          {canPermanentlyDelete && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeletingItem({ id: strain.id, type: "strain" })}
+                              className="flex-1"
+                              data-testid={`button-permanent-delete-strain-${strain.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Forever
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Confirmation Dialog */}
@@ -412,7 +550,7 @@ export default function Trash() {
             <AlertDialogHeader>
               <AlertDialogTitle>Permanent Deletion</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the {deletingItem?.type === "animal" ? "animal" : "cage"} from the database.
+                This action cannot be undone. This will permanently delete the {deletingItem?.type === "animal" ? "animal" : deletingItem?.type === "cage" ? "cage" : "strain"} from the database.
                 Are you sure you want to continue?
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -423,8 +561,10 @@ export default function Trash() {
                   if (deletingItem) {
                     if (deletingItem.type === "animal") {
                       permanentDeleteAnimalMutation.mutate(deletingItem.id);
-                    } else {
+                    } else if (deletingItem.type === "cage") {
                       permanentDeleteCageMutation.mutate(deletingItem.id);
+                    } else {
+                      permanentDeleteStrainMutation.mutate(deletingItem.id);
                     }
                   }
                 }}
