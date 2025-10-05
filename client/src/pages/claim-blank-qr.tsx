@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { QrCode, Plus, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,8 @@ export default function ClaimBlankQr() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [claimed, setClaimed] = useState(false);
+  const [showNextStepDialog, setShowNextStepDialog] = useState(false);
+  const [createdCageId, setCreatedCageId] = useState<string>("");
 
   const qrId = params?.qrId;
 
@@ -70,13 +73,12 @@ export default function ClaimBlankQr() {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
       queryClient.invalidateQueries({ queryKey: ['/api/cages'] });
       setClaimed(true);
+      setCreatedCageId(cage.id);
       toast({
         title: "Success!",
         description: `Cage ${cage.cageNumber} created and linked to QR code`,
       });
-      setTimeout(() => {
-        setLocation(`/qr/cage/${cage.id}`);
-      }, 2000);
+      setShowNextStepDialog(true);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -103,7 +105,7 @@ export default function ClaimBlankQr() {
     if (!formData.cageNumber.trim()) {
       toast({
         title: "Error",
-        description: "El número de jaula es requerido",
+        description: "Cage number is required",
         variant: "destructive",
       });
       return;
@@ -117,7 +119,7 @@ export default function ClaimBlankQr() {
         <Card>
           <CardContent className="py-12 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="text-muted-foreground mt-4">Cargando código QR...</p>
+            <p className="text-muted-foreground mt-4">Loading QR code...</p>
           </CardContent>
         </Card>
       </div>
@@ -146,12 +148,12 @@ export default function ClaimBlankQr() {
         <Card>
           <CardContent className="py-12 text-center">
             <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Código QR ya vinculado</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">QR Code Already Linked</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Este código QR ya está asociado a una jaula
+              This QR code is already associated with a cage
             </p>
             <Button onClick={() => setLocation(`/qr/cage/${qrCode.cageId}`)}>
-              Ver Jaula
+              View Cage
             </Button>
           </CardContent>
         </Card>
@@ -159,46 +161,33 @@ export default function ClaimBlankQr() {
     );
   }
 
-  if (claimed) {
-    return (
-      <div className="container mx-auto py-6 px-4 max-w-2xl">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">¡Jaula creada exitosamente!</h3>
-            <p className="text-sm text-muted-foreground">
-              Redirigiendo a la información de la jaula...
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-          <Plus className="w-7 h-7" />
-          Crear Nueva Jaula
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Completa la información para vincular este código QR a una nueva jaula
-        </p>
-      </div>
+      {!claimed && (
+        <>
+          <div className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+              <Plus className="w-7 h-7" />
+              Create New Cage
+            </h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              Fill in the information to link this QR code to a new cage
+            </p>
+          </div>
 
-      <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>Información de la Jaula</CardTitle>
+            <CardTitle>Cage Information</CardTitle>
             <CardDescription>
-              Ingresa los detalles de la nueva jaula que deseas crear
+              Enter the details for the new cage you want to create
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="cageNumber">Número de Jaula *</Label>
+                <Label htmlFor="cageNumber">Cage Number *</Label>
                 <Input
                   id="cageNumber"
                   value={formData.cageNumber}
@@ -210,7 +199,7 @@ export default function ClaimBlankQr() {
               </div>
 
               <div>
-                <Label htmlFor="roomNumber">Sala</Label>
+                <Label htmlFor="roomNumber">Room</Label>
                 <Select
                   value={formData.roomNumber}
                   onValueChange={(value) => setFormData({ ...formData, roomNumber: value })}
@@ -227,7 +216,7 @@ export default function ClaimBlankQr() {
               </div>
 
               <div>
-                <Label htmlFor="location">Ubicación</Label>
+                <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
                   value={formData.location}
@@ -250,7 +239,7 @@ export default function ClaimBlankQr() {
               </div>
 
               <div>
-                <Label htmlFor="status">Estado</Label>
+                <Label htmlFor="status">Status</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) => setFormData({ ...formData, status: value })}
@@ -268,16 +257,16 @@ export default function ClaimBlankQr() {
               </div>
 
               <div>
-                <Label htmlFor="strainId">Cepa (Strain)</Label>
+                <Label htmlFor="strainId">Strain</Label>
                 <Select
                   value={formData.strainId || "none"}
                   onValueChange={(value) => setFormData({ ...formData, strainId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger data-testid="select-strain">
-                    <SelectValue placeholder="Seleccionar cepa" />
+                    <SelectValue placeholder="Select strain" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Sin cepa</SelectItem>
+                    <SelectItem value="none">No strain</SelectItem>
                     {strains?.map((strain) => (
                       <SelectItem key={strain.id} value={strain.id}>
                         {strain.name}
@@ -289,12 +278,12 @@ export default function ClaimBlankQr() {
             </div>
 
             <div>
-              <Label htmlFor="notes">Notas</Label>
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Notas adicionales sobre la jaula..."
+                placeholder="Additional notes about the cage..."
                 rows={3}
                 data-testid="textarea-notes"
               />
@@ -307,7 +296,7 @@ export default function ClaimBlankQr() {
                 onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
                 data-testid="switch-is-active"
               />
-              <Label htmlFor="isActive">Jaula activa</Label>
+              <Label htmlFor="isActive">Active cage</Label>
             </div>
 
             <div className="flex gap-4 pt-4">
@@ -318,7 +307,7 @@ export default function ClaimBlankQr() {
                 className="flex-1"
                 data-testid="button-cancel"
               >
-                Cancelar
+                Cancel
               </Button>
               <Button
                 type="submit"
@@ -326,12 +315,39 @@ export default function ClaimBlankQr() {
                 disabled={createCageAndClaimMutation.isPending}
                 data-testid="button-submit-cage"
               >
-                {createCageAndClaimMutation.isPending ? "Creando..." : "Crear Jaula"}
+                {createCageAndClaimMutation.isPending ? "Creating..." : "Create Cage"}
               </Button>
             </div>
           </CardContent>
         </Card>
       </form>
+        </>
+      )}
+
+      <AlertDialog open={showNextStepDialog} onOpenChange={setShowNextStepDialog}>
+        <AlertDialogContent data-testid="dialog-next-step">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cage Created Successfully!</AlertDialogTitle>
+            <AlertDialogDescription>
+              What would you like to do next?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setLocation(`/qr/cage/${createdCageId}`)}
+              data-testid="button-view-cage"
+            >
+              View Cage
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => setLocation(`/animals?cageId=${createdCageId}`)}
+              data-testid="button-add-animals"
+            >
+              Add Animals
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
