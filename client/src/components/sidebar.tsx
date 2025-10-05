@@ -36,23 +36,23 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard, path: '/' },
-    { id: 'animals', label: t.nav.animals, icon: QrCode, path: '/animals' },
-    { id: 'cages', label: t.nav.cages, icon: Home, path: '/cages' },
-    { id: 'strains', label: t.nav.strains, icon: Dna, path: '/strains' },
-    { id: 'qr-scanner', label: t.qr.qrCodeScanner, icon: QrCode, path: '/qr-scanner' },
-    { id: 'blank-qr', label: t.nav.blankQr, icon: QrCode, path: '/blank-qr' },
-    { id: 'reports', label: t.nav.reports, icon: FileText, path: '/reports' },
-    { id: 'trash', label: t.nav.trash, icon: Trash2, path: '/trash' },
+    { id: 'dashboard', label: t.nav.dashboard as string, icon: LayoutDashboard, path: '/' },
+    { id: 'animals', label: t.nav.animals as string, icon: QrCode, path: '/animals' },
+    { id: 'cages', label: t.nav.cages as string, icon: Home, path: '/cages' },
+    { id: 'strains', label: t.nav.strains as string, icon: Dna, path: '/strains' },
+    { id: 'qr-scanner', label: t.qr.qrCodeScanner as string, icon: QrCode, path: '/qr-scanner' },
+    { id: 'blank-qr', label: t.nav.blankQr as string, icon: QrCode, path: '/blank-qr' },
+    { id: 'reports', label: t.nav.reports as string, icon: FileText, path: '/reports' },
+    { id: 'trash', label: t.nav.trash as string, icon: Trash2, path: '/trash' },
   ];
 
   if ((user as any)?.role === 'Success Manager' || (user as any)?.role === 'Admin') {
-    menuItems.push({ id: 'users', label: t.nav.users, icon: Users, path: '/users' });
+    menuItems.push({ id: 'users', label: t.nav.users as string, icon: Users, path: '/users' });
   }
 
   // Admin-only features - full access to everything
   if ((user as any)?.role === 'Admin') {
-    menuItems.push({ id: 'admin', label: t.nav.admin, icon: Settings, path: '/admin' });
+    menuItems.push({ id: 'admin', label: t.nav.admin as string, icon: Settings, path: '/admin' });
   }
 
   return (

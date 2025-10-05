@@ -54,11 +54,19 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-background">
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <div className="hidden md:block">
+        <Sidebar onNavigate={handleNavigate} />
+      </div>
+      
       <div className="flex-1 flex flex-col overflow-hidden">
-        <MobileHeader 
-          onMenuClick={() => setMobileMenuOpen(true)} 
-          onNavigate={handleNavigate}
-        />
+        {/* Mobile Header - Hidden on desktop */}
+        <div className="md:hidden">
+          <MobileHeader 
+            onMenuClick={() => setMobileMenuOpen(true)} 
+            onNavigate={handleNavigate}
+          />
+        </div>
         
         <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
           <Switch>
@@ -82,11 +90,15 @@ function AppContent() {
           </Switch>
         </div>
 
-        <MobileBottomNav 
-          onNavigate={handleNavigate}
-          onMenuClick={() => setMobileMenuOpen(true)}
-        />
+        {/* Mobile Bottom Navigation - Hidden on desktop */}
+        <div className="md:hidden">
+          <MobileBottomNav 
+            onNavigate={handleNavigate}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
+        </div>
 
+        {/* Mobile Menu - Only for mobile */}
         <MobileMenu
           open={mobileMenuOpen}
           onOpenChange={setMobileMenuOpen}
