@@ -14,7 +14,6 @@ export default function MobileBottomNav({ onNavigate, onMenuClick }: MobileBotto
     { id: 'dashboard', icon: LayoutDashboard, path: '/', label: 'Dashboard' },
     { id: 'animals', icon: QrCode, path: '/animals', label: 'Animals' },
     { id: 'cages', icon: Home, path: '/cages', label: 'Cages' },
-    { id: 'scanner', icon: Scan, path: '/qr-scanner', label: 'Scan' },
     { id: 'menu', icon: Menu, path: '#', label: 'Menu', isMenu: true },
   ];
 
@@ -28,7 +27,7 @@ export default function MobileBottomNav({ onNavigate, onMenuClick }: MobileBotto
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
-      <div className="grid grid-cols-5 h-16">
+      <div className="grid grid-cols-4 h-16">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = !item.isMenu && location === item.path;

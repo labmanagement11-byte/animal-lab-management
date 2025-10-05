@@ -41,7 +41,6 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
     { id: 'animals', label: 'Animals', icon: QrCode, path: '/animals' },
     { id: 'cages', label: 'Cages', icon: Home, path: '/cages' },
     { id: 'strains', label: 'Strains', icon: Dna, path: '/strains' },
-    { id: 'qr-scanner', label: 'QR Scanner', icon: QrCode, path: '/qr-scanner' },
     { id: 'blank-qr', label: 'Generar QR en Blanco', icon: QrCode, path: '/blank-qr' },
     { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
     { id: 'trash', label: 'Trash', icon: Trash2, path: '/trash' },
