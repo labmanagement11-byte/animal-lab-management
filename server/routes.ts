@@ -2075,6 +2075,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get company overview with all filtered data
+  app.get('/api/companies/:id/overview', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can view company overview" });
+      }
+
+      const overview = await storage.getCompanyOverview(req.params.id);
+      res.json(overview);
+    } catch (error) {
+      console.error("Error fetching company overview:", error);
+      res.status(500).json({ message: "Failed to fetch company overview" });
+    }
+  });
+
+  // Get users by company
+  app.get('/api/companies/:id/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can view company users" });
+      }
+
+      const users = await storage.getUsersByCompany(req.params.id);
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching company users:", error);
+      res.status(500).json({ message: "Failed to fetch company users" });
+    }
+  });
+
+  // Assign user to company
+  app.post('/api/companies/:id/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can assign users to companies" });
+      }
+
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+
+      const updatedUser = await storage.assignUserToCompany(userId, req.params.id);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: userId,
+        changes: { companyId: req.params.id },
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error assigning user to company:", error);
+      res.status(500).json({ message: "Failed to assign user to company" });
+    }
+  });
+
+  // Remove user from company
+  app.delete('/api/companies/:id/users/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (user?.role !== 'Admin') {
+        return res.status(403).json({ message: "Only Admin can remove users from companies" });
+      }
+
+      const updatedUser = await storage.removeUserFromCompany(req.params.userId);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: req.params.userId,
+        changes: { companyId: null },
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error removing user from company:", error);
+      res.status(500).json({ message: "Failed to remove user from company" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -139,6 +139,24 @@ export interface IStorage {
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company>;
   deleteCompany(id: string): Promise<void>;
+  getCompanyOverview(companyId: string): Promise<{
+    company: Company;
+    animals: Animal[];
+    cages: Cage[];
+    users: User[];
+    strains: Strain[];
+    genotypes: Genotype[];
+    qrCodes: QrCode[];
+    stats: {
+      totalAnimals: number;
+      activeCages: number;
+      totalUsers: number;
+      qrCodes: number;
+    };
+  }>;
+  getUsersByCompany(companyId: string): Promise<User[]>;
+  assignUserToCompany(userId: string, companyId: string): Promise<User>;
+  removeUserFromCompany(userId: string): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1205,6 +1223,91 @@ export class DatabaseStorage implements IStorage {
       .update(companies)
       .set({ isActive: false })
       .where(eq(companies.id, id));
+  }
+
+  async getCompanyOverview(companyId: string): Promise<{
+    company: Company;
+    animals: Animal[];
+    cages: Cage[];
+    users: User[];
+    strains: Strain[];
+    genotypes: Genotype[];
+    qrCodes: QrCode[];
+    stats: {
+      totalAnimals: number;
+      activeCages: number;
+      totalUsers: number;
+      qrCodes: number;
+    };
+  }> {
+    const company = await this.getCompany(companyId);
+    if (!company) {
+      throw new Error('Company not found');
+    }
+
+    const [
+      allAnimals,
+      allCages,
+      allUsers,
+      allStrains,
+      allGenotypes,
+      allQrCodes
+    ] = await Promise.all([
+      this.getAnimals(undefined, false, companyId),
+      this.getCages(false, companyId),
+      this.getUsersByCompany(companyId),
+      this.getStrains(companyId),
+      this.getGenotypes(companyId),
+      this.getQrCodes(false, companyId)
+    ]);
+
+    const stats = {
+      totalAnimals: allAnimals.length,
+      activeCages: allCages.filter(c => c.isActive).length,
+      totalUsers: allUsers.length,
+      qrCodes: allQrCodes.length
+    };
+
+    return {
+      company,
+      animals: allAnimals,
+      cages: allCages,
+      users: allUsers,
+      strains: allStrains,
+      genotypes: allGenotypes,
+      qrCodes: allQrCodes,
+      stats
+    };
+  }
+
+  async getUsersByCompany(companyId: string): Promise<User[]> {
+    const result = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.companyId, companyId),
+        isNull(users.deletedAt)
+      ))
+      .orderBy(users.email);
+    return result as User[];
+  }
+
+  async assignUserToCompany(userId: string, companyId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ companyId, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user as User;
+  }
+
+  async removeUserFromCompany(userId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ companyId: null, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user as User;
   }
 }
 
