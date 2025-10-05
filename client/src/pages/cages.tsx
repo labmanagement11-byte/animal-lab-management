@@ -391,7 +391,7 @@ export default function Cages() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 ml-[133px] mr-[133px]">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold text-foreground">Cages</h2>
           <p className="text-sm text-muted-foreground hidden md:block">Manage laboratory animal housing</p>
@@ -416,12 +416,12 @@ export default function Cages() {
       {/* Search */}
       <div className="mb-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
           <Input
             placeholder="Search cages..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12 text-base"
+            className="pl-9 md:pl-10 h-10 md:h-12 text-sm md:text-base"
             data-testid="input-search-cages"
           />
         </div>
@@ -638,30 +638,30 @@ export default function Cages() {
       )}
 
       {(viewMode === "medium-cards" || viewMode === "large-cards") && (
-        <div className={`grid gap-6 ${
+        <div className={`grid gap-3 md:gap-6 ${
           viewMode === "medium-cards" 
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" 
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" 
             : "grid-cols-1 md:grid-cols-2"
         }`}>
         {cages?.map((cage) => (
           <Card key={cage.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center">
-                  <Home className="w-5 h-5 mr-2" />
-                  Cage {cage.cageNumber}
+            <CardHeader className="pb-3 md:pb-6">
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="text-base md:text-lg flex items-center">
+                  <Home className="w-4 h-4 md:w-5 md:h-5 mr-2 flex-shrink-0" />
+                  <span className="truncate">Cage {cage.cageNumber}</span>
                 </CardTitle>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 flex-shrink-0">
                   {(() => {
                     const statusInfo = getStatusDisplayInfo(cage.status || 'Active', cage.isActive ?? true);
                     return (
                       <>
-                        <Badge className={getStatusColor(statusInfo.originalStatus)}>
+                        <Badge className={`text-xs ${getStatusColor(statusInfo.originalStatus)}`}>
                           {statusInfo.originalStatus}
                         </Badge>
-                        <Badge className={statusInfo.isActive 
+                        <Badge className={`text-xs ${statusInfo.isActive 
                           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200' 
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}>
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200'}`}>
                           {statusInfo.activityStatus}
                         </Badge>
                       </>
@@ -670,44 +670,47 @@ export default function Cages() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center text-sm">
-                  <span className="text-muted-foreground">Room:</span>
-                  <span className="ml-2 font-medium" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</span>
+            <CardContent className="pt-3 md:pt-6 space-y-2 md:space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-xs">Room</span>
+                  <span className="font-medium" data-testid={`text-room-${cage.id}`}>{cage.roomNumber}</span>
                 </div>
 
-                <div className="flex items-center text-sm">
-                  <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <span className="text-muted-foreground">Location:</span>
-                  <span className="ml-2 font-medium" data-testid={`text-location-${cage.id}`}>{cage.location}</span>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-xs">Capacity</span>
+                  <span className="font-medium" data-testid={`text-capacity-${cage.id}`}>{cage.capacity || 'N/A'}</span>
                 </div>
                 
-                <div className="flex items-center text-sm">
-                  <span className="text-muted-foreground">Capacity:</span>
-                  <span className="ml-2 font-medium" data-testid={`text-capacity-${cage.id}`}>{cage.capacity || 'N/A'} animals</span>
+                <div className="flex flex-col col-span-2">
+                  <span className="text-muted-foreground text-xs flex items-center">
+                    <MapPin className="w-3 h-3 mr-1" />
+                    Location
+                  </span>
+                  <span className="font-medium truncate" data-testid={`text-location-${cage.id}`}>{cage.location}</span>
                 </div>
 
                 {cage.strainId && strains && (
-                  <div className="flex items-center text-sm">
-                    <span className="text-muted-foreground">Strain:</span>
-                    <span className="ml-2 font-medium" data-testid={`text-strain-${cage.id}`}>
+                  <div className="flex flex-col col-span-2">
+                    <span className="text-muted-foreground text-xs">Strain</span>
+                    <span className="font-medium truncate" data-testid={`text-strain-${cage.id}`}>
                       {strains.find(s => s.id === cage.strainId)?.name || 'Unknown'}
                     </span>
                   </div>
                 )}
+              </div>
 
-                {/* Animals Section */}
-                {!isLoadingAnimals && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm border-t border-border pt-3">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Animals:</span>
+              {/* Animals Section */}
+              {!isLoadingAnimals && (
+                <div className="space-y-2 border-t border-border pt-3 mt-2">
+                    <div className="flex items-center justify-between text-xs md:text-sm">
+                      <div className="flex items-center gap-1 md:gap-2">
+                        <Users className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground text-xs">Animals:</span>
                         <span className="font-medium" data-testid={`text-animal-count-${cage.id}`}>
                           {getAnimalsInCage(cage.id).length}
                         </span>
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground text-xs">
                           / {cage.capacity || '∞'}
                         </span>
                       </div>
@@ -839,48 +842,50 @@ export default function Cages() {
                       <div className="text-xs text-muted-foreground bg-muted/20 rounded p-2" data-testid={`empty-cage-${cage.id}`}>
                         No animals currently assigned to this cage
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Loading state for animals */}
-                {isLoadingAnimals && (
-                  <div className="border-t border-border pt-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Loading animals...</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => handleEdit(cage)}
-                    data-testid={`button-edit-${cage.id}`}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => handleGenerateQr(cage)}
-                    data-testid={`button-qr-${cage.id}`}
-                  >
-                    <QrCode className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => deleteCageMutation.mutate(cage.id)}
-                    disabled={deleteCageMutation.isPending}
-                    data-testid={`button-delete-${cage.id}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  )}
                 </div>
+              )}
+
+              {/* Loading state for animals */}
+              {isLoadingAnimals && (
+                <div className="border-t border-border pt-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Loading animals...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border mt-2">
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => handleEdit(cage)}
+                  data-testid={`button-edit-${cage.id}`}
+                  className="h-9 w-9 p-0 md:h-10 md:w-10"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => handleGenerateQr(cage)}
+                  data-testid={`button-qr-${cage.id}`}
+                  className="h-9 w-9 p-0 md:h-10 md:w-10"
+                >
+                  <QrCode className="w-4 h-4" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => deleteCageMutation.mutate(cage.id)}
+                  disabled={deleteCageMutation.isPending}
+                  data-testid={`button-delete-${cage.id}`}
+                  className="h-9 w-9 p-0 md:h-10 md:w-10"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
