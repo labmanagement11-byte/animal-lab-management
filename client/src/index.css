@@ -89,4 +89,60 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Mobile touch optimization */
+  @media (max-width: 768px) {
+    input, 
+    textarea, 
+    select, 
+    button {
+      @apply touch-manipulation;
+    }
+
+    /* Prevent zoom on input focus on iOS */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="number"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Smooth mobile transitions */
+  .mobile-transition {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Card tap feedback */
+  @media (max-width: 768px) {
+    .mobile-card:active {
+      @apply scale-98 opacity-95;
+      @apply transition-transform duration-100;
+    }
+  }
+
+  /* Smooth scroll for mobile */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Touch-friendly spacing */
+  .mobile-touch-spacing {
+    @apply min-h-[48px] px-4;
+  }
+
+  /* Prevent text selection on touch */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }

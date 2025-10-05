@@ -860,7 +860,7 @@ export default function Cages() {
 
       {/* Cage Form Modal */}
       <Dialog open={showCageForm} onOpenChange={setShowCageForm}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
           <DialogHeader>
             <DialogTitle>{editingCage ? 'Edit Cage' : 'Add New Cage'}</DialogTitle>
           </DialogHeader>

@@ -572,7 +572,7 @@ export default function Animals() {
 
       {/* Animal Form Modal */}
       <Dialog open={showAnimalForm} onOpenChange={handleFormClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
           <AnimalForm 
             animal={editingAnimal}
             onClose={handleFormClose}
