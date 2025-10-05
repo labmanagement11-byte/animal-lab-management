@@ -11,9 +11,10 @@ import {
   Calendar,
   MapPin,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  QrCode as QrCodeIcon
 } from "lucide-react";
-import type { Animal, Cage, Strain, User as UserType } from "@shared/schema";
+import type { Animal, Cage, Strain, QrCode, User as UserType } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, calculateDaysUntilPermanentDeletion } from "@/utils/dateUtils";
@@ -30,8 +31,8 @@ import {
 
 export default function Trash() {
   const { toast } = useToast();
-  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" | "strain" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"animals" | "cages" | "strains">("animals");
+  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "animal" | "cage" | "strain" | "qrcode" } | null>(null);
+  const [activeTab, setActiveTab] = useState<"animals" | "cages" | "strains" | "qrcodes">("animals");
 
   const { data: currentUser } = useQuery<UserType>({
     queryKey: ['/api/auth/user'],
@@ -49,6 +50,10 @@ export default function Trash() {
 
   const { data: deletedStrains = [], isLoading: loadingStrains } = useQuery<Strain[]>({
     queryKey: ['/api/strains/trash'],
+  });
+
+  const { data: deletedQrCodes = [], isLoading: loadingQrCodes } = useQuery<QrCode[]>({
+    queryKey: ['/api/qr-codes-trash'],
   });
 
   const canViewUsers = currentUser?.role === 'Success Manager' || currentUser?.role === 'Admin';
@@ -187,6 +192,49 @@ export default function Trash() {
     },
   });
 
+  const restoreQrCodeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("POST", `/api/qr-codes/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+      toast({
+        title: "Success",
+        description: "QR Code restored successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to restore QR code",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const permanentDeleteQrCodeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/qr-codes/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+      setDeletingItem(null);
+      toast({
+        title: "Success",
+        description: "QR Code permanently deleted",
+      });
+    },
+    onError: () => {
+      setDeletingItem(null);
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete QR code",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getUserName = (userId: string | null | undefined) => {
     if (!userId) return 'N/A';
     if (!canViewUsers) return userId.substring(0, 8);
@@ -217,7 +265,7 @@ export default function Trash() {
     return calculateDaysUntilPermanentDeletion(deletedAt);
   };
 
-  const isLoading = loadingAnimals || loadingCages || loadingStrains;
+  const isLoading = loadingAnimals || loadingCages || loadingStrains || loadingQrCodes;
 
   if (isLoading) {
     return (
@@ -261,8 +309,8 @@ export default function Trash() {
         </Card>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "animals" | "cages" | "strains")} className="w-full">
-          <TabsList className="grid w-full md:w-[600px] grid-cols-3">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "animals" | "cages" | "strains" | "qrcodes")} className="w-full">
+          <TabsList className="grid w-full md:w-[800px] grid-cols-4">
             <TabsTrigger value="animals" data-testid="tab-animals">
               Animals ({deletedAnimals.length})
             </TabsTrigger>
@@ -271,6 +319,9 @@ export default function Trash() {
             </TabsTrigger>
             <TabsTrigger value="strains" data-testid="tab-strains">
               Strains ({deletedStrains.length})
+            </TabsTrigger>
+            <TabsTrigger value="qrcodes" data-testid="tab-qrcodes">
+              QR Codes ({deletedQrCodes.length})
             </TabsTrigger>
           </TabsList>
 
@@ -542,6 +593,98 @@ export default function Trash() {
               </div>
             )}
           </TabsContent>
+
+          {/* QR Codes Tab */}
+          <TabsContent value="qrcodes" className="space-y-4 mt-6">
+            {deletedQrCodes.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground" data-testid="text-no-deleted-qrcodes">
+                    No deleted QR codes
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                {deletedQrCodes.map((qrCode) => {
+                  const daysLeft = getDaysUntilDeletion(qrCode.deletedAt);
+                  const isExpiringSoon = daysLeft !== null && daysLeft <= 3;
+                  
+                  return (
+                    <Card key={qrCode.id} className={isExpiringSoon ? "border-red-500 dark:border-red-700" : ""} data-testid={`card-deleted-qrcode-${qrCode.id}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg flex items-center gap-2" data-testid={`text-qrcode-id-${qrCode.id}`}>
+                              <QrCodeIcon className="h-5 w-5" />
+                              QR {qrCode.id.substring(0, 8)}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {qrCode.isBlank ? "Blank QR Code" : "Linked QR Code"}
+                            </p>
+                          </div>
+                          {qrCode.cageId && (
+                            <Badge variant="outline">
+                              Cage ID: {qrCode.cageId.substring(0, 8)}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Deletion Info */}
+                        <div className="bg-muted p-3 rounded-md space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Deleted:</span>
+                            <span className="font-medium">{formatDate(qrCode.deletedAt)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Activity className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">By:</span>
+                            <span className="font-medium">{getUserName(qrCode.deletedBy)}</span>
+                          </div>
+                          {daysLeft !== null && (
+                            <div className={`flex items-center gap-2 text-sm ${isExpiringSoon ? 'text-red-600 dark:text-red-400 font-semibold' : ''}`}>
+                              {isExpiringSoon && <AlertTriangle className="h-4 w-4" />}
+                              <span>Permanent deletion in: {daysLeft} days</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => restoreQrCodeMutation.mutate(qrCode.id)}
+                            disabled={restoreQrCodeMutation.isPending}
+                            className="flex-1"
+                            data-testid={`button-restore-qrcode-${qrCode.id}`}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Restore
+                          </Button>
+                          {canPermanentlyDelete && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeletingItem({ id: qrCode.id, type: "qrcode" })}
+                              className="flex-1"
+                              data-testid={`button-permanent-delete-qrcode-${qrCode.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Forever
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Confirmation Dialog */}
@@ -550,7 +693,12 @@ export default function Trash() {
             <AlertDialogHeader>
               <AlertDialogTitle>Permanent Deletion</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the {deletingItem?.type === "animal" ? "animal" : deletingItem?.type === "cage" ? "cage" : "strain"} from the database.
+                This action cannot be undone. This will permanently delete the {
+                  deletingItem?.type === "animal" ? "animal" : 
+                  deletingItem?.type === "cage" ? "cage" : 
+                  deletingItem?.type === "qrcode" ? "QR code" : 
+                  "strain"
+                } from the database.
                 Are you sure you want to continue?
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -563,6 +711,8 @@ export default function Trash() {
                       permanentDeleteAnimalMutation.mutate(deletingItem.id);
                     } else if (deletingItem.type === "cage") {
                       permanentDeleteCageMutation.mutate(deletingItem.id);
+                    } else if (deletingItem.type === "qrcode") {
+                      permanentDeleteQrCodeMutation.mutate(deletingItem.id);
                     } else {
                       permanentDeleteStrainMutation.mutate(deletingItem.id);
                     }

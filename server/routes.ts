@@ -1125,9 +1125,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: { email, role },
       });
 
+      const invitationLink = `${req.protocol}://${req.get('host')}/api/invitations/accept/${token}`;
+
+      // Send invitation email
+      try {
+        const { sendInvitationEmail } = await import('./email.js');
+        const inviterName = user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`
+          : undefined;
+        await sendInvitationEmail(email, role, invitationLink, inviterName);
+      } catch (emailError) {
+        console.error("Error sending invitation email:", emailError);
+      }
+
       res.status(201).json({ 
         invitation,
-        invitationLink: `${req.protocol}://${req.get('host')}/api/invitations/accept/${token}`
+        invitationLink
       });
     } catch (error) {
       console.error("Error creating invitation:", error);
