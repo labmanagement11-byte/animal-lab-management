@@ -67,6 +67,7 @@ export interface IStorage {
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
+  getAuditLogsByRecord(tableName: string, recordId: string): Promise<AuditLog[]>;
   getMonthlyActivityReport(year: number, month: number): Promise<{
     animalActivity: { created: number; updated: number; deleted: number; restored: number };
     cageActivity: { created: number; updated: number; deleted: number; restored: number };
@@ -424,6 +425,18 @@ export class DatabaseStorage implements IStorage {
       .from(auditLogs)
       .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
+    return result;
+  }
+
+  async getAuditLogsByRecord(tableName: string, recordId: string): Promise<AuditLog[]> {
+    const result = await db
+      .select()
+      .from(auditLogs)
+      .where(and(
+        eq(auditLogs.tableName, tableName),
+        eq(auditLogs.recordId, recordId)
+      ))
+      .orderBy(desc(auditLogs.timestamp));
     return result;
   }
 

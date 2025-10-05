@@ -611,6 +611,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get audit logs for a specific cage (anyone can see their cage's history)
+  app.get('/api/cages/:id/audit-logs', isAuthenticated, async (req, res) => {
+    try {
+      const logs = await storage.getAuditLogsByRecord('cages', req.params.id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching cage audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
   // Get all users endpoint (for Admin and Success Manager only)
   // Strain routes
   app.get('/api/strains', isAuthenticated, async (req, res) => {

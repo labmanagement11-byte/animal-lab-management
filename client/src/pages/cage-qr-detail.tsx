@@ -2,8 +2,8 @@ import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Home, MapPin, Users, Calendar, Thermometer, AlertCircle, FileText, QrCode } from "lucide-react";
-import type { Cage, Animal } from "@shared/schema";
+import { Home, MapPin, Users, Calendar, Clock, Thermometer, AlertCircle, FileText, QrCode, History, User } from "lucide-react";
+import type { Cage, Animal, AuditLog, User as UserType } from "@shared/schema";
 
 export default function CageQrDetail() {
   const params = useParams();
@@ -35,6 +35,50 @@ export default function CageQrDetail() {
     },
     enabled: !!cageId,
   });
+
+  // Fetch audit logs for this cage
+  const { data: auditLogs, isLoading: isLoadingLogs } = useQuery<AuditLog[]>({
+    queryKey: ['/api/cages', cageId, 'audit-logs'],
+    queryFn: async () => {
+      const response = await fetch(`/api/cages/${cageId}/audit-logs`, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    enabled: !!cageId,
+  });
+
+  // Fetch all users to match audit log user IDs with names
+  const { data: users } = useQuery<UserType[]>({
+    queryKey: ['/api/users'],
+    queryFn: async () => {
+      const response = await fetch('/api/users', { credentials: 'include' });
+      if (!response.ok) {
+        return [];
+      }
+      return response.json();
+    },
+  });
+
+  const getUserName = (userId: string | null) => {
+    if (!userId) return 'System';
+    const user = users?.find(u => u.id === userId);
+    if (!user) return 'Unknown User';
+    return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
+  };
+
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case 'CREATE': return 'Created';
+      case 'UPDATE': return 'Updated';
+      case 'DELETE': return 'Deleted';
+      case 'SOFT_DELETE': return 'Moved to Trash';
+      case 'RESTORE': return 'Restored';
+      case 'PERMANENT_DELETE': return 'Permanently Deleted';
+      default: return action;
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -294,6 +338,67 @@ export default function CageQrDetail() {
               <p className="text-muted-foreground" data-testid="text-empty-cage">
                 This cage currently has no animals assigned to it.
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Audit History */}
+        {!isLoadingLogs && auditLogs && auditLogs.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Change History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {auditLogs.map((log) => (
+                  <div 
+                    key={log.id} 
+                    className="border border-border rounded-lg p-3 bg-muted/30"
+                    data-testid={`audit-log-${log.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs">
+                            {getActionLabel(log.action)}
+                          </Badge>
+                          <span className="text-sm font-medium">{getUserName(log.userId)}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>
+                              {log.timestamp 
+                                ? new Date(log.timestamp).toLocaleDateString('en-US', { 
+                                    weekday: 'short', 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  }) 
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="w-3 h-3" />
+                            <span>
+                              {log.timestamp 
+                                ? new Date(log.timestamp).toLocaleTimeString('en-US', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit', 
+                                    second: '2-digit' 
+                                  }) 
+                                : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
