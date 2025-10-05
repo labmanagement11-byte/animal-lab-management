@@ -40,6 +40,8 @@ export interface IStorage {
   unblockUser(id: string): Promise<User | undefined>;
   deleteUser(id: string, deletedBy: string): Promise<void>;
   restoreUser(id: string): Promise<User | undefined>;
+  getDeletedUsers(): Promise<User[]>;
+  permanentlyDeleteUser(id: string): Promise<void>;
   
   // Animal operations
   getAnimals(limit?: number, includeDeleted?: boolean): Promise<Animal[]>;
@@ -61,7 +63,7 @@ export interface IStorage {
   restoreCage(id: string): Promise<Cage>;
   permanentlyDeleteCage(id: string): Promise<void>;
   getDeletedCages(): Promise<Cage[]>;
-  cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number }>;
+  cleanupExpiredDeleted(): Promise<{ deletedAnimals: number; deletedCages: number; deletedStrains: number; deletedUsers: number }>;
   
   // QR Code operations
   getQrCodes(includeDeleted?: boolean): Promise<QrCode[]>;
@@ -207,6 +209,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async permanentlyDeleteUser(id: string): Promise<void> {
+    await db.delete(auditLogs).where(eq(auditLogs.userId, id));
     await db.delete(users).where(eq(users.id, id));
   }
 
