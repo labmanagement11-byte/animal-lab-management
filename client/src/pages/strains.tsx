@@ -52,7 +52,7 @@ export default function StrainsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/strains'] });
       toast({
         title: "Success",
-        description: "Strain deleted successfully.",
+        description: "Strain moved to trash. It will be permanently deleted in 10 days.",
       });
     },
     onError: () => {
@@ -79,7 +79,7 @@ export default function StrainsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this strain?")) {
+    if (window.confirm("Are you sure you want to delete this strain? It will be moved to trash and can be recovered within 10 days.")) {
       deleteStrainMutation.mutate(id);
     }
   };
