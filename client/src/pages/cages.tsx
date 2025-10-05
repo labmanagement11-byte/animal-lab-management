@@ -377,7 +377,7 @@ export default function Cages() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 ml-[133px] mr-[133px]">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold text-foreground">Cages</h2>
           <p className="text-sm text-muted-foreground hidden md:block">Manage laboratory animal housing</p>
