@@ -24,17 +24,16 @@ export default function MobileHeader({ onMenuClick, onNavigate }: MobileHeaderPr
     <>
       <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onMenuClick}
-              data-testid="button-mobile-menu"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-            <h1 className="text-lg font-bold text-primary">Lab Manager</h1>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuClick}
+            data-testid="button-mobile-menu"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+          
+          <h1 className="text-lg font-bold text-primary absolute left-1/2 transform -translate-x-1/2">Lab Manager</h1>
           
           <div className="flex items-center gap-2">
             <Button
