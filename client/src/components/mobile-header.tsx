@@ -56,7 +56,7 @@ export default function MobileHeader({ onMenuClick, onNavigate }: MobileHeaderPr
       </header>
 
       <Dialog open={showSearch} onOpenChange={setShowSearch}>
-        <DialogContent className="p-0 max-w-full mx-4">
+        <DialogContent className="p-4 max-w-[calc(100vw-2rem)] mx-4">
           <GlobalSearch onNavigate={(path) => {
             onNavigate(path);
             setShowSearch(false);

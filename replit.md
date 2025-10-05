@@ -17,6 +17,13 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state management and caching
 - **Form Handling**: React Hook Form with Zod validation for robust form management
 - **Build Tool**: Vite for fast development and optimized production builds
+- **Mobile Optimization**: Mobile-first responsive design with dedicated mobile navigation components
+  - Bottom navigation bar for easy thumb access on mobile devices
+  - Mobile header with menu drawer and quick search
+  - Floating Action Button (FAB) for primary actions on mobile
+  - Touch-optimized inputs and controls (48px minimum touch targets)
+  - Smooth animations and transitions for app-like experience
+  - Responsive view mode selectors (buttons on desktop, dropdown on mobile)
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework for RESTful API endpoints

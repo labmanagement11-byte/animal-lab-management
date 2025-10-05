@@ -61,7 +61,7 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-80 p-0">
+      <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
         <SheetHeader className="p-6 pb-4">
           <SheetTitle className="text-left">Menu</SheetTitle>
         </SheetHeader>
