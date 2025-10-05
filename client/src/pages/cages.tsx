@@ -20,6 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import CageQrCodeGenerator from "@/components/cage-qr-code-generator";
+import FloatingActionButton from "@/components/floating-action-button";
 
 const cageFormSchema = z.object({
   cageNumber: z.string().min(1, "Cage number is required"),
@@ -372,34 +373,37 @@ export default function Cages() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Cage Management</h2>
-          <p className="text-muted-foreground mt-1">Manage laboratory animal housing</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-foreground">Cages</h2>
+          <p className="text-sm text-muted-foreground hidden md:block">Manage laboratory animal housing</p>
         </div>
-        <Button onClick={() => setShowCageForm(true)} data-testid="button-add-cage">
+        <Button onClick={() => setShowCageForm(true)} data-testid="button-add-cage" className="hidden md:flex">
           <Plus className="w-4 h-4 mr-2" />
           Add Cage
         </Button>
       </div>
 
-      {/* Search and View Controls */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             placeholder="Search cages..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-12 text-base"
             data-testid="input-search-cages"
           />
         </div>
-        
-        {/* View Mode Toggle */}
-        <div className="flex items-center space-x-1 border border-border rounded-lg p-1">
+      </div>
+
+      {/* View Mode Controls */}
+      <div className="mb-4">
+        {/* Desktop View Toggle */}
+        <div className="hidden md:flex items-center space-x-1 border border-border rounded-lg p-1 w-fit">
           <Button
             variant={viewMode === "list" ? "default" : "ghost"}
             size="sm"
@@ -436,6 +440,41 @@ export default function Cages() {
           >
             <Maximize2 className="w-4 h-4" />
           </Button>
+        </div>
+
+        {/* Mobile View Selector */}
+        <div className="md:hidden">
+          <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+            <SelectTrigger className="w-full" data-testid="mobile-view-selector-cages">
+              <SelectValue placeholder="Select view" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="list">
+                <div className="flex items-center gap-2">
+                  <List className="w-4 h-4" />
+                  <span>List View</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="table">
+                <div className="flex items-center gap-2">
+                  <Grid3X3 className="w-4 h-4" />
+                  <span>Table View</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="medium-cards">
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4" />
+                  <span>Medium Cards</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="large-cards">
+                <div className="flex items-center gap-2">
+                  <Maximize2 className="w-4 h-4" />
+                  <span>Large Cards</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -1032,6 +1071,12 @@ export default function Cages() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Action Button - Mobile Only */}
+      <FloatingActionButton 
+        onClick={() => setShowCageForm(true)}
+        label="Add Cage"
+      />
 
       {/* Cage QR Code Generator Modal */}
       <Dialog open={showQrGenerator} onOpenChange={setShowQrGenerator}>
