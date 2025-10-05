@@ -202,6 +202,18 @@ const translations = {
       id: "ID",
       breed: "Breed",
       actions: "Actions",
+      cageLabel: "Cage:",
+      weightLabel: "Weight:",
+      notAvailable: "N/A",
+      view: "View",
+      edit: "Edit",
+    },
+    // Health Status Values
+    healthStatuses: {
+      Healthy: "Healthy",
+      Monitoring: "Monitoring",
+      Sick: "Sick",
+      Quarantine: "Quarantine",
     },
     // QR Codes
     qr: {
@@ -501,6 +513,18 @@ const translations = {
       id: "ID",
       breed: "Raza",
       actions: "Acciones",
+      cageLabel: "Jaula:",
+      weightLabel: "Peso:",
+      notAvailable: "N/D",
+      view: "Ver",
+      edit: "Editar",
+    },
+    // Health Status Values
+    healthStatuses: {
+      Healthy: "Sano",
+      Monitoring: "Monitoreo",
+      Sick: "Enfermo",
+      Quarantine: "Cuarentena",
     },
     // QR Codes
     qr: {

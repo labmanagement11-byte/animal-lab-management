@@ -230,17 +230,17 @@ export default function Dashboard() {
                           {animal.animalNumber}
                         </td>
                         <td className="py-3 px-4 text-foreground" data-testid={`text-cage-id-${animal.id}`}>
-                          {(animal as any).cageNumber || 'N/A'}
+                          {(animal as any).cageNumber || t.dashboard.notAvailable}
                         </td>
                         <td className="py-3 px-4 text-foreground" data-testid={`text-breed-${animal.id}`}>
                           {animal.breed}
                         </td>
                         <td className="py-3 px-4 text-foreground" data-testid={`text-weight-${animal.id}`}>
-                          {animal.weight ? `${animal.weight}g` : 'N/A'}
+                          {animal.weight ? `${animal.weight}g` : t.dashboard.notAvailable}
                         </td>
                         <td className="py-3 px-4">
                           <Badge className={getStatusColor(animal.healthStatus || 'Healthy')} data-testid={`status-${animal.id}`}>
-                            {animal.healthStatus}
+                            {animal.healthStatus ? t.healthStatuses[animal.healthStatus as keyof typeof t.healthStatuses] : t.healthStatuses.Healthy}
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
@@ -277,21 +277,21 @@ export default function Dashboard() {
                           </p>
                         </div>
                         <Badge className={getStatusColor(animal.healthStatus || 'Healthy')} data-testid={`status-${animal.id}`}>
-                          {animal.healthStatus}
+                          {animal.healthStatus ? t.healthStatuses[animal.healthStatus as keyof typeof t.healthStatuses] : t.healthStatuses.Healthy}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-4">
                           <div>
-                            <span className="text-muted-foreground">Cage: </span>
+                            <span className="text-muted-foreground">{t.dashboard.cageLabel} </span>
                             <span className="font-medium" data-testid={`text-cage-id-${animal.id}`}>
-                              {(animal as any).cageNumber || 'N/A'}
+                              {(animal as any).cageNumber || t.dashboard.notAvailable}
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Weight: </span>
+                            <span className="text-muted-foreground">{t.dashboard.weightLabel} </span>
                             <span className="font-medium" data-testid={`text-weight-${animal.id}`}>
-                              {animal.weight ? `${animal.weight}g` : 'N/A'}
+                              {animal.weight ? `${animal.weight}g` : t.dashboard.notAvailable}
                             </span>
                           </div>
                         </div>
