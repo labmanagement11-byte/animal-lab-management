@@ -585,21 +585,21 @@ export default function Trash() {
 
   return (
     <div 
-      className="flex-1 overflow-auto bg-cover bg-center bg-no-repeat relative"
+      className="flex-1 overflow-auto bg-cover bg-center bg-no-repeat bg-fixed relative min-h-screen"
       style={{
         backgroundImage: `url(/attached_assets/c524eee6-37c9-42cd-9754-07e7e4ac2dcd_1759682477394.jpg)`
       }}
     >
-      <div className="absolute inset-0 bg-black/30 dark:bg-black/50"></div>
+      <div className="absolute inset-0 bg-black/10 dark:bg-black/20"></div>
       <div className="p-4 md:p-6 space-y-6 relative z-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 ml-[122px] mr-[122px]">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2" data-testid="text-page-title">
+            <h1 className="text-2xl md:text-3xl font-bold text-white dark:text-white flex items-center gap-2" data-testid="text-page-title">
               <Trash2 className="h-8 w-8" />
               Trash
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-gray-100 dark:text-gray-100 mt-1">
               Deleted items are kept for 10 days before permanent removal
             </p>
           </div>
