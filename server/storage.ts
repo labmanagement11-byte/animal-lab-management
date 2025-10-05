@@ -137,7 +137,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    const allUsers = await db.select().from(users).orderBy(users.email);
+    const allUsers = await db.select().from(users)
+      .where(isNull(users.deletedAt))
+      .orderBy(users.email);
     return allUsers;
   }
 
