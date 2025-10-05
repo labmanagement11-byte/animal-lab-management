@@ -53,7 +53,8 @@ export default function ClaimBlankQr() {
 
   const createCageAndClaimMutation = useMutation({
     mutationFn: async () => {
-      const newCage = await apiRequest("POST", "/api/cages", formData);
+      const cageResponse = await apiRequest("POST", "/api/cages", formData);
+      const newCage = await cageResponse.json();
       await apiRequest("POST", `/api/qr-codes/${qrCode?.id}/claim`, { cageId: newCage.id });
       return newCage;
     },
@@ -260,14 +261,14 @@ export default function ClaimBlankQr() {
               <div>
                 <Label htmlFor="strainId">Cepa (Strain)</Label>
                 <Select
-                  value={formData.strainId}
-                  onValueChange={(value) => setFormData({ ...formData, strainId: value })}
+                  value={formData.strainId || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, strainId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger data-testid="select-strain">
                     <SelectValue placeholder="Seleccionar cepa" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin cepa</SelectItem>
+                    <SelectItem value="none">Sin cepa</SelectItem>
                     {strains?.map((strain) => (
                       <SelectItem key={strain.id} value={strain.id}>
                         {strain.name}
