@@ -29,46 +29,6 @@ export default function StrainDetail() {
     queryKey: ['/api/animals'],
   });
 
-  const strain = strains?.find(s => s.id === strainId);
-  const strainCages = cages?.filter(c => c.strainId === strainId && !c.deletedAt) || [];
-  const strainAnimals = animals?.filter(a => {
-    const animalCage = cages?.find(c => c.id === a.cageId);
-    return animalCage?.strainId === strainId && !a.deletedAt;
-  }) || [];
-
-  const isLoading = strainsLoading || cagesLoading || animalsLoading;
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-6 px-4 max-w-7xl">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="h-40 bg-muted rounded"></div>
-          <div className="h-60 bg-muted rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!strain) {
-    return (
-      <div className="container mx-auto py-6 px-4 max-w-7xl">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Beaker className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Strain not found</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              The strain you're looking for doesn't exist or was deleted
-            </p>
-            <Button onClick={() => setLocation('/strains')}>
-              Back to Strains
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const updateAnimalStatusMutation = useMutation({
     mutationFn: async ({ animal, status }: { animal: Animal; status: string }) => {
       const payload = {
@@ -115,9 +75,49 @@ export default function StrainDetail() {
     },
   });
 
+  const strain = strains?.find(s => s.id === strainId);
+  const strainCages = cages?.filter(c => c.strainId === strainId && !c.deletedAt) || [];
+  const strainAnimals = animals?.filter(a => {
+    const animalCage = cages?.find(c => c.id === a.cageId);
+    return animalCage?.strainId === strainId && !a.deletedAt;
+  }) || [];
+
+  const isLoading = strainsLoading || cagesLoading || animalsLoading;
+
   const handleStatusChange = (animal: Animal, newStatus: string) => {
     updateAnimalStatusMutation.mutate({ animal, status: newStatus });
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 px-4 max-w-7xl">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3"></div>
+          <div className="h-40 bg-muted rounded"></div>
+          <div className="h-60 bg-muted rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!strain) {
+    return (
+      <div className="container mx-auto py-6 px-4 max-w-7xl">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Beaker className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Strain not found</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              The strain you're looking for doesn't exist or was deleted
+            </p>
+            <Button onClick={() => setLocation('/strains')}>
+              Back to Strains
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const getHealthStatusColor = (status: string) => {
     switch (status) {
