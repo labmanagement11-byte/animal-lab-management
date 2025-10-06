@@ -18,12 +18,19 @@ Preferred communication style: Simple, everyday language.
 - **Form Handling**: React Hook Form with Zod validation for robust form management
 - **Build Tool**: Vite for fast development and optimized production builds
 - **Mobile Optimization**: Mobile-first responsive design with dedicated mobile navigation components
-  - Bottom navigation bar for easy thumb access on mobile devices
+  - Bottom navigation bar (h-13) for easy thumb access on mobile devices
   - Mobile header with menu drawer and quick search
-  - Floating Action Button (FAB) for primary actions on mobile
+  - Compact Floating Action Button (FAB) for primary actions on mobile
   - Touch-optimized inputs and controls (48px minimum touch targets)
   - Smooth animations and transitions for app-like experience
   - Responsive view mode selectors (buttons on desktop, dropdown on mobile)
+  - **Responsive Layout System** (October 2025):
+    - All pages use responsive padding: `p-4 md:p-6` instead of fixed large margins
+    - Headers use responsive text sizes: `text-lg md:text-2xl` or `text-xl md:text-3xl`
+    - Icons use responsive sizes: `h-6 w-6 md:h-8 md:w-8`
+    - Spacing is responsive: `mb-4 md:mb-6` and `space-y-4 md:space-y-6`
+    - Mobile CSS optimizations with reduced font sizes and spacing for better mobile experience
+    - No horizontal scrolling on mobile devices (viewport properly configured)
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework for RESTful API endpoints

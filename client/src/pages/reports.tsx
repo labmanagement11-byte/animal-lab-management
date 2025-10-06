@@ -173,15 +173,15 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <FileText className="w-8 h-8 text-primary" />
+            <FileText className="w-6 h-6 md:w-8 md:h-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-              <p className="text-muted-foreground">System analytics and data reports</p>
+              <h1 className="text-xl md:text-3xl font-bold">Reports & Analytics</h1>
+              <p className="text-xs md:text-sm text-muted-foreground">System analytics and data reports</p>
             </div>
           </div>
 
@@ -194,7 +194,7 @@ export default function ReportsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <Select value={reportType} onValueChange={setReportType}>
             <SelectTrigger className="w-full sm:w-auto sm:min-w-[10rem]" data-testid="select-report-type">
-              <SelectValue placeholder="Report Type" className="ml-[122px] mr-[122px]" />
+              <SelectValue placeholder="Report Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="animals">Animals</SelectItem>

@@ -78,10 +78,10 @@ export default function Dashboard() {
       <div className="absolute inset-0 bg-black/30 dark:bg-black/50 -z-10"></div>
       
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 relative z-10 ml-[155px] mr-[155px]">
+      <div className="flex items-center justify-between mb-4 md:mb-6 relative z-10">
         <div>
-          <h2 className="text-xl md:text-2xl font-semibold text-white dark:text-white">{t.dashboard.title}</h2>
-          <p className="text-sm text-gray-100 dark:text-gray-100 hidden md:block">{t.dashboard.manageAnimalsAndCages}</p>
+          <h2 className="text-lg md:text-2xl font-semibold text-white dark:text-white">{t.dashboard.title}</h2>
+          <p className="text-xs md:text-sm text-gray-100 dark:text-gray-100 hidden md:block">{t.dashboard.manageAnimalsAndCages}</p>
         </div>
         <div className="hidden md:flex items-center space-x-4">
           <Button 

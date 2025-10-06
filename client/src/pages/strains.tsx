@@ -91,12 +91,12 @@ export default function StrainsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 ml-[122px] mr-[122px]">
+      <div className="flex items-center justify-between mb-4 md:mb-8">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Strain Management</h2>
-          <p className="text-muted-foreground mt-1">Add and manage laboratory animal strains</p>
+          <h2 className="text-lg md:text-2xl font-semibold text-foreground">Strain Management</h2>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">Add and manage laboratory animal strains</p>
         </div>
       </div>
 

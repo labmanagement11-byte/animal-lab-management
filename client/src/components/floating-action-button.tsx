@@ -11,24 +11,24 @@ interface FloatingActionButtonProps {
 
 export default function FloatingActionButton({ 
   onClick, 
-  icon = <Plus className="w-6 h-6" />, 
+  icon = <Plus className="w-5 h-5" />, 
   label,
   className 
 }: FloatingActionButtonProps) {
   return (
     <Button
       onClick={onClick}
-      size="lg"
+      size="default"
       className={cn(
-        "md:hidden fixed bottom-24 right-6 z-40 h-14 rounded-full shadow-lg",
+        "md:hidden fixed bottom-20 right-4 z-40 h-12 rounded-full shadow-lg",
         "transition-all duration-200 hover:scale-110 active:scale-95",
-        label ? "px-6" : "w-14 p-0",
+        label ? "px-4 text-sm" : "w-12 p-0",
         className
       )}
       data-testid="fab-button"
     >
       {icon}
-      {label && <span className="ml-2 font-semibold">{label}</span>}
+      {label && <span className="ml-2 font-medium text-sm">{label}</span>}
     </Button>
   );
 }

@@ -26,8 +26,8 @@ export default function MobileBottomNav({ onNavigate, onMenuClick }: MobileBotto
   };
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
-      <div className="grid grid-cols-4 h-16">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border shadow-lg">
+      <div className="grid grid-cols-4 h-14">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = !item.isMenu && location === item.path;
@@ -37,14 +37,14 @@ export default function MobileBottomNav({ onNavigate, onMenuClick }: MobileBotto
               key={item.id}
               onClick={() => handleNavClick(item)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 transition-all duration-200",
+                "flex flex-col items-center justify-center gap-0.5 transition-all duration-200 active:scale-95",
                 isActive && "text-primary",
-                !isActive && "text-muted-foreground hover:text-foreground"
+                !isActive && "text-muted-foreground active:text-foreground"
               )}
               data-testid={`mobile-nav-${item.id}`}
             >
-              <Icon className={cn("w-5 h-5", isActive && "scale-110")} />
-              <span className="text-xs font-medium">{item.label}</span>
+              <Icon className={cn("w-4 h-4", isActive && "scale-110")} />
+              <span className="text-[10px] font-medium">{item.label}</span>
             </button>
           );
         })}
