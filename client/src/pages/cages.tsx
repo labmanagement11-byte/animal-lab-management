@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ type ViewMode = "list" | "table" | "medium-cards" | "large-cards";
 export default function Cages() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCageForm, setShowCageForm] = useState(false);
   const [showQrGenerator, setShowQrGenerator] = useState(false);
@@ -55,6 +57,7 @@ export default function Cages() {
   const [selectedCage, setSelectedCage] = useState<Cage | null>(null);
   const [expandedCages, setExpandedCages] = useState<Set<string>>(new Set());
   const [strainComboOpen, setStrainComboOpen] = useState(false);
+  const [qrIdToLink, setQrIdToLink] = useState<string | null>(null);
 
   const { data: cages, isLoading } = useQuery<Cage[]>({
     queryKey: searchTerm ? ['/api/cages/search', searchTerm] : ['/api/cages'],
@@ -130,23 +133,52 @@ export default function Cages() {
         isActive: data.isActive,
         strainId,
       };
-      await apiRequest("/api/cages", {
+      const response = await apiRequest("/api/cages", {
         method: "POST",
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" }
       });
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (createdCage) => {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
           return Array.isArray(queryKey) && (typeof queryKey[0] === 'string' && (queryKey[0].startsWith('/api/cages') || queryKey[0].startsWith('/api/strains')));
         }
       });
-      toast({
-        title: "Success",
-        description: "Cage created successfully",
-      });
+      
+      // If we have a QR to link, link it to the newly created cage
+      if (qrIdToLink && createdCage?.id) {
+        try {
+          await apiRequest(`/api/qr-codes/${qrIdToLink}/claim`, {
+            method: "POST",
+            body: JSON.stringify({ cageId: createdCage.id }),
+            headers: { "Content-Type": "application/json" }
+          });
+          toast({
+            title: "Success",
+            description: "Cage created and QR code linked. You can now add animals.",
+          });
+          setQrIdToLink(null);
+          handleCloseForm();
+          // Redirect to animals page with the cage ID to add animal
+          setLocation(`/animals?cageId=${createdCage.id}`);
+          return;
+        } catch (error) {
+          toast({
+            title: "Partial Success",
+            description: "Cage created but failed to link QR code",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: "Cage created successfully",
+        });
+      }
+      
       handleCloseForm();
     },
     onError: (error: Error) => {
@@ -321,6 +353,20 @@ export default function Cages() {
       createCageMutation.mutate(data);
     }
   };
+
+  // Detect URL parameters from QR scanner
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const createNew = params.get('createNew');
+    const qrId = params.get('qrId');
+    
+    if (createNew === 'true' && qrId) {
+      setQrIdToLink(qrId);
+      setShowCageForm(true);
+      // Clean up URL without triggering reload
+      window.history.replaceState({}, '', '/cages');
+    }
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

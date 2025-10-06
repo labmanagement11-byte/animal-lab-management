@@ -190,7 +190,7 @@ export default function QrScanner() {
   }, []);
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 md:mb-8">
         <div>
@@ -320,20 +320,27 @@ export default function QrScanner() {
                       </Select>
                     </div>
 
-                    <div className="flex space-x-2 pt-4">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setBlankQrData(null)}
-                        data-testid="button-cancel-claim"
-                      >
-                        Cancel
-                      </Button>
+                    <div className="flex flex-col space-y-2 pt-4">
                       <Button 
                         onClick={handleClaimQr}
                         disabled={!selectedCageId || claimQrMutation.isPending}
                         data-testid="button-link-qr"
                       >
                         {claimQrMutation.isPending ? "Linking..." : "Link to Cage"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setLocation(`/cages?createNew=true&qrId=${blankQrData.id}`)}
+                        data-testid="button-create-new-cage"
+                      >
+                        Create New Cage
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => setBlankQrData(null)}
+                        data-testid="button-cancel-claim"
+                      >
+                        Cancel
                       </Button>
                     </div>
                   </>
