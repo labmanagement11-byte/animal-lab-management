@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -61,7 +61,7 @@ const animalFormSchema = z.object({
   genotypingUserId: z.string().optional(),
   probes: z.boolean().default(false),
   probeType: z.string().optional(),
-  allele: z.string().optional(),
+  allele: z.array(z.string()).default([]),
   healthStatus: z.enum(["Healthy", "Monitoring", "Sick", "Quarantine"]).default("Healthy"),
   diseases: z.string().optional(),
   notes: z.string().optional(),
@@ -80,6 +80,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
   const queryClient = useQueryClient();
   const [cageComboOpen, setCageComboOpen] = useState(false);
   const [genotypeComboOpen, setGenotypeComboOpen] = useState(false);
+  const [newAllele, setNewAllele] = useState("");
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -121,7 +122,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
       genotypingUserId: animal?.genotypingUserId || "none",
       probes: animal?.probes || false,
       probeType: animal?.probeType || "",
-      allele: animal?.allele || "",
+      allele: animal?.allele || [],
       healthStatus: animal?.healthStatus || "Healthy",
       status: animal?.status || "Active",
       diseases: animal?.diseases || "",
@@ -575,7 +576,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
               </div>
               
               {form.watch("probes") && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6 mt-2">
+                <div className="space-y-4 ml-6 mt-2">
                   <div>
                     <Label htmlFor="probeType">Probe Type</Label>
                     <Input
@@ -586,13 +587,66 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
                     />
                   </div>
                   <div>
-                    <Label htmlFor="allele">Allele</Label>
-                    <Input
-                      id="allele"
-                      placeholder="Enter allele..."
-                      {...form.register("allele")}
-                      data-testid="input-allele"
-                    />
+                    <Label htmlFor="allele">Allele/Props</Label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          id="allele"
+                          placeholder="Enter allele..."
+                          value={newAllele}
+                          onChange={(e) => setNewAllele(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (newAllele.trim()) {
+                                const currentAlleles = form.getValues("allele") || [];
+                                form.setValue("allele", [...currentAlleles, newAllele.trim()]);
+                                setNewAllele("");
+                              }
+                            }
+                          }}
+                          data-testid="input-allele"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            if (newAllele.trim()) {
+                              const currentAlleles = form.getValues("allele") || [];
+                              form.setValue("allele", [...currentAlleles, newAllele.trim()]);
+                              setNewAllele("");
+                            }
+                          }}
+                          data-testid="button-add-allele"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {form.watch("allele")?.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {form.watch("allele").map((allele, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
+                              data-testid={`allele-tag-${index}`}
+                            >
+                              <span>{allele}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentAlleles = form.getValues("allele") || [];
+                                  form.setValue("allele", currentAlleles.filter((_, i) => i !== index));
+                                }}
+                                className="hover:bg-secondary-foreground/10 rounded-full p-0.5"
+                                data-testid={`button-remove-allele-${index}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
