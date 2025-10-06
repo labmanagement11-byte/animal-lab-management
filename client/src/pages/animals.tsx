@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +20,13 @@ import { calculateAge, formatDate } from "@/utils/dateUtils";
 export default function Animals() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAnimalForm, setShowAnimalForm] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "small-cards" | "large-cards" | "by-cage">("large-cards");
+  const [initialCageId, setInitialCageId] = useState<string | undefined>(undefined);
+  const lastAppliedCageIdRef = useRef<string | null>(null);
 
   const { data: animals, isLoading } = useQuery<Animal[]>({
     queryKey: searchTerm ? ['/api/animals/search', searchTerm] : ['/api/animals'],
@@ -137,7 +141,28 @@ export default function Animals() {
   const handleFormClose = () => {
     setShowAnimalForm(false);
     setEditingAnimal(null);
+    setInitialCageId(undefined);
   };
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    let queryString = url.search;
+    
+    if (!queryString && url.hash.includes('?')) {
+      queryString = url.hash.substring(url.hash.indexOf('?'));
+    }
+    
+    const urlParams = new URLSearchParams(queryString);
+    const cageId = urlParams.get('cageId');
+    
+    if (cageId && cageId !== lastAppliedCageIdRef.current && !showAnimalForm && !editingAnimal) {
+      lastAppliedCageIdRef.current = cageId;
+      setInitialCageId(cageId);
+      setShowAnimalForm(true);
+      
+      setLocation('/animals', { replace: true });
+    }
+  }, [location, showAnimalForm, editingAnimal, setLocation]);
 
   return (
     <div className="p-4 md:p-6">
@@ -576,6 +601,7 @@ export default function Animals() {
           <AnimalForm 
             animal={editingAnimal}
             onClose={handleFormClose}
+            initialCageId={initialCageId}
           />
         </DialogContent>
       </Dialog>

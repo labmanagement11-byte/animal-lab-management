@@ -72,9 +72,10 @@ type AnimalFormData = z.infer<typeof animalFormSchema>;
 interface AnimalFormProps {
   animal?: Animal | null;
   onClose: () => void;
+  initialCageId?: string;
 }
 
-export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
+export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [cageComboOpen, setCageComboOpen] = useState(false);
@@ -100,7 +101,7 @@ export default function AnimalForm({ animal, onClose }: AnimalFormProps) {
     resolver: zodResolver(animalFormSchema),
     defaultValues: {
       animalNumber: animal?.animalNumber || "",
-      cageId: animal?.cageId || "none",
+      cageId: animal?.cageId || initialCageId || "none",
       breed: animal?.breed || "",
       genotype: animal?.genotype || "none",
       dateOfBirth: animal?.dateOfBirth ? new Date(animal.dateOfBirth).toISOString().split('T')[0] : "",
