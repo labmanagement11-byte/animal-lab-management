@@ -69,7 +69,7 @@ export default function Dashboard() {
 
   return (
     <div 
-      className="p-4 md:p-6 min-h-screen bg-cover bg-center bg-no-repeat relative"
+      className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6 min-h-screen bg-cover bg-center bg-no-repeat relative"
       style={{
         backgroundImage: `url(/attached_assets/0b47e439-4a5b-47c4-b4c2-ea206254a130_1759679399654.jpg)`
       }}

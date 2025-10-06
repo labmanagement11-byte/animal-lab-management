@@ -78,10 +78,14 @@ export default function Cages() {
     queryKey: ['/api/strains'],
   });
 
+  const generateUniqueCageNumber = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   const form = useForm<CageFormData>({
     resolver: zodResolver(cageFormSchema),
     defaultValues: {
-      cageNumber: editingCage?.cageNumber || "",
+      cageNumber: editingCage?.cageNumber || generateUniqueCageNumber(),
       roomNumber: editingCage?.roomNumber || "BB00028",
       location: editingCage?.location || "",
       capacity: editingCage?.capacity?.toString() || "",
@@ -300,7 +304,7 @@ export default function Cages() {
     setShowCageForm(false);
     setEditingCage(null);
     form.reset({
-      cageNumber: "",
+      cageNumber: generateUniqueCageNumber(),
       roomNumber: "BB00028",
       location: "",
       capacity: "",
@@ -389,7 +393,7 @@ export default function Cages() {
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
         <div>

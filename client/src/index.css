@@ -202,20 +202,9 @@
   
   /* Mobile-specific compact styles */
   @media (max-width: 768px) {
-    .p-6 {
-      @apply p-3;
-    }
-    
-    .p-4 {
-      @apply p-2;
-    }
-    
-    .py-6 {
-      @apply py-3;
-    }
-    
-    .py-4 {
-      @apply py-2;
+    /* Compact page containers on mobile - reduce top padding */
+    .mobile-page-container {
+      @apply pt-1;
     }
     
     .px-6 {

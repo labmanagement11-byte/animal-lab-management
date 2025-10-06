@@ -97,10 +97,16 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
     queryKey: ['/api/genotypes'],
   });
 
+  const generateAnimalNumber = () => {
+    const prefix = Math.random() > 0.5 ? 'M' : 'F';
+    const number = Math.floor(100 + Math.random() * 900);
+    return `${prefix}-${number}`;
+  };
+
   const form = useForm<AnimalFormData>({
     resolver: zodResolver(animalFormSchema),
     defaultValues: {
-      animalNumber: animal?.animalNumber || "",
+      animalNumber: animal?.animalNumber || generateAnimalNumber(),
       cageId: animal?.cageId || initialCageId || "none",
       breed: animal?.breed || "",
       genotype: animal?.genotype || "none",

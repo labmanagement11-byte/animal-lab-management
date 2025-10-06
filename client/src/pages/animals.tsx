@@ -165,7 +165,7 @@ export default function Animals() {
   }, [location, showAnimalForm, editingAnimal, setLocation]);
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <div>
