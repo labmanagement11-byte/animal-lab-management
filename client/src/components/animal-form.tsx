@@ -140,7 +140,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
         breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
         dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
-        genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
+        genotypingUserId: (data.genotypingUserId === "none" || data.genotypingUserId === "") ? undefined : data.genotypingUserId,
         genotype: data.genotype === "none" ? undefined : data.genotype,
       };
       await apiRequest("/api/animals", {
@@ -192,7 +192,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
         breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
         dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
-        genotypingUserId: data.genotypingUserId === "none" ? undefined : data.genotypingUserId,
+        genotypingUserId: (data.genotypingUserId === "none" || data.genotypingUserId === "") ? undefined : data.genotypingUserId,
         genotype: data.genotype === "none" ? undefined : data.genotype,
       };
       await apiRequest(`/api/animals/${animal!.id}`, {
