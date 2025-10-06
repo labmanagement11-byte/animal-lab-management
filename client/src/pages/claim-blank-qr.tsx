@@ -80,7 +80,7 @@ export default function ClaimBlankQr() {
       });
       setShowNextStepDialog(true);
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -92,9 +92,21 @@ export default function ClaimBlankQr() {
         }, 500);
         return;
       }
+      
+      // Extract error message from response body if available
+      let errorMessage = "Error creating cage";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.body?.message) {
+        errorMessage = error.body.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Error creating cage",
+        description: errorMessage,
         variant: "destructive",
       });
     },
