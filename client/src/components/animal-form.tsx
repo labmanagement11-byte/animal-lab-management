@@ -553,7 +553,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
                 <SelectTrigger data-testid="select-genotyping-user">
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" sideOffset={4} className="max-h-[300px]">
                   <SelectItem value="none">No user assigned</SelectItem>
                   {users?.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
