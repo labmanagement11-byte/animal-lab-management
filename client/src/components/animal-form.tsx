@@ -546,22 +546,20 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
 
             <div>
               <Label htmlFor="genotypingUserId">Genotyping User</Label>
-              <Select 
-                value={form.watch("genotypingUserId")} 
-                onValueChange={(value) => form.setValue("genotypingUserId", value)}
+              <select
+                id="genotypingUserId"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                {...form.register("genotypingUserId")}
+                data-testid="select-genotyping-user"
               >
-                <SelectTrigger data-testid="select-genotyping-user">
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent position="popper" sideOffset={4} className="max-h-[300px]">
-                  <SelectItem value="none">No user assigned</SelectItem>
-                  {users?.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName} ({user.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Select user</option>
+                <option value="none">No user assigned</option>
+                {users?.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName} ({user.email})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-3">

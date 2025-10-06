@@ -380,10 +380,21 @@ export default function Animals() {
                       <div><span className="font-medium">Cage:</span> {getCageDisplay(animal.cageId)}</div>
                       {animal.genotype && <div><span className="font-medium">Genotype:</span> {animal.genotype}</div>}
                       {animal.probes && (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
-                          <Beaker className="w-2 h-2 mr-1" />
-                          Probes
-                        </Badge>
+                        <>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                            <Beaker className="w-2 h-2 mr-1" />
+                            Probes
+                          </Badge>
+                          {animal.allele && animal.allele.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {animal.allele.map((item, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {item}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </Card>
@@ -455,6 +466,21 @@ export default function Animals() {
                                 <span className="font-medium">Genotyping User:</span> 
                                 {getUserName(animal.genotypingUserId)}
                               </div>
+                              {animal.probeType && (
+                                <div><span className="font-medium">Probe Type:</span> {animal.probeType}</div>
+                              )}
+                              {animal.allele && animal.allele.length > 0 && (
+                                <div>
+                                  <span className="font-medium">Allele/Props:</span>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {animal.allele.map((item, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-xs">
+                                        {item}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
