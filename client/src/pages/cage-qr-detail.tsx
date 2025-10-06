@@ -1,13 +1,15 @@
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Home, MapPin, Users, Calendar, Clock, Thermometer, AlertCircle, FileText, QrCode, History, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Home, MapPin, Users, Calendar, Clock, Thermometer, AlertCircle, FileText, QrCode, History, User, Plus } from "lucide-react";
 import type { Cage, Animal, AuditLog, User as UserType } from "@shared/schema";
 
 export default function CageQrDetail() {
   const params = useParams();
   const cageId = params.id;
+  const [, setLocation] = useLocation();
 
   // Fetch cage details
   const { data: cage, isLoading: isLoadingCage } = useQuery<Cage>({
@@ -335,9 +337,17 @@ export default function CageQrDetail() {
             <CardContent className="p-6 text-center">
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No Animals</h3>
-              <p className="text-muted-foreground" data-testid="text-empty-cage">
+              <p className="text-muted-foreground mb-4" data-testid="text-empty-cage">
                 This cage currently has no animals assigned to it.
               </p>
+              <Button
+                onClick={() => setLocation(`/animals?cageId=${cageId}`)}
+                className="mt-2"
+                data-testid="button-add-animal"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Animal
+              </Button>
             </CardContent>
           </Card>
         )}
