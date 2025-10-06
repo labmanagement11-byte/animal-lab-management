@@ -69,8 +69,8 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
           <SheetTitle className="text-left">{t.nav.menu}</SheetTitle>
         </SheetHeader>
         
-        {user && (
-          <>
+        {user ? (
+          <div>
             <div className="px-6 pb-4">
               <div className="flex items-center gap-3 p-4 bg-accent rounded-lg">
                 <Avatar className="w-12 h-12">
@@ -93,8 +93,8 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
               </div>
             </div>
             <Separator />
-          </>
-        )}
+          </div>
+        ) : null}
 
         <nav className="px-4 py-4">
           <ul className="space-y-1">

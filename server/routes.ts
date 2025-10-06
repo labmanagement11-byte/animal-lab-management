@@ -208,6 +208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
       
       // Transform date strings to Date objects
       const transformedData = {
