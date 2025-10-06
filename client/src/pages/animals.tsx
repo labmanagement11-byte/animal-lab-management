@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Eye, Edit, Trash2, Calendar, User, Beaker, Grid, List, Table, LayoutGrid, Square } from "lucide-react";
@@ -24,6 +24,7 @@ export default function Animals() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAnimalForm, setShowAnimalForm] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
+  const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "small-cards" | "large-cards" | "by-cage">("large-cards");
   const [initialCageId, setInitialCageId] = useState<string | undefined>(undefined);
   const lastAppliedCageIdRef = useRef<string | null>(null);
@@ -299,7 +300,7 @@ export default function Animals() {
                   </thead>
                   <tbody>
                     {animals.map((animal) => (
-                      <tr key={animal.id} className="hover:bg-muted/30" data-testid={`table-row-${animal.id}`}>
+                      <tr key={animal.id} className="hover:bg-muted/30 cursor-pointer" data-testid={`table-row-${animal.id}`} onClick={() => setSelectedAnimal(animal)}>
                         <td className="border border-border p-3 font-medium" data-testid={`table-animal-id-${animal.id}`}>
                           {animal.animalNumber}
                         </td>
@@ -318,7 +319,10 @@ export default function Animals() {
                             <Button 
                               size="sm" 
                               variant="ghost"
-                              onClick={() => handleEdit(animal)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(animal);
+                              }}
                               data-testid={`table-edit-${animal.id}`}
                             >
                               <Edit className="w-3 h-3" />
@@ -326,7 +330,10 @@ export default function Animals() {
                             <Button 
                               size="sm" 
                               variant="ghost"
-                              onClick={() => handleDelete(animal)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(animal);
+                              }}
                               disabled={deleteAnimalMutation.isPending}
                               data-testid={`table-delete-${animal.id}`}
                             >
@@ -342,7 +349,7 @@ export default function Animals() {
             ) : viewMode === "small-cards" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {animals.map((animal) => (
-                  <Card key={animal.id} className="p-3" data-testid={`small-card-${animal.id}`}>
+                  <Card key={animal.id} className="p-3 cursor-pointer hover:bg-accent/50 transition-colors" data-testid={`small-card-${animal.id}`} onClick={() => setSelectedAnimal(animal)}>
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium text-foreground" data-testid={`small-card-id-${animal.id}`}>
@@ -356,7 +363,10 @@ export default function Animals() {
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          onClick={() => handleEdit(animal)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(animal);
+                          }}
                           data-testid={`small-edit-${animal.id}`}
                         >
                           <Edit className="w-3 h-3" />
@@ -364,7 +374,10 @@ export default function Animals() {
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          onClick={() => handleDelete(animal)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(animal);
+                          }}
                           disabled={deleteAnimalMutation.isPending}
                           data-testid={`small-delete-${animal.id}`}
                         >
@@ -403,7 +416,7 @@ export default function Animals() {
             ) : viewMode === "large-cards" ? (
               <div className="space-y-4">
                 {animals.map((animal) => (
-                  <Card key={animal.id} className="p-4" data-testid={`large-card-${animal.id}`}>
+                  <Card key={animal.id} className="p-4 cursor-pointer hover:bg-accent/50 transition-colors" data-testid={`large-card-${animal.id}`} onClick={() => setSelectedAnimal(animal)}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-4 mb-3">
@@ -507,7 +520,10 @@ export default function Animals() {
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          onClick={() => handleEdit(animal)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(animal);
+                          }}
                           data-testid={`large-edit-${animal.id}`}
                         >
                           <Edit className="w-4 h-4" />
@@ -515,7 +531,10 @@ export default function Animals() {
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          onClick={() => handleDelete(animal)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(animal);
+                          }}
                           disabled={deleteAnimalMutation.isPending}
                           data-testid={`large-delete-${animal.id}`}
                         >
@@ -553,7 +572,7 @@ export default function Animals() {
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {cageAnimals.map((animal) => (
-                          <Card key={animal.id} className="p-3 bg-accent/30" data-testid={`compact-animal-${animal.id}`}>
+                          <Card key={animal.id} className="p-3 bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors" data-testid={`compact-animal-${animal.id}`} onClick={() => setSelectedAnimal(animal)}>
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium text-foreground" data-testid={`compact-animal-id-${animal.id}`}>
@@ -567,7 +586,10 @@ export default function Animals() {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => handleEdit(animal)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(animal);
+                                  }}
                                   data-testid={`compact-edit-${animal.id}`}
                                 >
                                   <Edit className="w-3 h-3" />
@@ -575,7 +597,10 @@ export default function Animals() {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => handleDelete(animal)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(animal);
+                                  }}
                                   disabled={deleteAnimalMutation.isPending}
                                   data-testid={`compact-delete-${animal.id}`}
                                 >
@@ -629,6 +654,149 @@ export default function Animals() {
             onClose={handleFormClose}
             initialCageId={initialCageId}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Animal Detail Modal */}
+      <Dialog open={!!selectedAnimal} onOpenChange={() => setSelectedAnimal(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogTitle className="sr-only">Animal Details</DialogTitle>
+          {selectedAnimal && (
+            <div className="space-y-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground" data-testid="detail-animal-number">
+                    {selectedAnimal.animalNumber}
+                  </h2>
+                  <div className="flex gap-2 mt-2">
+                    <Badge className={getStatusColor(selectedAnimal.healthStatus || 'Healthy')}>
+                      {selectedAnimal.healthStatus || 'Healthy'}
+                    </Badge>
+                    {selectedAnimal.status && selectedAnimal.status !== 'Active' && (
+                      <Badge variant="secondary">
+                        {selectedAnimal.status}
+                      </Badge>
+                    )}
+                    {selectedAnimal.probes && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                        <Beaker className="w-3 h-3 mr-1" />
+                        Probes
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      handleEdit(selectedAnimal);
+                      setSelectedAnimal(null);
+                    }}
+                    data-testid="button-edit-from-detail"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => {
+                      handleDelete(selectedAnimal);
+                      setSelectedAnimal(null);
+                    }}
+                    data-testid="button-delete-from-detail"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Basic Information */}
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-3 text-foreground">Basic Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-muted-foreground">Strain:</span> {selectedAnimal.breed}</div>
+                    <div><span className="font-medium text-muted-foreground">Genotype:</span> {selectedAnimal.genotype || 'N/A'}</div>
+                    <div><span className="font-medium text-muted-foreground">Gender:</span> {selectedAnimal.gender || 'N/A'}</div>
+                    <div><span className="font-medium text-muted-foreground">Color:</span> {selectedAnimal.color || 'N/A'}</div>
+                    <div><span className="font-medium text-muted-foreground">Generation:</span> {selectedAnimal.generation || 'N/A'}</div>
+                    <div><span className="font-medium text-muted-foreground">Cage:</span> {getCageDisplay(selectedAnimal.cageId)}</div>
+                  </div>
+                </Card>
+
+                {/* Physical & Age Information */}
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-3 text-foreground">Physical & Age</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">Date of Birth:</span> 
+                      <span>{formatDate(selectedAnimal.dateOfBirth)}</span>
+                    </div>
+                    <div><span className="font-medium text-muted-foreground">Age:</span> {calculateAge(selectedAnimal.dateOfBirth)}</div>
+                    <div><span className="font-medium text-muted-foreground">Weight:</span> {selectedAnimal.weight ? `${selectedAnimal.weight}g` : 'N/A'}</div>
+                  </div>
+                </Card>
+
+                {/* Research Data */}
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-3 text-foreground">Research Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-muted-foreground">Protocol:</span> {selectedAnimal.protocol || 'N/A'}</div>
+                    <div><span className="font-medium text-muted-foreground">Breeding Start:</span> {formatDate(selectedAnimal.breedingStartDate)}</div>
+                    <div><span className="font-medium text-muted-foreground">Date of Genotyping (DOG):</span> {formatDate(selectedAnimal.dateOfGenotyping)}</div>
+                    <div className="flex items-start gap-1">
+                      <User className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <span className="font-medium text-muted-foreground">Genotyping User:</span> 
+                        <div>{getUserName(selectedAnimal.genotypingUserId)}</div>
+                      </div>
+                    </div>
+                    {selectedAnimal.probeType && (
+                      <div><span className="font-medium text-muted-foreground">Probe Type:</span> {selectedAnimal.probeType}</div>
+                    )}
+                    {selectedAnimal.allele && selectedAnimal.allele.length > 0 && (
+                      <div>
+                        <span className="font-medium text-muted-foreground">Allele:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {selectedAnimal.allele.map((item, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs" data-testid={`badge-allele-${idx}`}>
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Health & Notes */}
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-3 text-foreground">Health & Notes</h3>
+                  <div className="space-y-3 text-sm">
+                    {selectedAnimal.diseases && (
+                      <div>
+                        <span className="font-medium text-muted-foreground">Diseases:</span>
+                        <p className="mt-1 text-foreground">{selectedAnimal.diseases}</p>
+                      </div>
+                    )}
+                    {selectedAnimal.notes && (
+                      <div>
+                        <span className="font-medium text-muted-foreground">Notes:</span>
+                        <p className="mt-1 text-foreground">{selectedAnimal.notes}</p>
+                      </div>
+                    )}
+                    {!selectedAnimal.diseases && !selectedAnimal.notes && (
+                      <p className="text-muted-foreground">No health issues or notes recorded.</p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
