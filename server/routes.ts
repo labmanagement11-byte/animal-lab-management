@@ -1589,11 +1589,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'Success Manager' && user?.role !== 'Admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
       }
       
-      // Admin can see all users, Success Manager only sees users from their company
+      // All authenticated users can access user list for genotyping selection
+      // Admin can see all users, other roles only see users from their company
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1602,7 +1603,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const users = await storage.getAllUsers(companyId);
-      res.json(users);
+      
+      // Return only necessary fields for security (avoid leaking sensitive data)
+      const sanitizedUsers = users.map(u => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role,
+        companyId: u.companyId,
+        email: u.email
+      }));
+      
+      res.json(sanitizedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
