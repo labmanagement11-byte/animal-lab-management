@@ -1716,6 +1716,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user name endpoint
+  app.put('/api/users/:id/name', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      const targetUserId = req.params.id;
+      
+      // Users can update their own name, or admins/success managers can update any user's name
+      if (currentUser?.id !== targetUserId && 
+          currentUser?.role !== 'Success Manager' && 
+          currentUser?.role !== 'Admin') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { firstName, lastName } = req.body;
+
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: "First name and last name are required" });
+      }
+
+      const updatedUser = await storage.updateUserName(targetUserId, firstName, lastName);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: updatedUser.id,
+        changes: { firstName, lastName },
+      });
+
+      res.json({ message: "User name updated successfully", user: updatedUser });
+    } catch (error) {
+      console.error("Error updating user name:", error);
+      res.status(500).json({ message: "Failed to update user name" });
+    }
+  });
+
   // Admin setup endpoint - sets galindo243@live.com as admin
   app.post('/api/setup-admin', isAuthenticated, async (req: any, res) => {
     try {

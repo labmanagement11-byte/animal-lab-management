@@ -21,6 +21,11 @@ const updateRoleSchema = z.object({
   role: z.enum(['Admin', 'Success Manager', 'Director', 'Employee']),
 });
 
+const updateNameSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+});
+
 const inviteUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   role: z.enum(['Admin', 'Success Manager', 'Director', 'Employee']),
@@ -35,6 +40,7 @@ const createUserSchema = z.object({
 });
 
 type UpdateRoleForm = z.infer<typeof updateRoleSchema>;
+type UpdateNameForm = z.infer<typeof updateNameSchema>;
 type InviteUserForm = z.infer<typeof inviteUserSchema>;
 type CreateUserForm = z.infer<typeof createUserSchema>;
 
@@ -44,6 +50,7 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [invitationLink, setInvitationLink] = useState("");
@@ -57,6 +64,14 @@ export default function UsersPage() {
     resolver: zodResolver(updateRoleSchema),
     defaultValues: {
       role: 'Employee',
+    },
+  });
+
+  const nameForm = useForm<UpdateNameForm>({
+    resolver: zodResolver(updateNameSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
     },
   });
 
@@ -115,6 +130,32 @@ export default function UsersPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to update user role",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateNameMutation = useMutation({
+    mutationFn: (data: { id: string; firstName: string; lastName: string }) => 
+      apiRequest(`/api/users/${data.id}/name`, {
+        method: 'PUT',
+        body: JSON.stringify({ firstName: data.firstName, lastName: data.lastName }),
+        headers: { 'Content-Type': 'application/json' }
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User name updated successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setNameDialogOpen(false);
+      nameForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user name",
         variant: "destructive",
       });
     },
@@ -251,6 +292,15 @@ export default function UsersPage() {
     });
   };
 
+  const handleNameUpdate = (data: UpdateNameForm) => {
+    if (!selectedUser) return;
+    updateNameMutation.mutate({
+      id: selectedUser.id,
+      firstName: data.firstName,
+      lastName: data.lastName,
+    });
+  };
+
   const handleInviteUser = (data: InviteUserForm) => {
     inviteUserMutation.mutate(data);
   };
@@ -297,6 +347,13 @@ export default function UsersPage() {
     setSelectedUser(user);
     form.setValue('role', user.role);
     setDialogOpen(true);
+  };
+
+  const openNameDialog = (user: any) => {
+    setSelectedUser(user);
+    nameForm.setValue('firstName', user.firstName || '');
+    nameForm.setValue('lastName', user.lastName || '');
+    setNameDialogOpen(true);
   };
 
   if (isLoading) {
@@ -414,63 +471,75 @@ export default function UsersPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {user.email === (currentUser as any)?.email ? (
-                      <span className="text-sm text-muted-foreground">Current User</span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {(isCurrentUserAdmin || isCurrentUserSuccessManager) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openRoleDialog(user)}
-                            disabled={updateRoleMutation.isPending}
-                            data-testid={`button-edit-role-${user.id}`}
-                          >
-                            Edit Role
-                          </Button>
-                        )}
-                        {isCurrentUserAdmin && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" data-testid={`button-actions-${user.id}`}>
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {user.isBlocked ? (
-                                <DropdownMenuItem 
-                                  onClick={() => unblockUserMutation.mutate(user.id)}
-                                  disabled={unblockUserMutation.isPending}
-                                  data-testid={`menu-unblock-${user.id}`}
-                                >
-                                  <Unlock className="w-4 h-4 mr-2" />
-                                  Unblock User
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem 
-                                  onClick={() => blockUserMutation.mutate(user.id)}
-                                  disabled={blockUserMutation.isPending}
-                                  data-testid={`menu-block-${user.id}`}
-                                >
-                                  <Ban className="w-4 h-4 mr-2" />
-                                  Block User
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
+                    <div className="flex items-center gap-2">
+                      {/* Edit Name button - available to current user or admins/success managers */}
+                      {(user.email === (currentUser as any)?.email || isCurrentUserAdmin || isCurrentUserSuccessManager) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openNameDialog(user)}
+                          disabled={updateNameMutation.isPending}
+                          data-testid={`button-edit-name-${user.id}`}
+                        >
+                          Edit Name
+                        </Button>
+                      )}
+                      
+                      {/* Edit Role button - only for admins/success managers on other users */}
+                      {user.email !== (currentUser as any)?.email && (isCurrentUserAdmin || isCurrentUserSuccessManager) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openRoleDialog(user)}
+                          disabled={updateRoleMutation.isPending}
+                          data-testid={`button-edit-role-${user.id}`}
+                        >
+                          Edit Role
+                        </Button>
+                      )}
+                      
+                      {/* Admin actions dropdown - only for admins on other users */}
+                      {user.email !== (currentUser as any)?.email && isCurrentUserAdmin && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" data-testid={`button-actions-${user.id}`}>
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {user.isBlocked ? (
                               <DropdownMenuItem 
-                                onClick={() => deleteUserMutation.mutate(user.id)}
-                                disabled={deleteUserMutation.isPending}
-                                className="text-destructive focus:text-destructive"
-                                data-testid={`menu-delete-${user.id}`}
+                                onClick={() => unblockUserMutation.mutate(user.id)}
+                                disabled={unblockUserMutation.isPending}
+                                data-testid={`menu-unblock-${user.id}`}
                               >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete User
+                                <Unlock className="w-4 h-4 mr-2" />
+                                Unblock User
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    )}
+                            ) : (
+                              <DropdownMenuItem 
+                                onClick={() => blockUserMutation.mutate(user.id)}
+                                disabled={blockUserMutation.isPending}
+                                data-testid={`menu-block-${user.id}`}
+                              >
+                                <Ban className="w-4 h-4 mr-2" />
+                                Block User
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => deleteUserMutation.mutate(user.id)}
+                              disabled={deleteUserMutation.isPending}
+                              className="text-destructive focus:text-destructive"
+                              data-testid={`menu-delete-${user.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -563,6 +632,80 @@ export default function UsersPage() {
                     data-testid="button-update-role"
                   >
                     {updateRoleMutation.isPending ? "Updating..." : "Update Role"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Name Dialog */}
+      <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User Name</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <Form {...nameForm}>
+              <form onSubmit={nameForm.handleSubmit(handleNameUpdate)} className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Editing name for: <span className="font-medium">{selectedUser.email}</span>
+                  </p>
+                </div>
+                
+                <FormField
+                  control={nameForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter first name" 
+                          {...field} 
+                          data-testid="input-first-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={nameForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter last name" 
+                          {...field} 
+                          data-testid="input-last-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setNameDialogOpen(false)}
+                    data-testid="button-cancel-name"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={updateNameMutation.isPending}
+                    data-testid="button-update-name"
+                  >
+                    {updateNameMutation.isPending ? "Updating..." : "Update Name"}
                   </Button>
                 </div>
               </form>
