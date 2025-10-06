@@ -613,7 +613,7 @@ export default function Trash() {
       <div className="absolute inset-0 bg-black/10 dark:bg-black/20"></div>
       <div className="p-4 md:p-6 space-y-4 md:space-y-6 relative z-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 ml-[122px] mr-[122px]">
           <div>
             <h1 className="text-lg md:text-3xl font-bold text-white dark:text-white flex items-center gap-2" data-testid="text-page-title">
               <Trash2 className="h-6 w-6 md:h-8 md:w-8" />

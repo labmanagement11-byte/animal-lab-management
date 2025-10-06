@@ -145,7 +145,7 @@ export const animals = pgTable("animals", {
   genotypingUserId: varchar("genotyping_user_id").references(() => users.id),
   probes: boolean("probes").default(false),
   probeType: varchar("probe_type"),
-  allele: varchar("allele"),
+  allele: text("allele").array(),
   healthStatus: varchar("health_status", { 
     enum: ['Healthy', 'Monitoring', 'Sick', 'Quarantine'] 
   }).default('Healthy'),
