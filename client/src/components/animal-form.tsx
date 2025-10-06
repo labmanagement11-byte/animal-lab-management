@@ -585,7 +585,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
                     />
                   </div>
                   <div>
-                    <Label htmlFor="allele">Allele/Props</Label>
+                    <Label htmlFor="allele">Allele</Label>
                     <div className="space-y-2">
                       <div className="flex gap-2">
                         <Input

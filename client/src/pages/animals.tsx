@@ -471,7 +471,7 @@ export default function Animals() {
                               )}
                               {animal.allele && animal.allele.length > 0 && (
                                 <div>
-                                  <span className="font-medium">Allele/Props:</span>
+                                  <span className="font-medium">Allele:</span>
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {animal.allele.map((item, idx) => (
                                       <Badge key={idx} variant="secondary" className="text-xs">
