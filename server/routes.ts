@@ -545,13 +545,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.status(201).json(cage);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating cage:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
       }
       if (error instanceof Error && error.message === 'User has no company assigned') {
         return res.status(403).json({ message: "User has no company assigned" });
+      }
+      if (error.code === '23505') {
+        if (error.constraint === 'cages_cage_number_unique') {
+          return res.status(409).json({ message: "A cage with this number already exists. Please use a different cage number." });
+        }
+        return res.status(409).json({ message: "This cage already exists in the system." });
       }
       res.status(500).json({ message: "Failed to create cage" });
     }
@@ -587,10 +593,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(updatedCage);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating cage:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error.code === '23505') {
+        if (error.constraint === 'cages_cage_number_unique') {
+          return res.status(409).json({ message: "A cage with this number already exists. Please use a different cage number." });
+        }
+        return res.status(409).json({ message: "This cage already exists in the system." });
       }
       res.status(500).json({ message: "Failed to update cage" });
     }
