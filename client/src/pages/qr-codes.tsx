@@ -13,7 +13,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function QrCodes() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<string>("active");
+  const [activeTab, setActiveTab] = useState<string>("used");
   
   const { data: qrCodes, isLoading } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes'],
@@ -276,12 +276,16 @@ export default function QrCodes() {
           <p className="text-xs md:text-sm text-muted-foreground">View and manage all generated QR codes</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-sm" data-testid="badge-total-qr-codes">
+          <Badge variant="outline" className="text-sm" data-testid="badge-used-qr-codes">
             <QrCodeIcon className="w-4 h-4 mr-1" />
-            {qrCodes?.length || 0} Active
+            {qrCodes?.filter(qr => !qr.isBlank && qr.cageId).length || 0} Used
+          </Badge>
+          <Badge variant="secondary" className="text-sm" data-testid="badge-blank-qr-codes">
+            <QrCodeIcon className="w-4 h-4 mr-1" />
+            {qrCodes?.filter(qr => qr.isBlank || !qr.cageId).length || 0} Blank
           </Badge>
           {(deletedQrCodes?.length || 0) > 0 && (
-            <Badge variant="secondary" className="text-sm" data-testid="badge-deleted-qr-codes">
+            <Badge variant="destructive" className="text-sm" data-testid="badge-deleted-qr-codes">
               <Trash2 className="w-4 h-4 mr-1" />
               {deletedQrCodes?.length || 0} Deleted
             </Badge>
@@ -292,27 +296,51 @@ export default function QrCodes() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="active" data-testid="tab-active">
-            Active QR Codes
+          <TabsTrigger value="used" data-testid="tab-used">
+            Used QR Codes ({qrCodes?.filter(qr => !qr.isBlank && qr.cageId).length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="blank" data-testid="tab-blank">
+            Blank QR Codes ({qrCodes?.filter(qr => qr.isBlank || !qr.cageId).length || 0})
           </TabsTrigger>
           <TabsTrigger value="trash" data-testid="tab-trash">
             Trash ({deletedQrCodes?.length || 0})
           </TabsTrigger>
         </TabsList>
 
-        {/* Active QR Codes */}
-        <TabsContent value="active">
-          {qrCodes && qrCodes.length > 0 ? (
+        {/* Used QR Codes */}
+        <TabsContent value="used">
+          {qrCodes && qrCodes.filter(qr => !qr.isBlank && qr.cageId).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {qrCodes.map((qrCode) => renderQrCodeCard(qrCode, false))}
+              {qrCodes.filter(qr => !qr.isBlank && qr.cageId).map((qrCode) => renderQrCodeCard(qrCode, false))}
             </div>
           ) : (
             <Card>
               <CardContent className="py-12">
                 <div className="text-center">
                   <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">No QR Codes Found</h3>
-                  <p className="text-sm text-muted-foreground" data-testid="text-no-qr-codes">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Used QR Codes</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-used-qr-codes">
+                    QR codes that are linked to cages will appear here
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Blank QR Codes */}
+        <TabsContent value="blank">
+          {qrCodes && qrCodes.filter(qr => qr.isBlank || !qr.cageId).length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {qrCodes.filter(qr => qr.isBlank || !qr.cageId).map((qrCode) => renderQrCodeCard(qrCode, false))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Blank QR Codes</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-blank-qr-codes">
                     Generate QR codes from the Blank QR page
                   </p>
                 </div>

@@ -1098,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get deleted QR codes (trash)
-  app.get('/api/qr-codes-trash', isAuthenticated, async (req: any, res) => {
+  app.get('/api/qr-codes/trash', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
       let companyId: string | undefined;
