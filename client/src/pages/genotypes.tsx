@@ -34,15 +34,15 @@ export default function GenotypesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/genotypes'] });
       toast({
-        title: "Éxito",
-        description: "Genotipo guardado exitosamente.",
+        title: "Success",
+        description: "Genotype saved successfully.",
       });
       setGenotypeInput("");
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Error al guardar el genotipo.",
+        description: "Error saving genotype.",
         variant: "destructive",
       });
     },
@@ -53,14 +53,14 @@ export default function GenotypesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/genotypes'] });
       toast({
-        title: "Éxito",
-        description: "Genotipo eliminado exitosamente.",
+        title: "Success",
+        description: "Genotype deleted successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Error al eliminar el genotipo.",
+        description: "Error deleting genotype.",
         variant: "destructive",
       });
     },
@@ -71,7 +71,7 @@ export default function GenotypesPage() {
     if (!genotypeInput.trim()) {
       toast({
         title: "Error",
-        description: "El nombre del genotipo es requerido.",
+        description: "Genotype name is required.",
         variant: "destructive",
       });
       return;
@@ -81,7 +81,7 @@ export default function GenotypesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("¿Está seguro que desea eliminar este genotipo?")) {
+    if (window.confirm("Are you sure you want to delete this genotype?")) {
       deleteGenotypeMutation.mutate(id);
     }
   };
@@ -90,8 +90,8 @@ export default function GenotypesPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-8 ml-[122px] mr-[122px]">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Gestión de Genotipos</h2>
-          <p className="text-muted-foreground mt-1">Agregar y gestionar genotipos de animales</p>
+          <h2 className="text-2xl font-semibold text-foreground">Genotype Management</h2>
+          <p className="text-muted-foreground mt-1">Add and manage animal genotypes</p>
         </div>
       </div>
 
@@ -99,19 +99,19 @@ export default function GenotypesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            Agregar Nuevo Genotipo
+            Add New Genotype
           </CardTitle>
           <CardDescription>
-            Ingrese el nombre del genotipo para agregarlo al sistema
+            Enter the genotype name to add it to the system
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex gap-4">
             <div className="flex-1">
-              <Label htmlFor="genotype-name" className="sr-only">Nombre del Genotipo</Label>
+              <Label htmlFor="genotype-name" className="sr-only">Genotype Name</Label>
               <Input
                 id="genotype-name"
-                placeholder="Ingrese nombre del genotipo (ej: WT, HET, KO)"
+                placeholder="Enter genotype name (e.g., WT, HET, KO)"
                 value={genotypeInput}
                 onChange={(e) => setGenotypeInput(e.target.value)}
                 data-testid="input-genotype-name"
@@ -123,7 +123,7 @@ export default function GenotypesPage() {
               disabled={createGenotypeMutation.isPending || !genotypeInput.trim()}
               data-testid="button-save-genotype"
             >
-              {createGenotypeMutation.isPending ? "Guardando..." : "Guardar Genotipo"}
+              {createGenotypeMutation.isPending ? "Saving..." : "Save Genotype"}
             </Button>
           </form>
         </CardContent>
@@ -133,10 +133,10 @@ export default function GenotypesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Dna className="w-5 h-5" />
-            Resumen de Genotipos
+            Genotype Summary
           </CardTitle>
           <CardDescription>
-            Vista general de genotipos guardados en el sistema
+            Overview of genotypes saved in the system
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -145,7 +145,7 @@ export default function GenotypesPage() {
               <div className="text-2xl font-bold text-primary" data-testid="text-total-genotypes">
                 {genotypes?.length || 0}
               </div>
-              <div className="text-sm text-muted-foreground">Total de Genotipos</div>
+              <div className="text-sm text-muted-foreground">Total Genotypes</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-500" data-testid="text-recent-genotypes">
@@ -156,7 +156,7 @@ export default function GenotypesPage() {
                   return createdDate > oneWeekAgo;
                 }).length || 0}
               </div>
-              <div className="text-sm text-muted-foreground">Agregados Esta Semana</div>
+              <div className="text-sm text-muted-foreground">Added This Week</div>
             </div>
           </div>
         </CardContent>
@@ -164,23 +164,23 @@ export default function GenotypesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Genotipos Guardados</CardTitle>
+          <CardTitle>Saved Genotypes</CardTitle>
           <CardDescription>
-            Lista de todos los genotipos agregados al sistema
+            List of all genotypes added to the system
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Cargando genotipos...</p>
+              <p className="text-muted-foreground">Loading genotypes...</p>
             </div>
           ) : !genotypes || genotypes.length === 0 ? (
             <div className="text-center py-8" data-testid="empty-genotypes">
               <Dna className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No hay genotipos guardados</h3>
+              <h3 className="text-lg font-medium mb-2">No saved genotypes</h3>
               <p className="text-muted-foreground mb-4">
-                Comience agregando su primer genotipo usando el formulario de arriba
+                Start by adding your first genotype using the form above
               </p>
             </div>
           ) : (
@@ -196,7 +196,7 @@ export default function GenotypesPage() {
                       {genotype.name}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Agregado {new Date(genotype.createdAt).toLocaleDateString()}
+                      Added {new Date(genotype.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <Button
