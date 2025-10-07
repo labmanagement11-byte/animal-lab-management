@@ -133,6 +133,7 @@ export default function BlankQrPage() {
     for (let i = 0; i < selectedQrData.length; i += qrCodesPerPage) {
       const pageQrCodes = selectedQrData.slice(i, i + qrCodesPerPage);
       let pageHtml = '';
+      const isLastPage = i + qrCodesPerPage >= selectedQrData.length;
       
       pageQrCodes.forEach((qrCode) => {
         const canvas = canvasRefs.current[qrCode.id];
@@ -147,7 +148,7 @@ export default function BlankQrPage() {
         }
       });
       
-      pages.push(`<div class="page">${pageHtml}</div>`);
+      pages.push(`<div class="page${isLastPage ? ' last-page' : ''}">${pageHtml}</div>`);
     }
 
     printWindow.document.write(`
@@ -234,8 +235,8 @@ export default function BlankQrPage() {
                 page-break-after: always;
               }
               
-              .page:last-child {
-                page-break-after: auto;
+              .page.last-page {
+                page-break-after: avoid;
               }
               
               .qr-label {
