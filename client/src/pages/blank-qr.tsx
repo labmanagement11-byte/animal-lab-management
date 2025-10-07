@@ -15,7 +15,6 @@ import type { QrCode } from "@shared/schema";
 
 export default function BlankQrPage() {
   const { toast } = useToast();
-  const [count, setCount] = useState(1);
   const [qrSize, setQrSize] = useState("200");
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
@@ -27,10 +26,9 @@ export default function BlankQrPage() {
   const blankQrCodes = allQrCodes?.filter(qr => qr.isBlank && !qr.cageId) || [];
 
   const generateQrMutation = useMutation({
-    mutationFn: async (count: number) => {
+    mutationFn: async () => {
       const response = await apiRequest("/api/qr-codes/generate-blank", {
         method: "POST",
-        body: JSON.stringify({ count }),
         headers: { "Content-Type": "application/json" }
       });
       return response.json() as Promise<QrCode[]>;
@@ -39,7 +37,7 @@ export default function BlankQrPage() {
       refetchQrs();
       toast({
         title: "Éxito",
-        description: `Se generaron ${data.length} código${data.length > 1 ? 's' : ''} QR en blanco exitosamente`,
+        description: `Se generaron 72 códigos QR en blanco exitosamente`,
       });
     },
     onError: (error: Error) => {
@@ -82,15 +80,7 @@ export default function BlankQrPage() {
   }, [blankQrCodes, qrSize]);
 
   const handleGenerate = () => {
-    if (count < 1 || count > 100) {
-      toast({
-        title: "Error",
-        description: "La cantidad debe estar entre 1 y 100",
-        variant: "destructive",
-      });
-      return;
-    }
-    generateQrMutation.mutate(count);
+    generateQrMutation.mutate();
   };
 
   const handleSelectAll = () => {
@@ -304,26 +294,21 @@ export default function BlankQrPage() {
           <CardHeader>
             <CardTitle>Generar Códigos QR</CardTitle>
             <CardDescription>
-              Crea entre 1 y 100 códigos QR en blanco
+              Genera automáticamente 72 códigos QR en blanco (1 hoja completa)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="qr-count">Cantidad (1-100)</Label>
-              <Input
-                id="qr-count"
-                type="number"
-                min="1"
-                max="100"
-                value={count}
-                onChange={(e) => setCount(parseInt(e.target.value) || 1)}
-                data-testid="input-qr-count"
-                disabled={generateQrMutation.isPending}
-              />
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+                Se generarán 72 códigos QR
+              </p>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                Formato: 6 columnas × 12 filas en hoja carta
+              </p>
             </div>
 
             <div>
-              <Label htmlFor="qr-size">Tamaño del QR</Label>
+              <Label htmlFor="qr-size">Tamaño del QR (vista previa)</Label>
               <Select value={qrSize} onValueChange={setQrSize}>
                 <SelectTrigger data-testid="select-qr-size">
                   <SelectValue />
@@ -340,11 +325,11 @@ export default function BlankQrPage() {
 
             <Button
               onClick={handleGenerate}
-              disabled={generateQrMutation.isPending || count < 1 || count > 100}
+              disabled={generateQrMutation.isPending}
               className="w-full"
               data-testid="button-generate-qr"
             >
-              {generateQrMutation.isPending ? "Generando..." : "Generar"}
+              {generateQrMutation.isPending ? "Generando..." : "Generar 72 Códigos QR"}
             </Button>
           </CardContent>
         </Card>
