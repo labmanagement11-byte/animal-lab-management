@@ -82,10 +82,10 @@ export default function BlankQrPage() {
   }, [blankQrCodes, qrSize]);
 
   const handleGenerate = () => {
-    if (count < 1 || count > 20) {
+    if (count < 1 || count > 100) {
       toast({
         title: "Error",
-        description: "La cantidad debe estar entre 1 y 20",
+        description: "La cantidad debe estar entre 1 y 100",
         variant: "destructive",
       });
       return;
@@ -125,7 +125,6 @@ export default function BlankQrPage() {
     if (!printWindow) return;
 
     const selectedQrData = blankQrCodes.filter(qr => selectedQrs.has(qr.id));
-    const size = parseInt(qrSize);
     
     let qrHtml = '';
     selectedQrData.forEach((qrCode) => {
@@ -133,9 +132,9 @@ export default function BlankQrPage() {
       if (canvas) {
         const dataUrl = canvas.toDataURL();
         qrHtml += `
-          <div class="qr-item">
-            <img src="${dataUrl}" alt="QR Code" style="width: ${size}px; height: ${size}px;" />
-            <p>ID: ${qrCode.id.substring(0, 8)}</p>
+          <div class="qr-label">
+            <img src="${dataUrl}" alt="QR Code" />
+            <p>${qrCode.id.substring(0, 8)}</p>
           </div>
         `;
       }
@@ -145,47 +144,128 @@ export default function BlankQrPage() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Imprimir Códigos QR</title>
+          <title>Imprimir Códigos QR - Formato Etiquetas</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
             body {
               font-family: Arial, sans-serif;
-              padding: 20px;
             }
-            .qr-container {
-              display: grid;
-              grid-template-columns: repeat(auto-fill, minmax(${size + 40}px, 1fr));
-              gap: 20px;
-            }
-            .qr-item {
-              text-align: center;
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-            .qr-item p {
-              margin-top: 8px;
-              font-size: 10px;
-              color: #333;
-            }
-            @media print {
+            
+            /* Formato para pantalla - vista previa */
+            @media screen {
               body {
-                padding: 10px;
+                background: #f0f0f0;
+                padding: 20px;
               }
-              .qr-container {
-                gap: 15px;
+              .page {
+                background: white;
+                width: 8.5in;
+                height: 11in;
+                margin: 0 auto 20px;
+                padding: 0;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                display: grid;
+                grid-template-columns: repeat(6, 1.26in);
+                grid-template-rows: repeat(12, 0.87in);
+                gap: 0;
               }
+              .qr-label {
+                width: 1.26in;
+                height: 0.87in;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                border: 1px dashed #ddd;
+                padding: 2px;
+              }
+              .qr-label img {
+                width: 0.7in;
+                height: 0.7in;
+                object-fit: contain;
+              }
+              .qr-label p {
+                font-size: 6px;
+                margin-top: 1px;
+                color: #333;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+              }
+            }
+            
+            /* Formato para impresión - exacto */
+            @media print {
               @page {
-                margin: 1cm;
+                size: 8.5in 11in;
+                margin: 0;
+              }
+              
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              
+              .page {
+                width: 8.5in;
+                height: 11in;
+                margin: 0;
+                padding: 0;
+                display: grid;
+                grid-template-columns: repeat(6, 1.26in);
+                grid-template-rows: repeat(12, 0.87in);
+                gap: 0;
+                page-break-after: always;
+              }
+              
+              .page:last-child {
+                page-break-after: auto;
+              }
+              
+              .qr-label {
+                width: 1.26in;
+                height: 0.87in;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 2px;
+                page-break-inside: avoid;
+              }
+              
+              .qr-label img {
+                width: 0.7in;
+                height: 0.7in;
+                object-fit: contain;
+              }
+              
+              .qr-label p {
+                font-size: 6px;
+                margin-top: 1px;
+                color: #000;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
               }
             }
           </style>
         </head>
         <body>
-          <div class="qr-container">
+          <div class="page">
             ${qrHtml}
           </div>
           <script>
             window.onload = function() {
-              window.print();
+              setTimeout(() => {
+                window.print();
+              }, 500);
               window.onafterprint = function() {
                 window.close();
               };
@@ -215,17 +295,17 @@ export default function BlankQrPage() {
           <CardHeader>
             <CardTitle>Generar Códigos QR</CardTitle>
             <CardDescription>
-              Crea entre 1 y 20 códigos QR en blanco
+              Crea entre 1 y 100 códigos QR en blanco
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="qr-count">Cantidad (1-20)</Label>
+              <Label htmlFor="qr-count">Cantidad (1-100)</Label>
               <Input
                 id="qr-count"
                 type="number"
                 min="1"
-                max="20"
+                max="100"
                 value={count}
                 onChange={(e) => setCount(parseInt(e.target.value) || 1)}
                 data-testid="input-qr-count"
@@ -251,7 +331,7 @@ export default function BlankQrPage() {
 
             <Button
               onClick={handleGenerate}
-              disabled={generateQrMutation.isPending || count < 1 || count > 20}
+              disabled={generateQrMutation.isPending || count < 1 || count > 100}
               className="w-full"
               data-testid="button-generate-qr"
             >

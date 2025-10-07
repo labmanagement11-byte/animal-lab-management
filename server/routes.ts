@@ -894,8 +894,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/qr-codes/generate-blank', isAuthenticated, async (req: any, res) => {
     try {
       const { count } = req.body;
-      if (!count || count < 1 || count > 20) {
-        return res.status(400).json({ message: "Count must be between 1 and 20" });
+      if (!count || count < 1 || count > 100) {
+        return res.status(400).json({ message: "Count must be between 1 and 100" });
       }
 
       const qrCodes = [];
