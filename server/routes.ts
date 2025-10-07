@@ -890,14 +890,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate multiple blank QR codes for printing
+  // Generate multiple blank QR codes for printing (always 72)
   app.post('/api/qr-codes/generate-blank', isAuthenticated, async (req: any, res) => {
     try {
-      const { count } = req.body;
-      if (!count || count < 1 || count > 100) {
-        return res.status(400).json({ message: "Count must be between 1 and 100" });
-      }
-
+      const count = 72; // Always generate 72 QR codes
       const qrCodes = [];
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
