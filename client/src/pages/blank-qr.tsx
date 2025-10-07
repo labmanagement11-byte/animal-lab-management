@@ -229,16 +229,17 @@ export default function BlankQrPage() {
                 align-items: center;
                 justify-content: center;
                 border: 1px dashed #ddd;
-                padding: 2px;
+                padding: 0;
               }
               .qr-label img {
-                width: 0.7in;
-                height: 0.7in;
+                width: 0.6in;
+                height: 0.6in;
                 object-fit: contain;
+                margin-bottom: 2px;
               }
               .qr-label p {
-                font-size: 6px;
-                margin-top: 1px;
+                font-size: 5px;
+                margin: 0;
                 color: #333;
                 white-space: nowrap;
                 overflow: hidden;
@@ -282,19 +283,20 @@ export default function BlankQrPage() {
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                padding: 2px;
+                padding: 0;
                 page-break-inside: avoid;
               }
               
               .qr-label img {
-                width: 0.7in;
-                height: 0.7in;
+                width: 0.6in;
+                height: 0.6in;
                 object-fit: contain;
+                margin-bottom: 2px;
               }
               
               .qr-label p {
-                font-size: 6px;
-                margin-top: 1px;
+                font-size: 5px;
+                margin: 0;
                 color: #000;
                 white-space: nowrap;
                 overflow: hidden;
