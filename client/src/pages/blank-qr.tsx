@@ -126,25 +126,35 @@ export default function BlankQrPage() {
 
     const selectedQrData = blankQrCodes.filter(qr => selectedQrs.has(qr.id));
     
-    let qrHtml = '';
-    selectedQrData.forEach((qrCode) => {
-      const canvas = canvasRefs.current[qrCode.id];
-      if (canvas) {
-        const dataUrl = canvas.toDataURL();
-        qrHtml += `
-          <div class="qr-label">
-            <img src="${dataUrl}" alt="QR Code" />
-            <p>${qrCode.id.substring(0, 8)}</p>
-          </div>
-        `;
-      }
-    });
+    // Dividir los QR codes en páginas de 72 etiquetas
+    const qrCodesPerPage = 72;
+    const pages: string[] = [];
+    
+    for (let i = 0; i < selectedQrData.length; i += qrCodesPerPage) {
+      const pageQrCodes = selectedQrData.slice(i, i + qrCodesPerPage);
+      let pageHtml = '';
+      
+      pageQrCodes.forEach((qrCode) => {
+        const canvas = canvasRefs.current[qrCode.id];
+        if (canvas) {
+          const dataUrl = canvas.toDataURL();
+          pageHtml += `
+            <div class="qr-label">
+              <img src="${dataUrl}" alt="QR Code" />
+              <p>${qrCode.id.substring(0, 8)}</p>
+            </div>
+          `;
+        }
+      });
+      
+      pages.push(`<div class="page">${pageHtml}</div>`);
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Imprimir Códigos QR - Formato Etiquetas</title>
+          <title>Imprimir Códigos QR - Formato Etiquetas (${selectedQrData.length} códigos)</title>
           <style>
             * {
               margin: 0;
@@ -258,9 +268,7 @@ export default function BlankQrPage() {
           </style>
         </head>
         <body>
-          <div class="page">
-            ${qrHtml}
-          </div>
+          ${pages.join('')}
           <script>
             window.onload = function() {
               setTimeout(() => {
