@@ -2,10 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, QrCode as QrCodeIcon, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,7 +12,7 @@ import type { QrCode } from "@shared/schema";
 
 export default function BlankQrPage() {
   const { toast } = useToast();
-  const [qrSize, setQrSize] = useState("200");
+  const qrSize = 150; // Tamaño fijo óptimo para las etiquetas
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
@@ -60,14 +57,51 @@ export default function BlankQrPage() {
     },
   });
 
+  const deleteQrMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(
+        ids.map(id =>
+          apiRequest(`/api/qr-codes/${id}`, {
+            method: "DELETE",
+          })
+        )
+      );
+    },
+    onSuccess: () => {
+      refetchQrs();
+      setSelectedQrs(new Set());
+      toast({
+        title: "Éxito",
+        description: "Códigos QR eliminados exitosamente",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Sesión expirada. Iniciando sesión nuevamente...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Error al eliminar códigos QR",
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     if (blankQrCodes.length > 0) {
-      const size = parseInt(qrSize);
       blankQrCodes.forEach((qrCode) => {
         const canvas = canvasRefs.current[qrCode.id];
         if (canvas) {
           QRCode.toCanvas(canvas, qrCode.qrData, {
-            width: size,
+            width: qrSize,
             margin: 2,
             color: {
               dark: '#000000',
@@ -81,6 +115,18 @@ export default function BlankQrPage() {
 
   const handleGenerate = () => {
     generateQrMutation.mutate();
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedQrs.size === 0) {
+      toast({
+        title: "Error",
+        description: "Selecciona al menos un código QR para eliminar",
+        variant: "destructive",
+      });
+      return;
+    }
+    deleteQrMutation.mutate(Array.from(selectedQrs));
   };
 
   const handleSelectAll = () => {
@@ -303,24 +349,8 @@ export default function BlankQrPage() {
                 Se generarán 72 códigos QR
               </p>
               <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                Formato: 6 columnas × 12 filas en hoja carta
+                Formato: 6 columnas × 12 filas en hoja carta (1.26" × 0.87")
               </p>
-            </div>
-
-            <div>
-              <Label htmlFor="qr-size">Tamaño del QR (vista previa)</Label>
-              <Select value={qrSize} onValueChange={setQrSize}>
-                <SelectTrigger data-testid="select-qr-size">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="100">Pequeño (100px)</SelectItem>
-                  <SelectItem value="150">Mediano (150px)</SelectItem>
-                  <SelectItem value="200">Grande (200px)</SelectItem>
-                  <SelectItem value="300">Muy Grande (300px)</SelectItem>
-                  <SelectItem value="400">Extra Grande (400px)</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <Button
@@ -345,7 +375,7 @@ export default function BlankQrPage() {
                 </CardDescription>
               </div>
               {blankQrCodes.length > 0 && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -362,6 +392,16 @@ export default function BlankQrPage() {
                   >
                     <Printer className="w-4 h-4 mr-2" />
                     Imprimir ({selectedQrs.size})
+                  </Button>
+                  <Button
+                    onClick={handleDeleteSelected}
+                    disabled={selectedQrs.size === 0 || deleteQrMutation.isPending}
+                    size="sm"
+                    variant="destructive"
+                    data-testid="button-delete-selected"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {deleteQrMutation.isPending ? "Eliminando..." : `Eliminar (${selectedQrs.size})`}
                   </Button>
                 </div>
               )}
