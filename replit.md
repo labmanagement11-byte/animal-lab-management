@@ -86,7 +86,9 @@ Preferred communication style: Simple, everyday language.
   - Optimized for label printing: 1.26" × 0.87" labels on 8.5" × 11" carta sheets
   - Print layout: 6 columns × 12 rows = 72 labels per sheet
   - Custom print CSS with no trailing blank pages
-  - Selection and batch printing interface for generated codes
+  - Fixed QR size at 150px for optimal display and printing
+  - Batch selection, printing, and deletion interface
+  - Soft delete functionality for QR code management
 
 ## External Dependencies
 
