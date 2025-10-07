@@ -39,6 +39,22 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
+  const getDisplayName = (firstName?: string, lastName?: string, email?: string) => {
+    if (firstName || lastName) {
+      return `${firstName || ''} ${lastName || ''}`.trim();
+    }
+    
+    if (email) {
+      const localPart = email.split('@')[0];
+      const parts = localPart.split(/[._-]/);
+      return parts
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+    }
+    
+    return 'Usuario';
+  };
+
   const menuItems = [
     { id: 'dashboard', label: t.nav.dashboard as string, icon: LayoutDashboard, path: '/' },
     { id: 'animals', label: t.nav.animals as string, icon: QrCode, path: '/animals' },
@@ -80,13 +96,10 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">
-                    {((user as any)?.firstName || (user as any)?.lastName)
-                      ? `${(user as any)?.firstName || ''} ${(user as any)?.lastName || ''}`.trim()
-                      : (user as any)?.email || 'User'
-                    }
+                  <p className="font-semibold text-foreground truncate" data-testid="text-user-name">
+                    {getDisplayName((user as any)?.firstName, (user as any)?.lastName, (user as any)?.email)}
                   </p>
-                  <p className="text-sm text-muted-foreground truncate">
+                  <p className="text-sm text-muted-foreground truncate" data-testid="text-user-role">
                     {(user as any).role || 'Employee'}
                   </p>
                 </div>

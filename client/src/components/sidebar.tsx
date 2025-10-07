@@ -38,6 +38,22 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
+  const getDisplayName = (firstName?: string, lastName?: string, email?: string) => {
+    if (firstName || lastName) {
+      return `${firstName || ''} ${lastName || ''}`.trim();
+    }
+    
+    if (email) {
+      const localPart = email.split('@')[0];
+      const parts = localPart.split(/[._-]/);
+      return parts
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+    }
+    
+    return 'Usuario';
+  };
+
   const menuItems = [
     { id: 'dashboard', label: t.nav.dashboard as string, icon: LayoutDashboard, path: '/' },
     { id: 'animals', label: t.nav.animals as string, icon: QrCode, path: '/animals' },
@@ -100,14 +116,11 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
                   {getInitials((user as any).firstName || undefined, (user as any).lastName || undefined)}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <p className="font-medium text-foreground" data-testid="text-user-name">
-                  {((user as any)?.firstName || (user as any)?.lastName)
-                    ? `${(user as any)?.firstName || ''} ${(user as any)?.lastName || ''}`.trim()
-                    : (user as any)?.email || 'User'
-                  }
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-foreground truncate" data-testid="text-user-name">
+                  {getDisplayName((user as any)?.firstName, (user as any)?.lastName, (user as any)?.email)}
                 </p>
-                <p className="text-sm text-muted-foreground" data-testid="text-user-role">
+                <p className="text-sm text-muted-foreground truncate" data-testid="text-user-role">
                   {(user as any).role || 'Employee'}
                 </p>
               </div>
