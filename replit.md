@@ -81,6 +81,12 @@ Preferred communication style: Simple, everyday language.
 - Dynamic QR code generation containing animal and cage metadata
 - QR code scanning interface for mobile-friendly data access
 - Persistent storage of generated QR codes for tracking and management
+- **Blank QR Code Generation** (October 2025):
+  - Fixed batch generation of exactly 72 QR codes per request (no variable quantity)
+  - Optimized for label printing: 1.26" × 0.87" labels on 8.5" × 11" carta sheets
+  - Print layout: 6 columns × 12 rows = 72 labels per sheet
+  - Custom print CSS with no trailing blank pages
+  - Selection and batch printing interface for generated codes
 
 ## External Dependencies
 
