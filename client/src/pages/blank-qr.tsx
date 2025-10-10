@@ -290,6 +290,7 @@ export default function BlankQrPage() {
                 height: 1in;
                 display: flex;
                 flex-direction: column;
+                justify-content: space-between;
                 border: 1px dashed #ddd;
                 box-sizing: border-box;
                 overflow: hidden;
@@ -299,40 +300,52 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                padding: 0.08in 0.15in;
-                gap: 0.1in;
+                justify-content: space-between;
+                padding: 0.1in 0.15in 0.05in 0.15in;
               }
               .text-section {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                align-items: flex-start;
                 gap: 0.02in;
+                max-width: calc(100% - 0.75in);
               }
               .label-main-text {
-                font-size: 18px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #000;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                width: 100%;
               }
               .label-secondary-text {
-                font-size: 10px;
+                font-size: 8px;
                 color: #000;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                width: 100%;
+              }
+              .qr-section {
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
               }
               .qr-section img {
-                width: 0.65in;
-                height: 0.65in;
+                width: 0.6in;
+                height: 0.6in;
                 object-fit: contain;
+                display: block;
               }
               .label-footer {
-                height: 0.15in;
+                height: 0.12in;
                 background-color: #000;
                 width: 100%;
+                flex-shrink: 0;
               }
             }
             
@@ -340,7 +353,7 @@ export default function BlankQrPage() {
             @media print {
               @page {
                 size: 8.5in 11in;
-                margin: 0.5in 0.1875in;
+                margin: 0.5in 0.1875in 0.5in 0.1875in;
               }
               
               * {
@@ -349,7 +362,7 @@ export default function BlankQrPage() {
                 color-adjust: exact !important;
               }
               
-              body {
+              html, body {
                 margin: 0;
                 padding: 0;
                 -webkit-print-color-adjust: exact !important;
@@ -357,14 +370,15 @@ export default function BlankQrPage() {
               }
               
               .page {
-                width: 8.5in;
-                height: 11in;
+                width: 8.125in;
+                height: 10in;
                 margin: 0;
                 padding: 0;
                 display: grid;
                 grid-template-columns: repeat(3, 2.625in);
                 grid-template-rows: repeat(10, 1in);
-                gap: 0;
+                column-gap: 0;
+                row-gap: 0;
                 page-break-after: always;
               }
               
@@ -377,6 +391,7 @@ export default function BlankQrPage() {
                 height: 1in;
                 display: flex;
                 flex-direction: column;
+                justify-content: space-between;
                 box-sizing: border-box;
                 page-break-inside: avoid;
                 overflow: hidden;
@@ -389,8 +404,8 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                padding: 0.08in 0.15in;
-                gap: 0.1in;
+                justify-content: space-between;
+                padding: 0.1in 0.15in 0.05in 0.15in;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
@@ -400,36 +415,49 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                align-items: flex-start;
                 gap: 0.02in;
+                max-width: calc(100% - 0.75in);
               }
               
               .label-main-text {
-                font-size: 18px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #000 !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                width: 100%;
               }
               
               .label-secondary-text {
-                font-size: 10px;
+                font-size: 8px;
                 color: #000 !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                width: 100%;
+              }
+              
+              .qr-section {
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
               }
               
               .qr-section img {
-                width: 0.65in;
-                height: 0.65in;
+                width: 0.6in;
+                height: 0.6in;
                 object-fit: contain;
+                display: block;
               }
               
               .label-footer {
-                height: 0.15in;
+                height: 0.12in;
                 background-color: #000 !important;
                 width: 100%;
+                flex-shrink: 0;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
