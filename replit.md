@@ -81,12 +81,16 @@ Preferred communication style: Simple, everyday language.
 - Dynamic QR code generation containing animal and cage metadata
 - QR code scanning interface for mobile-friendly data access
 - Persistent storage of generated QR codes for tracking and management
-- **Blank QR Code Generation** (October 2025):
-  - Fixed batch generation of exactly 72 QR codes per request (no variable quantity)
-  - Optimized for label printing: 1.26" × 0.87" labels on 8.5" × 11" carta sheets
-  - Print layout: 6 columns × 12 rows = 72 labels per sheet
-  - Custom print CSS with no trailing blank pages
-  - Fixed QR size at 0.6" for perfect centering in labels
+- **Blank QR Code Generation with Custom Labels** (October 2025):
+  - **Updated**: Batch generation of exactly 30 QR codes (changed from 72)
+  - **Label Format**: Avery 8160 (1" × 2⅝") labels on 8.5" × 11" sheets
+  - **Print Layout**: 3 columns × 10 rows = 30 labels per sheet
+  - **Custom Text Labels**: Each QR code can have personalized text (stored in `labelText` field)
+  - **Auto-fill Feature**: Quick generation with pattern "OT-1" through "OT-30"
+  - **Horizontal Label Design**: Text label | QR code (0.6") | Metadata
+  - **Custom Print CSS**: Precise Avery 8160 margins and dimensions (0.5in × 0.19in margins)
+  - **Interactive UI**: 30 individual text inputs with auto-fill and clear options
+  - **Validation**: Requires at least one non-empty label text before generation
   - Batch selection, printing, and deletion interface
   - Soft delete functionality for QR code management
 - **QR Code Export** (October 2025):
