@@ -612,8 +612,10 @@ export default function BlankQrPage() {
       body: JSON.stringify({ ids: selectedIds })
     })
       .then(() => {
-        // Mark as printed succeeded - refresh UI and clear selection
+        // Mark as printed succeeded - refresh ALL QR-related queries and clear selection
         queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/status/unused'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/status/used'] });
         setSelectedQrs(new Set());
         
         toast({
