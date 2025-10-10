@@ -908,6 +908,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const baseUrl = `${req.protocol}://${req.get('host')}`;
 
+      // Validate user has company assigned
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
       for (let i = 0; i < count; i++) {
         // First create QR with temporary data to get the ID
         const tempQrCode = await storage.createQrCode({
@@ -915,7 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           labelText: labelTexts[i] || '',
           isBlank: true,
           generatedBy: userId,
-          companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
+          companyId: companyId!,
         });
         
         // Now update with correct URL using the actual ID
@@ -938,9 +946,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(qrCodes);
     } catch (error) {
       console.error("Error generating blank QR codes:", error);
-      if (error instanceof Error && error.message === 'User has no company assigned') {
-        return res.status(403).json({ message: "User has no company assigned" });
-      }
       res.status(500).json({ message: "Failed to generate blank QR codes" });
     }
   });
