@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, QrCode as QrCodeIcon, Trash2, Sparkles } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { QrCode } from "@shared/schema";
@@ -502,6 +502,60 @@ export default function BlankQrPage() {
       </html>
     `);
     printWindow.document.close();
+
+    // Mark QR codes as printed and save strain-color associations
+    const selectedIds = Array.from(selectedQrs);
+    
+    // Extract unique strain-color associations from selected QR codes
+    const strainColorMap = new Map<string, string>();
+    selectedQrData.forEach(qr => {
+      if (qr.labelText && qr.backgroundColor) {
+        strainColorMap.set(qr.labelText.trim(), qr.backgroundColor);
+      }
+    });
+
+    // Call API to mark as printed
+    apiRequest('/api/qr-codes/mark-printed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: selectedIds })
+    })
+      .then(() => {
+        // Mark as printed succeeded - refresh UI and clear selection
+        queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+        setSelectedQrs(new Set());
+        
+        toast({
+          title: "Códigos marcados como impresos",
+          description: `${selectedIds.length} códigos QR movidos a "Sin Usar"`,
+        });
+        
+        // Save strain-color associations (don't block on this)
+        const saveColorPromises = Array.from(strainColorMap.entries()).map(([strainName, backgroundColor]) => 
+          apiRequest('/api/strain-colors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strainName, backgroundColor })
+          })
+        );
+        
+        Promise.all(saveColorPromises).catch((colorError) => {
+          console.error('Error saving strain colors:', colorError);
+          toast({
+            title: "Advertencia",
+            description: "Los códigos se marcaron como impresos pero no se pudieron guardar algunos colores",
+            variant: "destructive",
+          });
+        });
+      })
+      .catch((error) => {
+        console.error('Error marking QR codes as printed:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron marcar los códigos como impresos",
+          variant: "destructive",
+        });
+      });
   };
 
   return (
