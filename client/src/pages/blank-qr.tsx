@@ -11,14 +11,28 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { QrCode } from "@shared/schema";
 
+interface LabelData {
+  labelText: string;
+  secondaryText: string;
+  backgroundColor: string;
+}
+
 export default function BlankQrPage() {
   const { toast } = useToast();
   const qrSize = 150;
   const QR_COUNT = 30; // Ahora generamos 30 códigos QR
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
-  const [labelTexts, setLabelTexts] = useState<string[]>(Array(QR_COUNT).fill(''));
+  const [labelData, setLabelData] = useState<LabelData[]>(
+    Array(QR_COUNT).fill(null).map(() => ({
+      labelText: '',
+      secondaryText: '',
+      backgroundColor: '#a8d5ba'
+    }))
+  );
   const [showInputs, setShowInputs] = useState(false);
   const [customText, setCustomText] = useState('');
+  const [customSecondaryText, setCustomSecondaryText] = useState('');
+  const [customColor, setCustomColor] = useState('#a8d5ba');
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
   const { data: allQrCodes, refetch: refetchQrs } = useQuery<QrCode[]>({
@@ -28,18 +42,22 @@ export default function BlankQrPage() {
   const blankQrCodes = allQrCodes?.filter(qr => qr.isBlank && !qr.cageId) || [];
 
   const generateQrMutation = useMutation({
-    mutationFn: async (texts: string[]) => {
+    mutationFn: async (data: LabelData[]) => {
       const response = await apiRequest("/api/qr-codes/generate-blank", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ labelTexts: texts }),
+        body: JSON.stringify({ labelData: data }),
       });
       return response.json() as Promise<QrCode[]>;
     },
     onSuccess: (data: QrCode[]) => {
       refetchQrs();
       setShowInputs(false);
-      setLabelTexts(Array(QR_COUNT).fill(''));
+      setLabelData(Array(QR_COUNT).fill(null).map(() => ({
+        labelText: '',
+        secondaryText: '',
+        backgroundColor: '#a8d5ba'
+      })));
       toast({
         title: "Éxito",
         description: `Se generaron ${QR_COUNT} códigos QR con texto personalizado exitosamente`,
@@ -123,7 +141,7 @@ export default function BlankQrPage() {
 
   const handleGenerate = () => {
     // Validate that at least one label has text
-    const hasText = labelTexts.some(text => text.trim() !== '');
+    const hasText = labelData.some(data => data.labelText.trim() !== '');
     if (!hasText) {
       toast({
         title: "Error",
@@ -132,7 +150,7 @@ export default function BlankQrPage() {
       });
       return;
     }
-    generateQrMutation.mutate(labelTexts);
+    generateQrMutation.mutate(labelData);
   };
 
   const handleDeleteSelected = () => {
@@ -174,9 +192,14 @@ export default function BlankQrPage() {
       });
       return;
     }
-    const newTexts = Array(QR_COUNT).fill(customText.trim());
-    setLabelTexts(newTexts);
+    const newData = Array(QR_COUNT).fill(null).map(() => ({
+      labelText: customText.trim(),
+      secondaryText: customSecondaryText.trim(),
+      backgroundColor: customColor
+    }));
+    setLabelData(newData);
     setCustomText('');
+    setCustomSecondaryText('');
   };
 
   const handlePrintSelected = () => {
@@ -207,10 +230,19 @@ export default function BlankQrPage() {
         const canvas = canvasRefs.current[qrCode.id];
         if (canvas) {
           const dataUrl = canvas.toDataURL();
+          const bgColor = qrCode.backgroundColor || '#a8d5ba';
           pageHtml += `
-            <div class="qr-label">
-              <div class="label-text">${qrCode.labelText || 'N/A'}</div>
-              <img src="${dataUrl}" alt="QR Code" />
+            <div class="qr-label" style="background-color: ${bgColor};">
+              <div class="label-content">
+                <div class="text-section">
+                  <div class="label-main-text">${qrCode.labelText || ''}</div>
+                  <div class="label-secondary-text">${qrCode.secondaryText || ''}</div>
+                </div>
+                <div class="qr-section">
+                  <img src="${dataUrl}" alt="QR Code" />
+                </div>
+              </div>
+              <div class="label-footer"></div>
             </div>
           `;
         }
@@ -257,29 +289,50 @@ export default function BlankQrPage() {
                 width: 2.625in;
                 height: 1in;
                 display: flex;
+                flex-direction: column;
+                border: 1px dashed #ddd;
+                box-sizing: border-box;
+                overflow: hidden;
+              }
+              .label-content {
+                flex: 1;
+                display: flex;
                 flex-direction: row;
                 align-items: center;
-                justify-content: space-between;
-                border: 1px dashed #ddd;
-                padding: 0.15in 0.2in;
-                box-sizing: border-box;
+                padding: 0.08in 0.15in;
+                gap: 0.1in;
               }
-              .label-text {
-                font-size: 18px;
+              .text-section {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 0.02in;
+              }
+              .label-main-text {
+                font-size: 16px;
                 font-weight: bold;
                 color: #000;
-                flex: 1;
-                text-align: left;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                padding-right: 0.1in;
               }
-              .qr-label img {
-                width: 0.65in;
-                height: 0.65in;
+              .label-secondary-text {
+                font-size: 8px;
+                color: #000;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              .qr-section img {
+                width: 0.6in;
+                height: 0.6in;
                 object-fit: contain;
-                flex-shrink: 0;
+              }
+              .label-footer {
+                height: 0.15in;
+                background-color: #000;
+                width: 100%;
               }
             }
             
@@ -287,7 +340,7 @@ export default function BlankQrPage() {
             @media print {
               @page {
                 size: 8.5in 11in;
-                margin: 0.5in 0.19in;
+                margin: 0.5in 0.21875in;
               }
               
               body {
@@ -303,7 +356,8 @@ export default function BlankQrPage() {
                 display: grid;
                 grid-template-columns: repeat(3, 2.625in);
                 grid-template-rows: repeat(10, 1in);
-                gap: 0;
+                column-gap: 0.125in;
+                row-gap: 0;
                 page-break-after: always;
               }
               
@@ -315,31 +369,56 @@ export default function BlankQrPage() {
                 width: 2.625in;
                 height: 1in;
                 display: flex;
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
-                padding: 0.15in 0.2in;
+                flex-direction: column;
                 box-sizing: border-box;
                 page-break-inside: avoid;
+                overflow: hidden;
               }
               
-              .label-text {
-                font-size: 18px;
+              .label-content {
+                flex: 1;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                padding: 0.08in 0.15in;
+                gap: 0.1in;
+              }
+              
+              .text-section {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 0.02in;
+              }
+              
+              .label-main-text {
+                font-size: 16px;
                 font-weight: bold;
                 color: #000;
-                flex: 1;
-                text-align: left;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                padding-right: 0.1in;
               }
               
-              .qr-label img {
-                width: 0.65in;
-                height: 0.65in;
+              .label-secondary-text {
+                font-size: 8px;
+                color: #000;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              
+              .qr-section img {
+                width: 0.6in;
+                height: 0.6in;
                 object-fit: contain;
-                flex-shrink: 0;
+              }
+              
+              .label-footer {
+                height: 0.15in;
+                background-color: #000;
+                width: 100%;
               }
             }
           </style>
@@ -403,16 +482,31 @@ export default function BlankQrPage() {
               </Button>
             ) : (
               <>
-                <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">Auto-rellenar con el mismo texto</label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={customText}
-                      onChange={(e) => setCustomText(e.target.value)}
-                      placeholder="Ingresa el texto (ej: OT-1)"
-                      className="flex-1"
-                      data-testid="input-custom-text"
+                <div className="space-y-3 mb-4 p-3 bg-muted/50 rounded-lg">
+                  <label className="text-sm font-medium">Auto-rellenar todos los QR con los mismos valores</label>
+                  <Input
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder="Texto principal (ej: Pmel)"
+                    data-testid="input-custom-text"
+                  />
+                  <Input
+                    value={customSecondaryText}
+                    onChange={(e) => setCustomSecondaryText(e.target.value)}
+                    placeholder="Texto secundario (ej: 000-000-000-000)"
+                    className="text-sm"
+                    data-testid="input-custom-secondary"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground">Color de fondo:</label>
+                    <input
+                      type="color"
+                      value={customColor}
+                      onChange={(e) => setCustomColor(e.target.value)}
+                      className="h-8 w-16 cursor-pointer rounded border"
+                      data-testid="input-custom-color"
                     />
+                    <span className="text-xs text-muted-foreground flex-1">{customColor}</span>
                     <Button
                       onClick={handleAutofill}
                       variant="outline"
@@ -420,14 +514,18 @@ export default function BlankQrPage() {
                       data-testid="button-autofill"
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Rellenar
+                      Auto-rellenar
                     </Button>
                   </div>
                 </div>
 
                 <div className="flex justify-end mb-2">
                   <Button
-                    onClick={() => setLabelTexts(Array(QR_COUNT).fill(''))}
+                    onClick={() => setLabelData(Array(QR_COUNT).fill(null).map(() => ({
+                      labelText: '',
+                      secondaryText: '',
+                      backgroundColor: '#a8d5ba'
+                    })))}
                     variant="outline"
                     size="sm"
                     data-testid="button-clear"
@@ -437,20 +535,50 @@ export default function BlankQrPage() {
                 </div>
 
                 <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                  {labelTexts.map((text, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-8">{index + 1}.</span>
-                      <Input
-                        value={text}
-                        onChange={(e) => {
-                          const newTexts = [...labelTexts];
-                          newTexts[index] = e.target.value;
-                          setLabelTexts(newTexts);
-                        }}
-                        placeholder={`Texto para QR ${index + 1}`}
-                        className="flex-1"
-                        data-testid={`input-label-${index}`}
-                      />
+                  {labelData.map((data, index) => (
+                    <div key={index} className="space-y-2 mb-3 p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground w-8">{index + 1}.</span>
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            value={data.labelText}
+                            onChange={(e) => {
+                              const newData = [...labelData];
+                              newData[index] = { ...newData[index], labelText: e.target.value };
+                              setLabelData(newData);
+                            }}
+                            placeholder="Texto principal (ej: Pmel)"
+                            className="w-full"
+                            data-testid={`input-label-${index}`}
+                          />
+                          <Input
+                            value={data.secondaryText}
+                            onChange={(e) => {
+                              const newData = [...labelData];
+                              newData[index] = { ...newData[index], secondaryText: e.target.value };
+                              setLabelData(newData);
+                            }}
+                            placeholder="Texto secundario (ej: 000-000-000-000)"
+                            className="w-full text-sm"
+                            data-testid={`input-secondary-${index}`}
+                          />
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color:</label>
+                            <input
+                              type="color"
+                              value={data.backgroundColor}
+                              onChange={(e) => {
+                                const newData = [...labelData];
+                                newData[index] = { ...newData[index], backgroundColor: e.target.value };
+                                setLabelData(newData);
+                              }}
+                              className="h-8 w-16 cursor-pointer rounded border"
+                              data-testid={`input-color-${index}`}
+                            />
+                            <span className="text-xs text-muted-foreground">{data.backgroundColor}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

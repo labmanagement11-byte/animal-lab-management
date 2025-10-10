@@ -168,6 +168,8 @@ export const qrCodes = pgTable("qr_codes", {
   cageId: varchar("cage_id").references(() => cages.id),
   qrData: text("qr_data").notNull(),
   labelText: varchar("label_text"), // Custom text label for QR code
+  secondaryText: varchar("secondary_text"), // Additional text below the main label
+  backgroundColor: varchar("background_color").default('#a8d5ba'), // Background color for the label
   isBlank: boolean("is_blank").default(true), // Blank QR codes can be filled later
   claimedAt: timestamp("claimed_at"), // When the QR was scanned and filled
   claimedBy: varchar("claimed_by").references(() => users.id),

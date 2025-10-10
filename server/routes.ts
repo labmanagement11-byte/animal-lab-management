@@ -893,13 +893,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate multiple blank QR codes for printing (always 30 with custom labels)
   app.post('/api/qr-codes/generate-blank', isAuthenticated, async (req: any, res) => {
     try {
-      const { labelTexts } = req.body;
+      const { labelData } = req.body;
       const count = 30; // Always generate 30 QR codes
       
-      // Validate labelTexts array
-      if (!labelTexts || !Array.isArray(labelTexts) || labelTexts.length !== count) {
+      // Validate labelData array
+      if (!labelData || !Array.isArray(labelData) || labelData.length !== count) {
         return res.status(400).json({ 
-          message: `labelTexts must be an array of ${count} strings` 
+          message: `labelData must be an array of ${count} objects` 
         });
       }
 
@@ -917,10 +917,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       for (let i = 0; i < count; i++) {
+        const { labelText, secondaryText, backgroundColor } = labelData[i];
+        
         // First create QR with temporary data to get the ID
         const tempQrCode = await storage.createQrCode({
           qrData: 'temp',
-          labelText: labelTexts[i] || '',
+          labelText: labelText || '',
+          secondaryText: secondaryText || '',
+          backgroundColor: backgroundColor || '#a8d5ba',
           isBlank: true,
           generatedBy: userId,
           companyId: companyId!,
