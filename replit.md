@@ -103,6 +103,12 @@ Preferred communication style: Simple, everyday language.
   - **Interactive Selection**: Click any card to select it for export (visual ring indicator)
   - **Export Integration**: Selected card determines export dataset (CSV/Excel/PDF)
   - **Real-time Counters**: Live count display for each QR category
+  - **Dashboard Statistics Split** (October 10, 2025):
+    - QR Codes card now displays two separate counts side by side
+    - "En Uso" (In Use): Count of QR codes with isBlank=false
+    - "En Blanco" (Blank): Count of QR codes with isBlank=true
+    - Visual differentiation: "En Uso" in blue, "En Blanco" in green
+    - Both counts filter out deleted QR codes (deletedAt IS NULL)
 - **QR Code Export** (October 2025):
   - Multi-format export: CSV, Excel (XLSX), and PDF
   - Card-based selection: Click summary card to choose export dataset (Used, Blank, or Trash)
