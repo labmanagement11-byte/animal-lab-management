@@ -93,6 +93,7 @@ Preferred communication style: Simple, everyday language.
     - QR size: 0.6in × 0.6in
     - Main text: 14px bold, right-aligned
     - Secondary text: 8px, right-aligned
+    - Tertiary text: 7px italic, right-aligned - always displays "Merghoub Lab"
     - Text truncation with ellipsis for overflow protection
     - Footer bar: 0.12in black strip at bottom
     - Page margins: 0.5in top/bottom, 0.1875in left/right
