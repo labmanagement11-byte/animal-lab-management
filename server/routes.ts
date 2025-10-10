@@ -1287,7 +1287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "QR code not found" });
       }
 
-      const updatedQrCode = await storage.updateQrCodeStatus(req.params.id, status, req.user.claims.sub);
+      const updatedQrCode = await storage.updateQrCodeStatus(req.params.id, status, req.user.claims.sub, companyId);
       
       await storage.createAuditLog({
         userId: req.user.claims.sub,
@@ -1322,20 +1322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User has no company assigned" });
       }
 
-      // Verify all QR codes belong to user's company
-      const validIds: string[] = [];
-      for (const id of ids) {
-        const qrCode = await storage.getQrCode(id, companyId);
-        if (qrCode) {
-          validIds.push(id);
-        }
-      }
-
-      if (validIds.length === 0) {
-        return res.status(404).json({ message: "No valid QR codes found" });
-      }
-
-      const updatedQrCodes = await storage.markQrCodesAsPrinted(validIds, req.user.claims.sub);
+      const updatedQrCodes = await storage.markQrCodesAsPrinted(ids, req.user.claims.sub, companyId);
       
       for (const qrCode of updatedQrCodes) {
         await storage.createAuditLog({
@@ -1416,10 +1403,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User has no company assigned" });
       }
 
+      // Check if exists to determine action
+      const existing = await storage.getStrainColorByName(strainName, companyId);
+
       const strainColor = await storage.upsertStrainColor({
         companyId,
         strainName,
         backgroundColor,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: existing ? 'UPDATE' : 'CREATE',
+        tableName: 'strain_colors',
+        recordId: strainColor.id,
+        changes: { 
+          strainName, 
+          backgroundColor, 
+          ...(existing && { oldBackgroundColor: existing.backgroundColor })
+        },
       });
 
       res.json(strainColor);

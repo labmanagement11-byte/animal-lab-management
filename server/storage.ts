@@ -79,8 +79,8 @@ export interface IStorage {
   getQrCodeByData(qrData: string, companyId?: string): Promise<QrCode | undefined>;
   createQrCode(qrCode: InsertQrCode): Promise<QrCode>;
   updateQrCode(id: string, updates: Partial<InsertQrCode>): Promise<QrCode>;
-  updateQrCodeStatus(id: string, status: 'available' | 'unused' | 'used', userId: string): Promise<QrCode>;
-  markQrCodesAsPrinted(ids: string[], userId: string): Promise<QrCode[]>;
+  updateQrCodeStatus(id: string, status: 'available' | 'unused' | 'used', userId: string, companyId?: string): Promise<QrCode>;
+  markQrCodesAsPrinted(ids: string[], userId: string, companyId?: string): Promise<QrCode[]>;
   claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode>;
   deleteQrCode(id: string, userId: string): Promise<void>;
   restoreQrCode(id: string): Promise<QrCode>;
@@ -709,7 +709,33 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateQrCodeStatus(id: string, status: 'available' | 'unused' | 'used', userId: string): Promise<QrCode> {
+  async updateQrCodeStatus(id: string, status: 'available' | 'unused' | 'used', userId: string, companyId?: string): Promise<QrCode> {
+    // First get the current QR code to validate transition
+    const [currentQrCode] = await db
+      .select()
+      .from(qrCodes)
+      .where(
+        companyId 
+          ? and(eq(qrCodes.id, id), eq(qrCodes.companyId, companyId))
+          : eq(qrCodes.id, id)
+      );
+    
+    if (!currentQrCode) {
+      throw new Error("QR code not found");
+    }
+
+    // Validate state transitions (one-way: available → unused → used)
+    const currentStatus = currentQrCode.status || 'available';
+    const validTransitions: Record<string, string[]> = {
+      'available': ['unused'],
+      'unused': ['used'],
+      'used': [] // Cannot transition from used
+    };
+
+    if (!validTransitions[currentStatus].includes(status)) {
+      throw new Error(`Invalid state transition: ${currentStatus} → ${status}`);
+    }
+    
     const updates: any = { status };
     
     if (status === 'unused') {
@@ -723,13 +749,43 @@ export class DatabaseStorage implements IStorage {
       .where(eq(qrCodes.id, id))
       .returning();
     
-    if (!updatedQrCode) {
-      throw new Error("QR code not found");
-    }
     return updatedQrCode;
   }
 
-  async markQrCodesAsPrinted(ids: string[], userId: string): Promise<QrCode[]> {
+  async markQrCodesAsPrinted(ids: string[], userId: string, companyId?: string): Promise<QrCode[]> {
+    // First validate all QR codes exist, belong to company, and can be transitioned
+    const qrCodesToUpdate = await db
+      .select()
+      .from(qrCodes)
+      .where(
+        companyId
+          ? and(
+              sql`${qrCodes.id} = ANY(${ids})`,
+              eq(qrCodes.companyId, companyId),
+              isNull(qrCodes.deletedAt)
+            )
+          : and(
+              sql`${qrCodes.id} = ANY(${ids})`,
+              isNull(qrCodes.deletedAt)
+            )
+      );
+
+    // Validate all QR codes can transition to 'unused' (must be 'available')
+    const invalidCodes = qrCodesToUpdate.filter(qr => {
+      const currentStatus = qr.status || 'available';
+      return currentStatus !== 'available';
+    });
+
+    if (invalidCodes.length > 0) {
+      throw new Error(`Cannot mark QR codes as printed: ${invalidCodes.length} codes are not in 'available' status`);
+    }
+
+    if (qrCodesToUpdate.length === 0) {
+      return [];
+    }
+
+    const validIds = qrCodesToUpdate.map(qr => qr.id);
+
     const updatedCodes = await db
       .update(qrCodes)
       .set({
@@ -737,10 +793,7 @@ export class DatabaseStorage implements IStorage {
         printedAt: new Date(),
         printedBy: userId
       })
-      .where(and(
-        sql`${qrCodes.id} = ANY(${ids})`,
-        isNull(qrCodes.deletedAt)
-      ))
+      .where(sql`${qrCodes.id} = ANY(${validIds})`)
       .returning();
     
     return updatedCodes;
