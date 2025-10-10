@@ -86,18 +86,28 @@ Preferred communication style: Simple, everyday language.
   - **Label Format**: Avery 8160 (1" × 2⅝") labels on 8.5" × 11" sheets
   - **Print Layout**: 3 columns × 10 rows = 30 labels per sheet
   - **Custom Text Labels**: Each QR code can have personalized text (stored in `labelText` field)
-  - **Auto-fill Feature**: Quick generation with pattern "OT-1" through "OT-30"
-  - **Horizontal Label Design**: Text label | QR code (0.6") | Metadata
-  - **Custom Print CSS**: Precise Avery 8160 margins and dimensions (0.5in × 0.19in margins)
-  - **Interactive UI**: 30 individual text inputs with auto-fill and clear options
+  - **Auto-fill Feature**: Enter any custom text once to fill all 30 labels with the same value
+  - **Horizontal Label Design**: Text label (left) | QR code 0.65" (right)
+  - **Print Specifications**: 
+    - Padding: 0.15in vertical, 0.2in horizontal
+    - QR size: 0.65in × 0.65in
+    - Text: 18px bold, left-aligned
+    - Custom CSS optimized for Avery 8160 physical alignment
+  - **Interactive UI**: 30 individual text inputs with custom auto-fill and clear options
   - **Validation**: Requires at least one non-empty label text before generation
   - Batch selection, printing, and deletion interface
   - Soft delete functionality for QR code management
+- **QR Code Dashboard** (October 2025):
+  - **Simplified Summary View**: Replaced detailed tabbed listings with interactive summary cards
+  - **Three Summary Cards**: Used QR Codes, Blank QR Codes, Deleted QR Codes
+  - **Interactive Selection**: Click any card to select it for export (visual ring indicator)
+  - **Export Integration**: Selected card determines export dataset (CSV/Excel/PDF)
+  - **Real-time Counters**: Live count display for each QR category
 - **QR Code Export** (October 2025):
   - Multi-format export: CSV, Excel (XLSX), and PDF
-  - Context-aware export: exports only QR codes from active tab (Used, Blank, or Trash)
-  - Automated file naming with tab type and date stamp
-  - Export includes: QR ID, Type, Cage, Room, Created Date, and Status
+  - Card-based selection: Click summary card to choose export dataset (Used, Blank, or Trash)
+  - Automated file naming with card type and date stamp
+  - Export includes: QR ID, Type, Label Text, Created Date, and Status
   - PDF export with professional formatting and auto-table generation
   - Toast notifications for export success feedback
 
