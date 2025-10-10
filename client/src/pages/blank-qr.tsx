@@ -37,6 +37,7 @@ export default function BlankQrPage() {
   const [customColor, setCustomColor] = useState('#a8d5ba');
   const [activeTab, setActiveTab] = useState<'unused' | 'used'>('unused');
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
+  const colorRequestTimestamps = useRef<{ [index: number]: number }>({});
 
   const { data: allQrCodes, refetch: refetchQrs } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes'],
@@ -186,6 +187,48 @@ export default function BlankQrPage() {
       });
     }
   }, [blankQrCodes, qrSize]);
+
+  const handleLabelTextChange = async (index: number, value: string) => {
+    const newData = [...labelData];
+    newData[index] = { ...newData[index], labelText: value };
+    setLabelData(newData);
+
+    // Auto-fetch color if strain name is not empty
+    const trimmedValue = value.trim();
+    if (trimmedValue) {
+      // Record when this request started
+      const requestTimestamp = Date.now();
+      colorRequestTimestamps.current[index] = requestTimestamp;
+      
+      try {
+        const response = await apiRequest(`/api/strain-colors/${encodeURIComponent(trimmedValue)}`, {
+          method: 'GET',
+        });
+        const strainColor = await response.json();
+        
+        if (strainColor && strainColor.backgroundColor) {
+          // Before applying, verify this request is still the latest one
+          setLabelData(prevData => {
+            // Only apply if:
+            // 1. Current labelText still matches the one we fetched for
+            // 2. No newer request has started (this request is still the latest)
+            if (
+              prevData[index].labelText.trim() === trimmedValue &&
+              colorRequestTimestamps.current[index] === requestTimestamp
+            ) {
+              const updatedData = [...prevData];
+              updatedData[index] = { ...updatedData[index], backgroundColor: strainColor.backgroundColor };
+              return updatedData;
+            }
+            return prevData; // Don't apply if conditions not met
+          });
+        }
+      } catch (error) {
+        // Silently fail - no saved color found, keep default
+        console.log(`No saved color for strain: ${trimmedValue}`);
+      }
+    }
+  };
 
   const handleGenerate = () => {
     // Validate that at least one label has text
@@ -707,11 +750,7 @@ export default function BlankQrPage() {
                         <div className="flex-1 space-y-2">
                           <Input
                             value={data.labelText}
-                            onChange={(e) => {
-                              const newData = [...labelData];
-                              newData[index] = { ...newData[index], labelText: e.target.value };
-                              setLabelData(newData);
-                            }}
+                            onChange={(e) => handleLabelTextChange(index, e.target.value)}
                             placeholder="Texto principal (ej: Pmel)"
                             className="w-full"
                             data-testid={`input-label-${index}`}
@@ -733,6 +772,9 @@ export default function BlankQrPage() {
                               type="color"
                               value={data.backgroundColor}
                               onChange={(e) => {
+                                // Manual color change - invalidate any pending auto-fill
+                                colorRequestTimestamps.current[index] = Date.now() + 1000;
+                                
                                 const newData = [...labelData];
                                 newData[index] = { ...newData[index], backgroundColor: e.target.value };
                                 setLabelData(newData);
