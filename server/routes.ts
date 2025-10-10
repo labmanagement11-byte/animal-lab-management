@@ -1237,6 +1237,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get QR codes by status
+  app.get('/api/qr-codes/status/:status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      const status = req.params.status as 'available' | 'unused' | 'used';
+      
+      if (!['available', 'unused', 'used'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be: available, unused, or used" });
+      }
+
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const qrCodes = await storage.getQrCodesByStatus(status, companyId);
+      res.json(qrCodes);
+    } catch (error) {
+      console.error("Error fetching QR codes by status:", error);
+      res.status(500).json({ message: "Failed to fetch QR codes" });
+    }
+  });
+
+  // Update QR code status
+  app.patch('/api/qr-codes/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      const { status } = req.body;
+      
+      if (!['available', 'unused', 'used'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be: available, unused, or used" });
+      }
+
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Verify QR code belongs to user's company
+      const qrCode = await storage.getQrCode(req.params.id, companyId);
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+
+      const updatedQrCode = await storage.updateQrCodeStatus(req.params.id, status, req.user.claims.sub);
+      
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'UPDATE',
+        tableName: 'qr_codes',
+        recordId: req.params.id,
+        changes: { status, oldStatus: qrCode.status },
+      });
+
+      res.json(updatedQrCode);
+    } catch (error) {
+      console.error("Error updating QR code status:", error);
+      res.status(500).json({ message: "Failed to update QR code status" });
+    }
+  });
+
+  // Mark QR codes as printed
+  app.post('/api/qr-codes/mark-printed', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      const { ids } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid request: ids array is required" });
+      }
+
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      // Verify all QR codes belong to user's company
+      const validIds: string[] = [];
+      for (const id of ids) {
+        const qrCode = await storage.getQrCode(id, companyId);
+        if (qrCode) {
+          validIds.push(id);
+        }
+      }
+
+      if (validIds.length === 0) {
+        return res.status(404).json({ message: "No valid QR codes found" });
+      }
+
+      const updatedQrCodes = await storage.markQrCodesAsPrinted(validIds, req.user.claims.sub);
+      
+      for (const qrCode of updatedQrCodes) {
+        await storage.createAuditLog({
+          userId: req.user.claims.sub,
+          action: 'UPDATE',
+          tableName: 'qr_codes',
+          recordId: qrCode.id,
+          changes: { status: 'unused', printedAt: new Date() },
+        });
+      }
+
+      res.json({ message: `Marked ${updatedQrCodes.length} QR codes as printed`, qrCodes: updatedQrCodes });
+    } catch (error) {
+      console.error("Error marking QR codes as printed:", error);
+      res.status(500).json({ message: "Failed to mark QR codes as printed" });
+    }
+  });
+
+  // Strain color routes
+  app.get('/api/strain-colors', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const strainColors = await storage.getStrainColors(companyId);
+      res.json(strainColors);
+    } catch (error) {
+      console.error("Error fetching strain colors:", error);
+      res.status(500).json({ message: "Failed to fetch strain colors" });
+    }
+  });
+
+  app.get('/api/strain-colors/:strainName', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const strainColor = await storage.getStrainColorByName(req.params.strainName, companyId);
+      if (!strainColor) {
+        return res.status(404).json({ message: "Strain color not found" });
+      }
+      
+      res.json(strainColor);
+    } catch (error) {
+      console.error("Error fetching strain color:", error);
+      res.status(500).json({ message: "Failed to fetch strain color" });
+    }
+  });
+
+  app.post('/api/strain-colors', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      const { strainName, backgroundColor } = req.body;
+      
+      if (!strainName || !backgroundColor) {
+        return res.status(400).json({ message: "strainName and backgroundColor are required" });
+      }
+
+      // Validate user has access to resources
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+
+      const strainColor = await storage.upsertStrainColor({
+        companyId,
+        strainName,
+        backgroundColor,
+      });
+
+      res.json(strainColor);
+    } catch (error) {
+      console.error("Error saving strain color:", error);
+      res.status(500).json({ message: "Failed to save strain color" });
+    }
+  });
+
   // Audit log routes (for Success Manager and Admin only)
   app.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {

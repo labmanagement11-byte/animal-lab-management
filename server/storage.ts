@@ -9,6 +9,7 @@ import {
   genotypes,
   userInvitations,
   companies,
+  strainColors,
   type User,
   type UpsertUser,
   type Animal,
@@ -29,6 +30,8 @@ import {
   type InsertUserInvitation,
   type Company,
   type InsertCompany,
+  type StrainColor,
+  type InsertStrainColor,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt } from "drizzle-orm";
@@ -71,15 +74,23 @@ export interface IStorage {
   
   // QR Code operations
   getQrCodes(includeDeleted?: boolean, companyId?: string): Promise<QrCode[]>;
+  getQrCodesByStatus(status: 'available' | 'unused' | 'used', companyId?: string): Promise<QrCode[]>;
   getQrCode(id: string, companyId?: string): Promise<QrCode | undefined>;
   getQrCodeByData(qrData: string, companyId?: string): Promise<QrCode | undefined>;
   createQrCode(qrCode: InsertQrCode): Promise<QrCode>;
   updateQrCode(id: string, updates: Partial<InsertQrCode>): Promise<QrCode>;
+  updateQrCodeStatus(id: string, status: 'available' | 'unused' | 'used', userId: string): Promise<QrCode>;
+  markQrCodesAsPrinted(ids: string[], userId: string): Promise<QrCode[]>;
   claimQrCode(id: string, cageId: string, userId: string): Promise<QrCode>;
   deleteQrCode(id: string, userId: string): Promise<void>;
   restoreQrCode(id: string): Promise<QrCode>;
   permanentlyDeleteQrCode(id: string): Promise<void>;
   getDeletedQrCodes(companyId?: string): Promise<QrCode[]>;
+  
+  // Strain Color operations
+  getStrainColors(companyId?: string): Promise<StrainColor[]>;
+  getStrainColorByName(strainName: string, companyId?: string): Promise<StrainColor | undefined>;
+  upsertStrainColor(strainColor: InsertStrainColor): Promise<StrainColor>;
   
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
@@ -683,6 +694,104 @@ export class DatabaseStorage implements IStorage {
       .where(companyId ? and(isNotNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId)) : isNotNull(qrCodes.deletedAt))
       .orderBy(desc(qrCodes.deletedAt));
     return result;
+  }
+
+  async getQrCodesByStatus(status: 'available' | 'unused' | 'used', companyId?: string): Promise<QrCode[]> {
+    const conditions = companyId 
+      ? and(eq(qrCodes.status, status), isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId))
+      : and(eq(qrCodes.status, status), isNull(qrCodes.deletedAt));
+    
+    const result = await db
+      .select()
+      .from(qrCodes)
+      .where(conditions)
+      .orderBy(desc(qrCodes.createdAt));
+    return result;
+  }
+
+  async updateQrCodeStatus(id: string, status: 'available' | 'unused' | 'used', userId: string): Promise<QrCode> {
+    const updates: any = { status };
+    
+    if (status === 'unused') {
+      updates.printedAt = new Date();
+      updates.printedBy = userId;
+    }
+    
+    const [updatedQrCode] = await db
+      .update(qrCodes)
+      .set(updates)
+      .where(eq(qrCodes.id, id))
+      .returning();
+    
+    if (!updatedQrCode) {
+      throw new Error("QR code not found");
+    }
+    return updatedQrCode;
+  }
+
+  async markQrCodesAsPrinted(ids: string[], userId: string): Promise<QrCode[]> {
+    const updatedCodes = await db
+      .update(qrCodes)
+      .set({
+        status: 'unused',
+        printedAt: new Date(),
+        printedBy: userId
+      })
+      .where(and(
+        sql`${qrCodes.id} = ANY(${ids})`,
+        isNull(qrCodes.deletedAt)
+      ))
+      .returning();
+    
+    return updatedCodes;
+  }
+
+  // Strain Color operations
+  async getStrainColors(companyId?: string): Promise<StrainColor[]> {
+    const result = await db
+      .select()
+      .from(strainColors)
+      .where(companyId ? eq(strainColors.companyId, companyId) : undefined)
+      .orderBy(desc(strainColors.lastUsedAt));
+    return result;
+  }
+
+  async getStrainColorByName(strainName: string, companyId?: string): Promise<StrainColor | undefined> {
+    const [strainColor] = await db
+      .select()
+      .from(strainColors)
+      .where(
+        companyId 
+          ? and(eq(strainColors.strainName, strainName), eq(strainColors.companyId, companyId))
+          : eq(strainColors.strainName, strainName)
+      );
+    return strainColor;
+  }
+
+  async upsertStrainColor(strainColor: InsertStrainColor): Promise<StrainColor> {
+    // Check if strain color already exists
+    const existing = await this.getStrainColorByName(strainColor.strainName, strainColor.companyId);
+    
+    if (existing) {
+      // Update existing
+      const [updated] = await db
+        .update(strainColors)
+        .set({
+          backgroundColor: strainColor.backgroundColor,
+          lastUsedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(strainColors.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new
+      const [newStrainColor] = await db
+        .insert(strainColors)
+        .values(strainColor)
+        .returning();
+      return newStrainColor;
+    }
   }
 
   // Audit log operations

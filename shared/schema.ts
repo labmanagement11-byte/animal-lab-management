@@ -171,12 +171,28 @@ export const qrCodes = pgTable("qr_codes", {
   secondaryText: varchar("secondary_text"), // Additional text below the main label
   backgroundColor: varchar("background_color").default('#a8d5ba'), // Background color for the label
   isBlank: boolean("is_blank").default(true), // Blank QR codes can be filled later
+  status: varchar("status", {
+    enum: ['available', 'unused', 'used']
+  }).default('available'), // Lifecycle: available → unused (printed) → used (assigned)
+  printedAt: timestamp("printed_at"), // When the QR was printed
+  printedBy: varchar("printed_by").references(() => users.id),
   claimedAt: timestamp("claimed_at"), // When the QR was scanned and filled
   claimedBy: varchar("claimed_by").references(() => users.id),
   generatedBy: varchar("generated_by").references(() => users.id),
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Strain Colors table - Stores color associations for strain names
+export const strainColors = pgTable("strain_colors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  strainName: varchar("strain_name").notNull(), // Primary text (strain identifier)
+  backgroundColor: varchar("background_color").notNull(), // Associated color
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Audit logs for tracking changes
@@ -252,6 +268,10 @@ export const qrCodesRelations = relations(qrCodes, ({ one }) => ({
     fields: [qrCodes.generatedBy],
     references: [users.id],
   }),
+  printedByUser: one(users, {
+    fields: [qrCodes.printedBy],
+    references: [users.id],
+  }),
   claimedByUser: one(users, {
     fields: [qrCodes.claimedBy],
     references: [users.id],
@@ -295,10 +315,19 @@ export const insertAnimalSchema = createInsertSchema(animals).omit({
 export const insertQrCodeSchema = createInsertSchema(qrCodes).omit({
   id: true,
   createdAt: true,
+  printedAt: true,
+  printedBy: true,
   claimedAt: true,
   claimedBy: true,
   deletedAt: true,
   deletedBy: true,
+});
+
+export const insertStrainColorSchema = createInsertSchema(strainColors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastUsedAt: true,
 });
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
@@ -365,3 +394,6 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+
+export type StrainColor = typeof strainColors.$inferSelect;
+export type InsertStrainColor = z.infer<typeof insertStrainColorSchema>;
