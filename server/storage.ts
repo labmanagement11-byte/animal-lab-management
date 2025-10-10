@@ -96,7 +96,8 @@ export interface IStorage {
   getDashboardStats(companyId?: string): Promise<{
     totalAnimals: number;
     activeCages: number;
-    qrCodes: number;
+    qrCodesInUse: number;
+    qrCodesBlank: number;
     healthAlerts: number;
   }>;
   
@@ -792,7 +793,8 @@ export class DatabaseStorage implements IStorage {
   async getDashboardStats(companyId?: string): Promise<{
     totalAnimals: number;
     activeCages: number;
-    qrCodes: number;
+    qrCodesInUse: number;
+    qrCodesBlank: number;
     healthAlerts: number;
   }> {
     const [totalAnimals] = await db
@@ -808,10 +810,21 @@ export class DatabaseStorage implements IStorage {
         : and(eq(cages.isActive, true), isNull(cages.deletedAt))
       );
 
-    const [qrCodesCount] = await db
+    const [qrCodesInUseCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(qrCodes)
-      .where(companyId ? eq(qrCodes.companyId, companyId) : sql`true`);
+      .where(companyId 
+        ? and(eq(qrCodes.isBlank, false), isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId))
+        : and(eq(qrCodes.isBlank, false), isNull(qrCodes.deletedAt))
+      );
+
+    const [qrCodesBlankCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(qrCodes)
+      .where(companyId 
+        ? and(eq(qrCodes.isBlank, true), isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId))
+        : and(eq(qrCodes.isBlank, true), isNull(qrCodes.deletedAt))
+      );
 
     const [healthAlerts] = await db
       .select({ count: sql<number>`count(*)` })
@@ -838,7 +851,8 @@ export class DatabaseStorage implements IStorage {
     return {
       totalAnimals: totalAnimals.count,
       activeCages: activeCages.count,
-      qrCodes: qrCodesCount.count,
+      qrCodesInUse: qrCodesInUseCount.count,
+      qrCodesBlank: qrCodesBlankCount.count,
       healthAlerts: healthAlerts.count,
     };
   }

@@ -15,7 +15,8 @@ import { useLanguage } from "@/contexts/language-context";
 interface DashboardStats {
   totalAnimals: number;
   activeCages: number;
-  qrCodes: number;
+  qrCodesInUse: number;
+  qrCodesBlank: number;
   healthAlerts: number;
 }
 
@@ -158,11 +159,20 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{t.dashboard.qrCodes}</p>
-                    <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-qr-codes">
-                      {stats?.qrCodes || 0}
-                    </p>
-                    <div className="flex items-center gap-1 mt-2">
-                      <span className="text-xs text-muted-foreground">{t.dashboard.generated}</span>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div>
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-qr-codes-in-use">
+                          {stats?.qrCodesInUse || 0}
+                        </p>
+                        <span className="text-xs text-muted-foreground">En Uso</span>
+                      </div>
+                      <span className="text-2xl text-muted-foreground">/</span>
+                      <div>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-qr-codes-blank">
+                          {stats?.qrCodesBlank || 0}
+                        </p>
+                        <span className="text-xs text-muted-foreground">En Blanco</span>
+                      </div>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center">
