@@ -300,15 +300,16 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                justify-content: space-between;
+                justify-content: center;
                 padding: 0.1in 0.15in 0.05in 0.15in;
+                gap: 0.15in;
               }
               .text-section {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                align-items: flex-start;
+                align-items: flex-end;
                 gap: 0.02in;
                 max-width: calc(100% - 0.75in);
               }
@@ -317,6 +318,7 @@ export default function BlankQrPage() {
                 font-weight: bold;
                 color: #000;
                 white-space: nowrap;
+                text-align: right;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 width: 100%;
@@ -325,6 +327,7 @@ export default function BlankQrPage() {
                 font-size: 8px;
                 color: #000;
                 white-space: nowrap;
+                text-align: right;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 width: 100%;
@@ -404,8 +407,9 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                justify-content: space-between;
+                justify-content: center;
                 padding: 0.1in 0.15in 0.05in 0.15in;
+                gap: 0.15in;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
@@ -415,7 +419,7 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                align-items: flex-start;
+                align-items: flex-end;
                 gap: 0.02in;
                 max-width: calc(100% - 0.75in);
               }
@@ -425,6 +429,7 @@ export default function BlankQrPage() {
                 font-weight: bold;
                 color: #000 !important;
                 white-space: nowrap;
+                text-align: right;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 width: 100%;
@@ -434,6 +439,7 @@ export default function BlankQrPage() {
                 font-size: 8px;
                 color: #000 !important;
                 white-space: nowrap;
+                text-align: right;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 width: 100%;
