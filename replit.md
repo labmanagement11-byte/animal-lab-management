@@ -86,9 +86,16 @@ Preferred communication style: Simple, everyday language.
   - Optimized for label printing: 1.26" × 0.87" labels on 8.5" × 11" carta sheets
   - Print layout: 6 columns × 12 rows = 72 labels per sheet
   - Custom print CSS with no trailing blank pages
-  - Fixed QR size at 150px for optimal display and printing
+  - Fixed QR size at 0.6" for perfect centering in labels
   - Batch selection, printing, and deletion interface
   - Soft delete functionality for QR code management
+- **QR Code Export** (October 2025):
+  - Multi-format export: CSV, Excel (XLSX), and PDF
+  - Context-aware export: exports only QR codes from active tab (Used, Blank, or Trash)
+  - Automated file naming with tab type and date stamp
+  - Export includes: QR ID, Type, Cage, Room, Created Date, and Status
+  - PDF export with professional formatting and auto-table generation
+  - Toast notifications for export success feedback
 
 ## External Dependencies
 
