@@ -3,8 +3,9 @@ import QRCode from "qrcode";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Printer, QrCode as QrCodeIcon, Trash2 } from "lucide-react";
+import { Printer, QrCode as QrCodeIcon, Trash2, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -12,8 +13,11 @@ import type { QrCode } from "@shared/schema";
 
 export default function BlankQrPage() {
   const { toast } = useToast();
-  const qrSize = 150; // Tamaño fijo óptimo para las etiquetas
+  const qrSize = 150;
+  const QR_COUNT = 30; // Ahora generamos 30 códigos QR
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
+  const [labelTexts, setLabelTexts] = useState<string[]>(Array(QR_COUNT).fill(''));
+  const [showInputs, setShowInputs] = useState(false);
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
   const { data: allQrCodes, refetch: refetchQrs } = useQuery<QrCode[]>({
@@ -23,18 +27,21 @@ export default function BlankQrPage() {
   const blankQrCodes = allQrCodes?.filter(qr => qr.isBlank && !qr.cageId) || [];
 
   const generateQrMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (texts: string[]) => {
       const response = await apiRequest("/api/qr-codes/generate-blank", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labelTexts: texts }),
       });
       return response.json() as Promise<QrCode[]>;
     },
     onSuccess: (data: QrCode[]) => {
       refetchQrs();
+      setShowInputs(false);
+      setLabelTexts(Array(QR_COUNT).fill(''));
       toast({
         title: "Éxito",
-        description: `Se generaron 72 códigos QR en blanco exitosamente`,
+        description: `Se generaron ${QR_COUNT} códigos QR con texto personalizado exitosamente`,
       });
     },
     onError: (error: Error) => {
@@ -51,7 +58,7 @@ export default function BlankQrPage() {
       }
       toast({
         title: "Error",
-        description: "Error al generar códigos QR",
+        description: error.message || "Error al generar códigos QR",
         variant: "destructive",
       });
     },
@@ -114,7 +121,17 @@ export default function BlankQrPage() {
   }, [blankQrCodes, qrSize]);
 
   const handleGenerate = () => {
-    generateQrMutation.mutate();
+    // Validate that at least one label has text
+    const hasText = labelTexts.some(text => text.trim() !== '');
+    if (!hasText) {
+      toast({
+        title: "Error",
+        description: "Ingresa al menos un texto para generar los códigos QR",
+        variant: "destructive",
+      });
+      return;
+    }
+    generateQrMutation.mutate(labelTexts);
   };
 
   const handleDeleteSelected = () => {
@@ -147,6 +164,11 @@ export default function BlankQrPage() {
     setSelectedQrs(newSelected);
   };
 
+  const handleAutofill = () => {
+    const newTexts = Array(QR_COUNT).fill('').map((_, i) => `OT-${i + 1}`);
+    setLabelTexts(newTexts);
+  };
+
   const handlePrintSelected = () => {
     if (selectedQrs.size === 0) {
       toast({
@@ -162,8 +184,8 @@ export default function BlankQrPage() {
 
     const selectedQrData = blankQrCodes.filter(qr => selectedQrs.has(qr.id));
     
-    // Dividir los QR codes en páginas de 72 etiquetas
-    const qrCodesPerPage = 72;
+    // Dividir los QR codes en páginas de 30 etiquetas (Avery 8160)
+    const qrCodesPerPage = 30;
     const pages: string[] = [];
     
     for (let i = 0; i < selectedQrData.length; i += qrCodesPerPage) {
@@ -177,8 +199,12 @@ export default function BlankQrPage() {
           const dataUrl = canvas.toDataURL();
           pageHtml += `
             <div class="qr-label">
+              <div class="label-text">${qrCode.labelText || 'N/A'}</div>
               <img src="${dataUrl}" alt="QR Code" />
-              <p>${qrCode.id.substring(0, 8)}</p>
+              <div class="label-info">
+                <div>${qrCode.id.substring(0, 12)}</div>
+                <div>Generated</div>
+              </div>
             </div>
           `;
         }
@@ -191,7 +217,7 @@ export default function BlankQrPage() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Imprimir Códigos QR - Formato Etiquetas (${selectedQrData.length} códigos)</title>
+          <title>Imprimir Códigos QR - Avery 8160 (${selectedQrData.length} códigos)</title>
           <style>
             * {
               margin: 0;
@@ -214,45 +240,51 @@ export default function BlankQrPage() {
                 width: 8.5in;
                 height: 11in;
                 margin: 0 auto 20px;
-                padding: 0;
+                padding: 0.5in 0.19in;
                 box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 display: grid;
-                grid-template-columns: repeat(6, 1.26in);
-                grid-template-rows: repeat(12, 0.87in);
+                grid-template-columns: repeat(3, 2.625in);
+                grid-template-rows: repeat(10, 1in);
                 gap: 0;
               }
               .qr-label {
-                width: 1.26in;
-                height: 0.87in;
+                width: 2.625in;
+                height: 1in;
                 display: flex;
-                flex-direction: column;
+                flex-direction: row;
                 align-items: center;
-                justify-content: center;
+                justify-content: flex-start;
                 border: 1px dashed #ddd;
-                padding: 0;
+                padding: 0 8px;
+                gap: 8px;
+              }
+              .label-text {
+                font-size: 14px;
+                font-weight: bold;
+                color: #000;
+                min-width: 60px;
+                text-align: left;
               }
               .qr-label img {
                 width: 0.6in;
                 height: 0.6in;
                 object-fit: contain;
-                margin-bottom: 2px;
               }
-              .qr-label p {
-                font-size: 5px;
-                margin: 0;
-                color: #333;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 100%;
+              .label-info {
+                display: flex;
+                flex-direction: column;
+                font-size: 6px;
+                color: #666;
+                flex: 1;
+                text-align: left;
               }
             }
             
-            /* Formato para impresión - exacto */
+            /* Formato para impresión - Avery 8160 exacto */
             @media print {
               @page {
                 size: 8.5in 11in;
-                margin: 0;
+                margin: 0.5in 0.19in;
               }
               
               body {
@@ -266,8 +298,8 @@ export default function BlankQrPage() {
                 margin: 0;
                 padding: 0;
                 display: grid;
-                grid-template-columns: repeat(6, 1.26in);
-                grid-template-rows: repeat(12, 0.87in);
+                grid-template-columns: repeat(3, 2.625in);
+                grid-template-rows: repeat(10, 1in);
                 gap: 0;
                 page-break-after: always;
               }
@@ -277,31 +309,38 @@ export default function BlankQrPage() {
               }
               
               .qr-label {
-                width: 1.26in;
-                height: 0.87in;
+                width: 2.625in;
+                height: 1in;
                 display: flex;
-                flex-direction: column;
+                flex-direction: row;
                 align-items: center;
-                justify-content: center;
-                padding: 0;
+                justify-content: flex-start;
+                padding: 0 8px;
+                gap: 8px;
                 page-break-inside: avoid;
+              }
+              
+              .label-text {
+                font-size: 14px;
+                font-weight: bold;
+                color: #000;
+                min-width: 60px;
+                text-align: left;
               }
               
               .qr-label img {
                 width: 0.6in;
                 height: 0.6in;
                 object-fit: contain;
-                margin-bottom: 2px;
               }
               
-              .qr-label p {
-                font-size: 5px;
-                margin: 0;
+              .label-info {
+                display: flex;
+                flex-direction: column;
+                font-size: 6px;
                 color: #000;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 100%;
+                flex: 1;
+                text-align: left;
               }
             }
           </style>
@@ -326,13 +365,13 @@ export default function BlankQrPage() {
 
   return (
     <div className="container mx-auto py-4 md:py-6 px-4 max-w-7xl">
-      <div className="mb-4 md:mb-6 ml-[122px] mr-[122px]">
+      <div className="mb-4 md:mb-6">
         <h1 className="text-lg md:text-3xl font-bold text-foreground flex items-center gap-2">
-          <QrCodeIcon className="w-6 h-6 md:w-8 md:w-8" />
-          Generar QR en Blanco
+          <QrCodeIcon className="w-6 h-6 md:w-8 md:h-8" />
+          Generar QR con Texto Personalizado
         </h1>
         <p className="text-xs md:text-sm text-muted-foreground mt-2">
-          Crea códigos QR en blanco para imprimir y vincular posteriormente con jaulas
+          Crea 30 códigos QR con texto personalizado para imprimir en formato Avery 8160
         </p>
       </div>
 
@@ -340,29 +379,91 @@ export default function BlankQrPage() {
         {/* Generador */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle>Generar Códigos QR</CardTitle>
+            <CardTitle>Generar 30 Códigos QR</CardTitle>
             <CardDescription>
-              Genera automáticamente 72 códigos QR en blanco (1 hoja completa)
+              Ingresa el texto personalizado para cada etiqueta (Avery 8160)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
-                Se generarán 72 códigos QR
+                Se generarán 30 códigos QR
               </p>
               <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                Formato: 6 columnas × 12 filas en hoja carta (1.26" × 0.87")
+                Formato: 3 columnas × 10 filas en hoja carta (1" × 2⅝" - Avery 8160)
               </p>
             </div>
 
-            <Button
-              onClick={handleGenerate}
-              disabled={generateQrMutation.isPending}
-              className="w-full"
-              data-testid="button-generate-qr"
-            >
-              {generateQrMutation.isPending ? "Generando..." : "Generar 72 Códigos QR"}
-            </Button>
+            {!showInputs ? (
+              <Button
+                onClick={() => setShowInputs(true)}
+                className="w-full"
+                data-testid="button-show-inputs"
+              >
+                Ingresar Textos Personalizados
+              </Button>
+            ) : (
+              <>
+                <div className="flex gap-2 mb-2">
+                  <Button
+                    onClick={handleAutofill}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    data-testid="button-autofill"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Auto-rellenar (OT-1, OT-2...)
+                  </Button>
+                  <Button
+                    onClick={() => setLabelTexts(Array(QR_COUNT).fill(''))}
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-clear"
+                  >
+                    Limpiar
+                  </Button>
+                </div>
+
+                <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                  {labelTexts.map((text, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-8">{index + 1}.</span>
+                      <Input
+                        value={text}
+                        onChange={(e) => {
+                          const newTexts = [...labelTexts];
+                          newTexts[index] = e.target.value;
+                          setLabelTexts(newTexts);
+                        }}
+                        placeholder={`Texto para QR ${index + 1}`}
+                        className="flex-1"
+                        data-testid={`input-label-${index}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowInputs(false)}
+                    variant="outline"
+                    className="flex-1"
+                    data-testid="button-cancel"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={generateQrMutation.isPending}
+                    className="flex-1"
+                    data-testid="button-generate-qr"
+                  >
+                    {generateQrMutation.isPending ? "Generando..." : `Generar ${QR_COUNT} QR`}
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -432,6 +533,11 @@ export default function BlankQrPage() {
                           data-testid={`checkbox-${qrCode.id}`}
                         />
                       </div>
+                      {qrCode.labelText && (
+                        <p className="text-sm font-bold text-center mb-2 text-foreground">
+                          {qrCode.labelText}
+                        </p>
+                      )}
                       <canvas
                         ref={(el) => canvasRefs.current[qrCode.id] = el}
                         className="w-full"

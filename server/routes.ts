@@ -890,10 +890,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate multiple blank QR codes for printing (always 72)
+  // Generate multiple blank QR codes for printing (always 30 with custom labels)
   app.post('/api/qr-codes/generate-blank', isAuthenticated, async (req: any, res) => {
     try {
-      const count = 72; // Always generate 72 QR codes
+      const { labelTexts } = req.body;
+      const count = 30; // Always generate 30 QR codes
+      
+      // Validate labelTexts array
+      if (!labelTexts || !Array.isArray(labelTexts) || labelTexts.length !== count) {
+        return res.status(400).json({ 
+          message: `labelTexts must be an array of ${count} strings` 
+        });
+      }
+
       const qrCodes = [];
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -903,6 +912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // First create QR with temporary data to get the ID
         const tempQrCode = await storage.createQrCode({
           qrData: 'temp',
+          labelText: labelTexts[i] || '',
           isBlank: true,
           generatedBy: userId,
           companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
