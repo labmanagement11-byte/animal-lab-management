@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Printer, QrCode as QrCodeIcon, Trash2, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Printer, QrCode as QrCodeIcon, Trash2, Sparkles, CheckCircle, Package } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -33,13 +35,22 @@ export default function BlankQrPage() {
   const [customText, setCustomText] = useState('');
   const [customSecondaryText, setCustomSecondaryText] = useState('');
   const [customColor, setCustomColor] = useState('#a8d5ba');
+  const [activeTab, setActiveTab] = useState<'unused' | 'used'>('unused');
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
   const { data: allQrCodes, refetch: refetchQrs } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes'],
   });
 
-  const blankQrCodes = allQrCodes?.filter(qr => qr.isBlank && !qr.cageId) || [];
+  const { data: unusedQrCodes } = useQuery<QrCode[]>({
+    queryKey: ['/api/qr-codes/status/unused'],
+  });
+
+  const { data: usedQrCodes } = useQuery<QrCode[]>({
+    queryKey: ['/api/qr-codes/status/used'],
+  });
+
+  const blankQrCodes = allQrCodes?.filter(qr => qr.isBlank && !qr.cageId && qr.status === 'available') || [];
 
   const generateQrMutation = useMutation({
     mutationFn: async (data: LabelData[]) => {
@@ -116,6 +127,43 @@ export default function BlankQrPage() {
       toast({
         title: "Error",
         description: "Error al eliminar códigos QR",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markAsUsedMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest(`/api/qr-codes/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: 'used' }),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/status/unused'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/status/used'] });
+      toast({
+        title: "Éxito",
+        description: "Código QR marcado como usado",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Sesión expirada. Iniciando sesión nuevamente...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Error al marcar código como usado",
         variant: "destructive",
       });
     },
@@ -816,6 +864,133 @@ export default function BlankQrPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Tabs para códigos sin usar y usados */}
+      <div className="mt-8">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
+          <TabsList className="grid w-full md:w-96 grid-cols-2">
+            <TabsTrigger value="unused" data-testid="tab-unused">
+              <Package className="w-4 h-4 mr-2" />
+              Sin Usar ({unusedQrCodes?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="used" data-testid="tab-used">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Usados ({usedQrCodes?.length || 0})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Códigos Sin Usar Tab */}
+          <TabsContent value="unused" className="mt-6">
+            {!unusedQrCodes || unusedQrCodes.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground" data-testid="text-no-unused">
+                    No hay códigos QR sin usar
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Los códigos QR aparecerán aquí después de imprimirlos
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {unusedQrCodes.map((qrCode) => (
+                  <Card 
+                    key={qrCode.id} 
+                    className="transition-all"
+                    data-testid={`card-unused-${qrCode.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div 
+                        className="p-3 rounded-lg mb-3"
+                        style={{ backgroundColor: qrCode.backgroundColor }}
+                      >
+                        {qrCode.labelText && (
+                          <p className="text-sm font-bold text-center text-gray-800">
+                            {qrCode.labelText}
+                          </p>
+                        )}
+                        {qrCode.secondaryText && (
+                          <p className="text-xs text-center text-gray-700 mt-1">
+                            {qrCode.secondaryText}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-3">
+                        <p>ID: {qrCode.id.substring(0, 8)}</p>
+                        <p>Impreso: {qrCode.printedAt ? new Date(qrCode.printedAt).toLocaleDateString() : 'N/A'}</p>
+                      </div>
+                      <Button
+                        onClick={() => markAsUsedMutation.mutate(qrCode.id)}
+                        disabled={markAsUsedMutation.isPending}
+                        size="sm"
+                        className="w-full"
+                        data-testid={`button-mark-used-${qrCode.id}`}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Marcar como Usado
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Códigos Usados Tab */}
+          <TabsContent value="used" className="mt-6">
+            {!usedQrCodes || usedQrCodes.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground" data-testid="text-no-used">
+                    No hay códigos QR usados
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Los códigos QR aparecerán aquí después de marcarlos como usados
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {usedQrCodes.map((qrCode) => (
+                  <Card 
+                    key={qrCode.id}
+                    data-testid={`card-used-${qrCode.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div 
+                        className="p-3 rounded-lg mb-3"
+                        style={{ backgroundColor: qrCode.backgroundColor }}
+                      >
+                        {qrCode.labelText && (
+                          <p className="text-sm font-bold text-center text-gray-800">
+                            {qrCode.labelText}
+                          </p>
+                        )}
+                        {qrCode.secondaryText && (
+                          <p className="text-xs text-center text-gray-700 mt-1">
+                            {qrCode.secondaryText}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <p>ID: {qrCode.id.substring(0, 8)}</p>
+                        <p>Impreso: {qrCode.printedAt ? new Date(qrCode.printedAt).toLocaleDateString() : 'N/A'}</p>
+                        <p>Usado: {qrCode.usedAt ? new Date(qrCode.usedAt).toLocaleDateString() : 'N/A'}</p>
+                      </div>
+                      <Badge className="mt-3 w-full justify-center" variant="secondary">
+                        En Uso
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
