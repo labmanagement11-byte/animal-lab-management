@@ -18,6 +18,7 @@ export default function BlankQrPage() {
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
   const [labelTexts, setLabelTexts] = useState<string[]>(Array(QR_COUNT).fill(''));
   const [showInputs, setShowInputs] = useState(false);
+  const [customText, setCustomText] = useState('');
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
 
   const { data: allQrCodes, refetch: refetchQrs } = useQuery<QrCode[]>({
@@ -165,8 +166,17 @@ export default function BlankQrPage() {
   };
 
   const handleAutofill = () => {
-    const newTexts = Array(QR_COUNT).fill('').map((_, i) => `OT-${i + 1}`);
+    if (!customText.trim()) {
+      toast({
+        title: "Error",
+        description: "Ingresa un texto para auto-rellenar",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newTexts = Array(QR_COUNT).fill(customText.trim());
     setLabelTexts(newTexts);
+    setCustomText('');
   };
 
   const handlePrintSelected = () => {
@@ -404,24 +414,36 @@ export default function BlankQrPage() {
               </Button>
             ) : (
               <>
-                <div className="flex gap-2 mb-2">
-                  <Button
-                    onClick={handleAutofill}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    data-testid="button-autofill"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Auto-rellenar (OT-1, OT-2...)
-                  </Button>
+                <div className="space-y-2 mb-4">
+                  <label className="text-sm font-medium">Auto-rellenar con el mismo texto</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={customText}
+                      onChange={(e) => setCustomText(e.target.value)}
+                      placeholder="Ingresa el texto (ej: OT-1)"
+                      className="flex-1"
+                      data-testid="input-custom-text"
+                    />
+                    <Button
+                      onClick={handleAutofill}
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-autofill"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Rellenar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mb-2">
                   <Button
                     onClick={() => setLabelTexts(Array(QR_COUNT).fill(''))}
                     variant="outline"
                     size="sm"
                     data-testid="button-clear"
                   >
-                    Limpiar
+                    Limpiar Todo
                   </Button>
                 </div>
 
