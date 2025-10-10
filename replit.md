@@ -122,6 +122,25 @@ Preferred communication style: Simple, everyday language.
   - Export includes: QR ID, Type, Label Text, Created Date, and Status
   - PDF export with professional formatting and auto-table generation
   - Toast notifications for export success feedback
+- **QR Code Lifecycle Management** (October 10, 2025):
+  - **Status-based workflow**: QR codes transition through three states: available → unused → used
+  - **State Transitions**:
+    - `available`: Initial state when QR codes are generated
+    - `unused`: After printing (POST `/api/qr-codes/mark-printed`)
+    - `used`: After assigning to cage/animal (PATCH `/api/qr-codes/:id/status`)
+  - **One-way enforcement**: Status can only progress forward (available → unused → used), preventing regressions
+  - **Tab-based UI**: Separate tabs for "Sin Usar" (unused) and "Usados" (used) codes with counts
+  - **Actions**: "Marcar como Usado" button in unused tab to transition codes to used state
+- **Strain Color Memory System** (October 10, 2025):
+  - **Auto-save on print**: When QR codes are printed, strain-color associations are automatically saved
+  - **Database table**: `strainColors` stores `strainName` → `backgroundColor` mappings per company
+  - **Auto-complete**: When user types strain name, system fetches saved color and applies it automatically
+  - **Manual override**: Users can always change color manually; auto-fill respects manual edits
+  - **Race condition protection**: Timestamp-based guards prevent stale auto-fill from overwriting manual changes
+  - **API endpoints**:
+    - GET `/api/strain-colors/:strainName` - Fetch saved color for strain
+    - POST `/api/strain-colors` - Upsert strain-color association
+    - GET `/api/strain-colors` - List all strain colors for company
 
 ## External Dependencies
 

@@ -760,12 +760,12 @@ export class DatabaseStorage implements IStorage {
       .where(
         companyId
           ? and(
-              sql`${qrCodes.id} = ANY(${ids})`,
+              inArray(qrCodes.id, ids),
               eq(qrCodes.companyId, companyId),
               isNull(qrCodes.deletedAt)
             )
           : and(
-              sql`${qrCodes.id} = ANY(${ids})`,
+              inArray(qrCodes.id, ids),
               isNull(qrCodes.deletedAt)
             )
       );
@@ -793,7 +793,7 @@ export class DatabaseStorage implements IStorage {
         printedAt: new Date(),
         printedBy: userId
       })
-      .where(sql`${qrCodes.id} = ANY(${validIds})`)
+      .where(inArray(qrCodes.id, validIds))
       .returning();
     
     return updatedCodes;
