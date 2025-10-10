@@ -3,13 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, QrCode as QrCodeIcon, Calendar, Box, Trash2, RotateCcw } from "lucide-react";
+import { Printer, QrCode as QrCodeIcon, Calendar, Box, Trash2, RotateCcw, Download, FileText, FileSpreadsheet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import type { QrCode, Cage } from "@shared/schema";
 import { formatDate } from "@/utils/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function QrCodes() {
   const { toast } = useToast();
@@ -66,6 +75,100 @@ export default function QrCodes() {
       });
     },
   });
+
+  // Export functions
+  const prepareExportData = () => {
+    let dataToExport: QrCode[] = [];
+    
+    switch(activeTab) {
+      case 'used':
+        dataToExport = qrCodes?.filter(qr => !qr.isBlank && qr.cageId) || [];
+        break;
+      case 'blank':
+        dataToExport = qrCodes?.filter(qr => qr.isBlank || !qr.cageId) || [];
+        break;
+      case 'trash':
+        dataToExport = deletedQrCodes || [];
+        break;
+      default:
+        dataToExport = qrCodes || [];
+    }
+    
+    return dataToExport.map(qr => ({
+      'QR ID': qr.id,
+      'Type': qr.isBlank ? 'Blank' : 'Assigned',
+      'Cage': getCageName(qr.cageId),
+      'Room': qr.cageId && cages ? cages.find(c => c.id === qr.cageId)?.roomNumber || 'N/A' : 'N/A',
+      'Created Date': formatDate(qr.createdAt),
+      'Status': activeTab === 'trash' ? 'Deleted' : 'Active'
+    }));
+  };
+
+  const exportToCSV = () => {
+    const data = prepareExportData();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `qr-codes-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Success",
+      description: "QR codes exported to CSV successfully!",
+    });
+  };
+
+  const exportToExcel = () => {
+    const data = prepareExportData();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'QR Codes');
+    XLSX.writeFile(wb, `qr-codes-${activeTab}-${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Success",
+      description: "QR codes exported to Excel successfully!",
+    });
+  };
+
+  const exportToPDF = () => {
+    const data = prepareExportData();
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('QR Codes Report', 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Status: ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 36);
+    
+    autoTable(doc, {
+      startY: 45,
+      head: [['QR ID', 'Type', 'Cage', 'Room', 'Created Date', 'Status']],
+      body: data.map(row => [
+        row['QR ID'].substring(0, 8) + '...',
+        row['Type'],
+        row['Cage'],
+        row['Room'],
+        row['Created Date'],
+        row['Status']
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+    
+    doc.save(`qr-codes-${activeTab}-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: "Success",
+      description: "QR codes exported to PDF successfully!",
+    });
+  };
 
   useEffect(() => {
     const allQrCodes = [...(qrCodes || []), ...(deletedQrCodes || [])];
@@ -270,12 +373,12 @@ export default function QrCodes() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6 flex-wrap gap-4">
         <div>
           <h2 className="text-lg md:text-2xl font-semibold text-foreground">QR Codes</h2>
           <p className="text-xs md:text-sm text-muted-foreground">View and manage all generated QR codes</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-sm" data-testid="badge-used-qr-codes">
             <QrCodeIcon className="w-4 h-4 mr-1" />
             {qrCodes?.filter(qr => !qr.isBlank && qr.cageId).length || 0} Used
@@ -290,6 +393,30 @@ export default function QrCodes() {
               {deletedQrCodes?.length || 0} Deleted
             </Badge>
           )}
+          
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" data-testid="button-export">
+                <Download className="w-4 h-4 mr-2" />
+                <span className="hidden md:inline">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToCSV} data-testid="menu-export-csv">
+                <FileText className="w-4 h-4 mr-2" />
+                Export to CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel} data-testid="menu-export-excel">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Export to Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToPDF} data-testid="menu-export-pdf">
+                <FileText className="w-4 h-4 mr-2" />
+                Export to PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
