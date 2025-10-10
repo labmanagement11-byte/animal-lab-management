@@ -77,8 +77,9 @@ export default function Dashboard() {
       {/* Overlay para mejorar legibilidad */}
       <div className="absolute inset-0 bg-black/30 dark:bg-black/50 -z-10"></div>
       
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-6 relative z-10">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 md:mb-6 relative z-10">
         <div>
           <h2 className="text-lg md:text-2xl font-semibold text-white dark:text-white">{t.dashboard.title}</h2>
           <p className="text-xs md:text-sm text-gray-100 dark:text-gray-100 hidden md:block">{t.dashboard.manageAnimalsAndCages}</p>
@@ -317,18 +318,19 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Floating Action Button - Mobile Only */}
-      <FloatingActionButton 
-        onClick={() => setShowAnimalForm(true)}
-        label={t.dashboard.addAnimal}
-      />
+        {/* Floating Action Button - Mobile Only */}
+        <FloatingActionButton 
+          onClick={() => setShowAnimalForm(true)}
+          label={t.dashboard.addAnimal}
+        />
 
-      {/* Animal Form Modal */}
-      <Dialog open={showAnimalForm} onOpenChange={setShowAnimalForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <AnimalForm onClose={() => setShowAnimalForm(false)} />
-        </DialogContent>
-      </Dialog>
+        {/* Animal Form Modal */}
+        <Dialog open={showAnimalForm} onOpenChange={setShowAnimalForm}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <AnimalForm onClose={() => setShowAnimalForm(false)} />
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
