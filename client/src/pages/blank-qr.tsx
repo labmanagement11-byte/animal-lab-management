@@ -211,10 +211,6 @@ export default function BlankQrPage() {
             <div class="qr-label">
               <div class="label-text">${qrCode.labelText || 'N/A'}</div>
               <img src="${dataUrl}" alt="QR Code" />
-              <div class="label-info">
-                <div>${qrCode.id.substring(0, 12)}</div>
-                <div>Generated</div>
-              </div>
             </div>
           `;
         }
@@ -263,30 +259,27 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                justify-content: flex-start;
+                justify-content: space-between;
                 border: 1px dashed #ddd;
-                padding: 0 8px;
-                gap: 8px;
+                padding: 0.15in 0.2in;
+                box-sizing: border-box;
               }
               .label-text {
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #000;
-                min-width: 60px;
-                text-align: left;
-              }
-              .qr-label img {
-                width: 0.6in;
-                height: 0.6in;
-                object-fit: contain;
-              }
-              .label-info {
-                display: flex;
-                flex-direction: column;
-                font-size: 6px;
-                color: #666;
                 flex: 1;
                 text-align: left;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding-right: 0.1in;
+              }
+              .qr-label img {
+                width: 0.65in;
+                height: 0.65in;
+                object-fit: contain;
+                flex-shrink: 0;
               }
             }
             
@@ -324,33 +317,29 @@ export default function BlankQrPage() {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                justify-content: flex-start;
-                padding: 0 8px;
-                gap: 8px;
+                justify-content: space-between;
+                padding: 0.15in 0.2in;
+                box-sizing: border-box;
                 page-break-inside: avoid;
               }
               
               .label-text {
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: bold;
-                color: #000;
-                min-width: 60px;
-                text-align: left;
-              }
-              
-              .qr-label img {
-                width: 0.6in;
-                height: 0.6in;
-                object-fit: contain;
-              }
-              
-              .label-info {
-                display: flex;
-                flex-direction: column;
-                font-size: 6px;
                 color: #000;
                 flex: 1;
                 text-align: left;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding-right: 0.1in;
+              }
+              
+              .qr-label img {
+                width: 0.65in;
+                height: 0.65in;
+                object-fit: contain;
+                flex-shrink: 0;
               }
             }
           </style>
