@@ -87,11 +87,16 @@ Preferred communication style: Simple, everyday language.
   - **Print Layout**: 3 columns × 10 rows = 30 labels per sheet
   - **Custom Text Labels**: Each QR code can have personalized text (stored in `labelText` field)
   - **Auto-fill Feature**: Enter any custom text once to fill all 30 labels with the same value
-  - **Horizontal Label Design**: Text label (left) | QR code 0.65" (right)
-  - **Print Specifications**: 
-    - Padding: 0.15in vertical, 0.2in horizontal
-    - QR size: 0.65in × 0.65in
-    - Text: 18px bold, left-aligned
+  - **Horizontal Label Design**: Text label (centered, right-aligned) | QR code 0.6" (right)
+  - **Print Specifications** (October 10, 2025): 
+    - Layout: Text and QR centered together with 0.15in gap
+    - QR size: 0.6in × 0.6in
+    - Main text: 14px bold, right-aligned
+    - Secondary text: 8px, right-aligned
+    - Text truncation with ellipsis for overflow protection
+    - Footer bar: 0.12in black strip at bottom
+    - Page margins: 0.5in top/bottom, 0.1875in left/right
+    - Grid: Fixed 2.625in × 1in cells (exact Avery 8160 dimensions)
     - Custom CSS optimized for Avery 8160 physical alignment
   - **Interactive UI**: 30 individual text inputs with custom auto-fill and clear options
   - **Validation**: Requires at least one non-empty label text before generation
