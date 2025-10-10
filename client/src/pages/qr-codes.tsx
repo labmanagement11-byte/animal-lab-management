@@ -420,83 +420,68 @@ export default function QrCodes() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="used" data-testid="tab-used">
-            Used QR Codes ({qrCodes?.filter(qr => !qr.isBlank && qr.cageId).length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="blank" data-testid="tab-blank">
-            Blank QR Codes ({qrCodes?.filter(qr => qr.isBlank || !qr.cageId).length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="trash" data-testid="tab-trash">
-            Trash ({deletedQrCodes?.length || 0})
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Used QR Codes */}
-        <TabsContent value="used">
-          {qrCodes && qrCodes.filter(qr => !qr.isBlank && qr.cageId).length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {qrCodes.filter(qr => !qr.isBlank && qr.cageId).map((qrCode) => renderQrCodeCard(qrCode, false))}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Used QR Codes Card */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">QR Codes Usados</CardTitle>
+              <QrCodeIcon className="w-8 h-8 text-primary" />
             </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">No Used QR Codes</h3>
-                  <p className="text-sm text-muted-foreground" data-testid="text-no-used-qr-codes">
-                    QR codes that are linked to cages will appear here
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Blank QR Codes */}
-        <TabsContent value="blank">
-          {qrCodes && qrCodes.filter(qr => qr.isBlank || !qr.cageId).length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {qrCodes.filter(qr => qr.isBlank || !qr.cageId).map((qrCode) => renderQrCodeCard(qrCode, false))}
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="text-6xl font-bold text-primary mb-2">
+                {qrCodes?.filter(qr => !qr.isBlank && qr.cageId).length || 0}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Códigos QR asignados a jaulas
+              </p>
             </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">No Blank QR Codes</h3>
-                  <p className="text-sm text-muted-foreground" data-testid="text-no-blank-qr-codes">
-                    Generate QR codes from the Blank QR page
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+          </CardContent>
+        </Card>
 
-        {/* Trash */}
-        <TabsContent value="trash">
-          {deletedQrCodes && deletedQrCodes.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {deletedQrCodes.map((qrCode) => renderQrCodeCard(qrCode, true))}
+        {/* Blank QR Codes Card */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">QR Codes en Blanco</CardTitle>
+              <QrCodeIcon className="w-8 h-8 text-secondary-foreground" />
             </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <Trash2 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Trash is Empty</h3>
-                  <p className="text-sm text-muted-foreground" data-testid="text-no-deleted-qr-codes">
-                    No deleted QR codes found
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="text-6xl font-bold text-secondary-foreground mb-2">
+                {qrCodes?.filter(qr => qr.isBlank || !qr.cageId).length || 0}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Códigos QR disponibles para usar
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Deleted QR Codes Card */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">QR Codes Eliminados</CardTitle>
+              <Trash2 className="w-8 h-8 text-destructive" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="text-6xl font-bold text-destructive mb-2">
+                {deletedQrCodes?.length || 0}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Códigos QR en la papelera
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
