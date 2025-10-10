@@ -237,6 +237,7 @@ export default function BlankQrPage() {
                 <div class="text-section">
                   <div class="label-main-text">${qrCode.labelText || ''}</div>
                   <div class="label-secondary-text">${qrCode.secondaryText || ''}</div>
+                  <div class="label-tertiary-text">Merghoub Lab</div>
                 </div>
                 <div class="qr-section">
                   <img src="${dataUrl}" alt="QR Code" />
@@ -331,6 +332,13 @@ export default function BlankQrPage() {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 width: 100%;
+              }
+              .label-tertiary-text {
+                font-size: 7px;
+                color: #000;
+                white-space: nowrap;
+                text-align: right;
+                font-style: italic;
               }
               .qr-section {
                 flex-shrink: 0;
@@ -443,6 +451,14 @@ export default function BlankQrPage() {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 width: 100%;
+              }
+              
+              .label-tertiary-text {
+                font-size: 7px;
+                color: #000 !important;
+                white-space: nowrap;
+                text-align: right;
+                font-style: italic;
               }
               
               .qr-section {
