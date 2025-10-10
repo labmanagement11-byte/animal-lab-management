@@ -278,7 +278,7 @@ export default function BlankQrPage() {
                 width: 8.5in;
                 height: 11in;
                 margin: 0 auto 20px;
-                padding: 0.5in 0.19in;
+                padding: 0.5in 0.1875in;
                 box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 display: grid;
                 grid-template-columns: repeat(3, 2.625in);
@@ -310,7 +310,7 @@ export default function BlankQrPage() {
                 gap: 0.02in;
               }
               .label-main-text {
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #000;
                 white-space: nowrap;
@@ -318,15 +318,15 @@ export default function BlankQrPage() {
                 text-overflow: ellipsis;
               }
               .label-secondary-text {
-                font-size: 8px;
+                font-size: 10px;
                 color: #000;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
               }
               .qr-section img {
-                width: 0.6in;
-                height: 0.6in;
+                width: 0.65in;
+                height: 0.65in;
                 object-fit: contain;
               }
               .label-footer {
@@ -340,12 +340,20 @@ export default function BlankQrPage() {
             @media print {
               @page {
                 size: 8.5in 11in;
-                margin: 0.5in 0.21875in;
+                margin: 0.5in 0.1875in;
+              }
+              
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
               }
               
               body {
                 margin: 0;
                 padding: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               
               .page {
@@ -356,8 +364,7 @@ export default function BlankQrPage() {
                 display: grid;
                 grid-template-columns: repeat(3, 2.625in);
                 grid-template-rows: repeat(10, 1in);
-                column-gap: 0.125in;
-                row-gap: 0;
+                gap: 0;
                 page-break-after: always;
               }
               
@@ -373,6 +380,8 @@ export default function BlankQrPage() {
                 box-sizing: border-box;
                 page-break-inside: avoid;
                 overflow: hidden;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               
               .label-content {
@@ -382,6 +391,8 @@ export default function BlankQrPage() {
                 align-items: center;
                 padding: 0.08in 0.15in;
                 gap: 0.1in;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               
               .text-section {
@@ -393,32 +404,34 @@ export default function BlankQrPage() {
               }
               
               .label-main-text {
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
-                color: #000;
+                color: #000 !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
               }
               
               .label-secondary-text {
-                font-size: 8px;
-                color: #000;
+                font-size: 10px;
+                color: #000 !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
               }
               
               .qr-section img {
-                width: 0.6in;
-                height: 0.6in;
+                width: 0.65in;
+                height: 0.65in;
                 object-fit: contain;
               }
               
               .label-footer {
                 height: 0.15in;
-                background-color: #000;
+                background-color: #000 !important;
                 width: 100%;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
             }
           </style>
