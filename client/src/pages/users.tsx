@@ -33,6 +33,7 @@ const inviteUserSchema = z.object({
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   role: z.enum(['Admin', 'Success Manager', 'Director', 'Employee']),
@@ -91,6 +92,7 @@ export default function UsersPage() {
     })),
     defaultValues: {
       email: '',
+      password: '',
       firstName: '',
       lastName: '',
       role: 'Employee',
@@ -261,7 +263,7 @@ export default function UsersPage() {
 
   const createUserMutation = useMutation({
     mutationFn: (data: CreateUserForm) => 
-      apiRequest('/api/users', {
+      apiRequest('/api/admin/users', {
         method: 'POST',
         body: JSON.stringify(data),
         headers: { 'Content-Type': 'application/json' }
@@ -376,24 +378,24 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {isCurrentUserAdmin && (
+            <Button 
+              onClick={() => setCreateDialogOpen(true)}
+              data-testid="button-create-user"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Create User
+            </Button>
+          )}
           {canInviteUsers && (
-            <>
-              <Button 
-                onClick={() => setCreateDialogOpen(true)}
-                data-testid="button-create-user"
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Create User
-              </Button>
-              <Button 
-                onClick={() => setInviteDialogOpen(true)}
-                variant="outline"
-                data-testid="button-invite-user"
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                Invite by Email
-              </Button>
-            </>
+            <Button 
+              onClick={() => setInviteDialogOpen(true)}
+              variant="outline"
+              data-testid="button-invite-user"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Invite by Email
+            </Button>
           )}
           <Badge variant="default" className="w-fit">
             <Users className="w-4 h-4 mr-1" />
@@ -842,47 +844,29 @@ export default function UsersPage() {
       </Dialog>
 
       {/* Create User Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Crear Nuevo Usuario</DialogTitle>
-            <DialogDescription>
-              Crear un usuario directamente especificando sus datos. Solo Admin y Director pueden crear usuarios.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit(handleCreateUser)} className="space-y-4">
-              <FormField
-                control={createForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="usuario@ejemplo.com" 
-                        {...field} 
-                        data-testid="input-create-email"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
+      {isCurrentUserAdmin && (
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+              <DialogDescription>
+                Crear un usuario directamente especificando sus datos. Solo Admin y Director pueden crear usuarios.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(handleCreateUser)} className="space-y-4">
                 <FormField
                   control={createForm.control}
-                  name="firstName"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre *</FormLabel>
+                      <FormLabel>Email *</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Juan" 
+                          type="email" 
+                          placeholder="usuario@ejemplo.com" 
                           {...field} 
-                          data-testid="input-create-firstname"
+                          data-testid="input-create-email"
                         />
                       </FormControl>
                       <FormMessage />
@@ -892,129 +876,168 @@ export default function UsersPage() {
 
                 <FormField
                   control={createForm.control}
-                  name="lastName"
+                  name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Apellido *</FormLabel>
+                      <FormLabel>Password *</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Pérez" 
+                          type="password" 
+                          placeholder="Minimum 6 characters" 
                           {...field} 
-                          data-testid="input-create-lastname"
+                          data-testid="input-create-password"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <FormField
-                control={createForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rol *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-create-role">
-                          <SelectValue placeholder="Seleccionar un rol" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Employee">
-                          <div className="flex items-center">
-                            <UserCheck className="w-4 h-4 mr-2" />
-                            Empleado
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Director">
-                          <div className="flex items-center">
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Director
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Success Manager">
-                          <div className="flex items-center">
-                            <Shield className="w-4 h-4 mr-2" />
-                            Success Manager
-                          </div>
-                        </SelectItem>
-                        {isCurrentUserAdmin && (
-                          <SelectItem value="Admin">
-                            <div className="flex items-center">
-                              <Crown className="w-4 h-4 mr-2" />
-                              Admin
-                            </div>
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Juan" 
+                            {...field} 
+                            data-testid="input-create-firstname"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={createForm.control}
-                name="companyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Empresa {isCurrentUserAdmin ? '*' : ''}</FormLabel>
-                    {isCurrentUserDirector ? (
-                      <FormControl>
-                        <Input 
-                          value={companies?.find((c: any) => c.id === (currentUser as any)?.companyId)?.name || 'Cargando...'}
-                          disabled
-                          data-testid="input-create-company-readonly"
-                          className="bg-muted"
-                        />
-                      </FormControl>
-                    ) : (
+                  <FormField
+                    control={createForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Apellido *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Pérez" 
+                            {...field} 
+                            data-testid="input-create-lastname"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={createForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rol *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-create-company">
-                            <SelectValue placeholder="Seleccionar empresa" />
+                          <SelectTrigger data-testid="select-create-role">
+                            <SelectValue placeholder="Seleccionar un rol" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {companies?.map((company: any) => (
-                            <SelectItem key={company.id} value={company.id}>
-                              {company.name}
+                          <SelectItem value="Employee">
+                            <div className="flex items-center">
+                              <UserCheck className="w-4 h-4 mr-2" />
+                              Empleado
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Director">
+                            <div className="flex items-center">
+                              <Briefcase className="w-4 h-4 mr-2" />
+                              Director
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Success Manager">
+                            <div className="flex items-center">
+                              <Shield className="w-4 h-4 mr-2" />
+                              Success Manager
+                            </div>
+                          </SelectItem>
+                          {isCurrentUserAdmin && (
+                            <SelectItem value="Admin">
+                              <div className="flex items-center">
+                                <Crown className="w-4 h-4 mr-2" />
+                                Admin
+                              </div>
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setCreateDialogOpen(false);
-                    createForm.reset();
-                  }}
-                  data-testid="button-cancel-create"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createUserMutation.isPending}
-                  data-testid="button-submit-create"
-                >
-                  {createUserMutation.isPending ? "Creando..." : "Crear Usuario"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+                <FormField
+                  control={createForm.control}
+                  name="companyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Empresa {isCurrentUserAdmin ? '*' : ''}</FormLabel>
+                      {isCurrentUserDirector ? (
+                        <FormControl>
+                          <Input 
+                            value={companies?.find((c: any) => c.id === (currentUser as any)?.companyId)?.name || 'Cargando...'}
+                            disabled
+                            data-testid="input-create-company-readonly"
+                            className="bg-muted"
+                          />
+                        </FormControl>
+                      ) : (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-create-company">
+                              <SelectValue placeholder="Seleccionar empresa" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {companies?.map((company: any) => (
+                              <SelectItem key={company.id} value={company.id}>
+                                {company.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCreateDialogOpen(false);
+                      createForm.reset();
+                    }}
+                    data-testid="button-cancel-create"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createUserMutation.isPending}
+                    data-testid="button-submit-create"
+                  >
+                    {createUserMutation.isPending ? "Creando..." : "Crear Usuario"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
