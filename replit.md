@@ -60,10 +60,28 @@ Preferred communication style: Simple, everyday language.
   - Search functionality across entities
 
 ### Authentication & Authorization
-- Replit-based authentication with role-based permissions
-- Three user roles: Employee, Director, and Admin
-- Session-based authentication with secure cookie handling
-- Protected API routes with middleware validation
+- **Dual Authentication System** (October 11, 2025):
+  - **OIDC Authentication**: Replit Auth integration with OpenID Connect for external user login
+  - **Local Authentication**: Email/password authentication for manually created users
+  - Unified session management supporting both authentication methods
+- **User Roles**: Employee, Director, and Admin with hierarchical permissions
+- **Session Management**: 
+  - PostgreSQL-backed session storage with 1-week TTL
+  - Session regeneration after login to prevent session fixation attacks
+  - Automatic token refresh for OIDC users
+- **Manual User Management** (Admin-only, October 11, 2025):
+  - Admins can manually create users with email/password through UI at `/users`
+  - Password hashing using bcrypt with 10 salt rounds
+  - Duplicate email validation prevents account conflicts
+  - Blocked/deleted user authentication rejection
+  - Password hash never exposed to client (sanitization in all user responses)
+  - Endpoints:
+    - POST `/api/admin/users`: Create local auth user (admin-only)
+    - POST `/api/login/local`: Local email/password authentication
+  - Database schema additions:
+    - `passwordHash`: varchar field for bcrypt-hashed passwords
+    - `authProvider`: enum ('oidc' | 'local') to identify authentication type
+- **Protected API Routes**: Middleware validation with role-based access control
 
 ### Multi-Tenancy Architecture (Latest Implementation)
 - **Company-based data isolation**: Every data table includes a `companyId` foreign key for strict tenant separation
@@ -109,12 +127,13 @@ Preferred communication style: Simple, everyday language.
   - **Interactive Selection**: Click any card to select it for export (visual ring indicator)
   - **Export Integration**: Selected card determines export dataset (CSV/Excel/PDF)
   - **Real-time Counters**: Live count display for each QR category
-  - **Dashboard Statistics Split** (October 10, 2025):
+  - **Dashboard Statistics Split** (October 11, 2025):
     - QR Codes card now displays two separate counts side by side
-    - "En Uso" (In Use): Count of QR codes with isBlank=false
-    - "En Blanco" (Blank): Count of QR codes with isBlank=true
+    - "En Uso" (In Use): Count of QR codes with status='used'
+    - "En Blanco" (Blank): Count of QR codes with status='unused' OR status='available'
     - Visual differentiation: "En Uso" in blue, "En Blanco" in green
     - Both counts filter out deleted QR codes (deletedAt IS NULL)
+    - Dashboard uses status field (not deprecated isBlank) for accurate counting
 - **QR Code Export** (October 2025):
   - Multi-format export: CSV, Excel (XLSX), and PDF
   - Card-based selection: Click summary card to choose export dataset (Used, Blank, or Trash)
