@@ -35,7 +35,7 @@ export const companies = pgTable("companies", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User storage table for Replit Auth
+// User storage table for Replit Auth and local auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").references(() => companies.id),
@@ -43,6 +43,8 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  passwordHash: varchar("password_hash"), // For local auth users
+  authProvider: varchar("auth_provider", { enum: ['oidc', 'local'] }).default('oidc').notNull(),
   role: varchar("role", { enum: ['Admin', 'Success Manager', 'Director', 'Employee'] }).default('Employee').notNull(),
   isBlocked: boolean("is_blocked").default(false),
   blockedAt: timestamp("blocked_at"),
