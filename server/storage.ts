@@ -500,7 +500,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async permanentlyDeleteCage(id: string): Promise<void> {
-    await db.delete(cages).where(eq(cages.id, id));
+    await db.transaction(async (tx) => {
+      // First, set cage_id to NULL in all animals that reference this cage
+      await tx
+        .update(animals)
+        .set({ cageId: sql`NULL` })
+        .where(eq(animals.cageId, id));
+      
+      // Second, set cage_id to NULL in all qr_codes that reference this cage
+      await tx
+        .update(qrCodes)
+        .set({ cageId: sql`NULL` })
+        .where(eq(qrCodes.cageId, id));
+      
+      // Finally, delete the cage
+      await tx.delete(cages).where(eq(cages.id, id));
+    });
   }
 
   async getDeletedCages(companyId?: string): Promise<Cage[]> {
