@@ -976,16 +976,23 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(qrCodes)
       .where(companyId 
-        ? and(eq(qrCodes.isBlank, false), isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId))
-        : and(eq(qrCodes.isBlank, false), isNull(qrCodes.deletedAt))
+        ? and(eq(qrCodes.status, 'used'), isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId))
+        : and(eq(qrCodes.status, 'used'), isNull(qrCodes.deletedAt))
       );
 
     const [qrCodesBlankCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(qrCodes)
       .where(companyId 
-        ? and(eq(qrCodes.isBlank, true), isNull(qrCodes.deletedAt), eq(qrCodes.companyId, companyId))
-        : and(eq(qrCodes.isBlank, true), isNull(qrCodes.deletedAt))
+        ? and(
+            or(eq(qrCodes.status, 'unused'), eq(qrCodes.status, 'available')),
+            isNull(qrCodes.deletedAt), 
+            eq(qrCodes.companyId, companyId)
+          )
+        : and(
+            or(eq(qrCodes.status, 'unused'), eq(qrCodes.status, 'available')),
+            isNull(qrCodes.deletedAt)
+          )
       );
 
     const [healthAlerts] = await db
