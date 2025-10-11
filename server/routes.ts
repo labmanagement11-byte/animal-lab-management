@@ -1,10 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema, insertCompanySchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
+import passport from "passport";
+
+// Helper function to get user ID from session (supports both OIDC and local auth)
+function getUserIdFromSession(sessionUser: any): string {
+  return sessionUser.authProvider === 'local' ? sessionUser.id : sessionUser.claims?.sub;
+}
 
 // Helper function to safely get companyId with security check
 function getCompanyIdForUser(user: any | null | undefined): string | undefined {
@@ -29,10 +35,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Local authentication login endpoint
+  app.post('/api/login/local', (req, res, next) => {
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Authentication error" });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Invalid email or password" });
+      }
+
+      // Regenerate session to prevent session fixation attacks
+      req.session.regenerate((err) => {
+        if (err) {
+          return res.status(500).json({ message: "Session regeneration failed" });
+        }
+
+        req.logIn(user, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Login failed" });
+          }
+          
+          return res.json({ success: true, message: "Login successful" });
+        });
+      });
+    })(req, res, next);
+  });
+
+  // Admin endpoint to create local users
+  app.post('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const createUserSchema = z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        role: z.enum(['Admin', 'Success Manager', 'Director', 'Employee']),
+        companyId: z.string().min(1),
+      });
+
+      const validatedData = createUserSchema.parse(req.body);
+
+      const user = await storage.createLocalUser(
+        validatedData.email,
+        validatedData.password,
+        validatedData.firstName,
+        validatedData.lastName,
+        validatedData.role,
+        validatedData.companyId
+      );
+
+      res.status(201).json(user);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message.includes('already exists')) {
+        return res.status(409).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserIdFromSession(req.user);
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -44,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard statistics
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -62,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Monthly activity report (Admin/Director only)
   app.get('/api/reports/monthly', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can access reports" });
       }
@@ -92,7 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
 
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -130,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Animal routes
   app.get('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -148,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/animals/search', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -170,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get deleted animals (trash)
   app.get('/api/animals/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -187,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -207,7 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/animals', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
@@ -226,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'animals',
         recordId: animal.id,
@@ -249,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this animal
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -275,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'animals',
         recordId: req.params.id,
@@ -295,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this animal
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -307,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Animal not found" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = getUserIdFromSession(req.user);
       await storage.deleteAnimal(req.params.id, userId);
       
       // Create audit log
@@ -330,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/animals/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -349,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'RESTORE',
         tableName: 'animals',
         recordId: req.params.id,
@@ -369,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Permanently delete animal (Admin/Director only)
   app.delete('/api/animals/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
       }
@@ -393,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'PERMANENT_DELETE',
         tableName: 'animals',
         recordId: req.params.id,
@@ -410,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch permanently delete animals (Admin/Director only)
   app.post('/api/animals/batch-delete', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
       }
@@ -447,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.permanentlyDeleteAnimal(id);
           await storage.createAuditLog({
-            userId: req.user.claims.sub,
+            userId: getUserIdFromSession(req.user),
             action: 'PERMANENT_DELETE',
             tableName: 'animals',
             recordId: id,
@@ -473,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cage routes
   app.get('/api/cages', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -491,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get deleted cages (trash)
   app.get('/api/cages/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -509,7 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cages/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this cage
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -529,7 +599,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/cages', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
       const dataWithCompany = {
         ...req.body,
         companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })()
@@ -540,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'cages',
         recordId: cage.id,
@@ -569,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/cages/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -588,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'cages',
         recordId: req.params.id,
@@ -614,7 +687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/cages/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -627,7 +700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Cage not found" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = getUserIdFromSession(req.user);
       await storage.deleteCage(req.params.id, userId);
       
       // Create audit log
@@ -650,7 +723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cages/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -669,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'RESTORE',
         tableName: 'cages',
         recordId: req.params.id,
@@ -689,7 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Permanently delete cage (Admin/Director only)
   app.delete('/api/cages/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
       }
@@ -713,7 +786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'PERMANENT_DELETE',
         tableName: 'cages',
         recordId: req.params.id,
@@ -730,7 +803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch permanently delete cages (Admin/Director only)
   app.post('/api/cages/batch-delete', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || (user.role !== 'Admin' && user.role !== 'Director')) {
         return res.status(403).json({ message: "Only Admin and Director can permanently delete items" });
       }
@@ -767,7 +840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.permanentlyDeleteCage(id);
           await storage.createAuditLog({
-            userId: req.user.claims.sub,
+            userId: getUserIdFromSession(req.user),
             action: 'PERMANENT_DELETE',
             tableName: 'cages',
             recordId: id,
@@ -793,7 +866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cleanup expired deleted items (Admin/Success Manager only)
   app.post('/api/trash/cleanup', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || (user.role !== 'Admin' && user.role !== 'Success Manager')) {
         return res.status(403).json({ message: "Only Admin and Success Manager can run cleanup" });
       }
@@ -802,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CLEANUP',
         tableName: 'trash',
         recordId: 'bulk',
@@ -822,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // QR Code routes
   app.get('/api/qr-codes', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -839,17 +912,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/qr-codes', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
       const validatedData = insertQrCodeSchema.parse({
         ...req.body,
-        generatedBy: req.user.claims.sub,
+        generatedBy: getUserIdFromSession(req.user),
         companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
       });
       const qrCode = await storage.createQrCode(validatedData);
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'qr_codes',
         recordId: qrCode.id,
@@ -872,7 +948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get QR code by scan data
   app.get('/api/qr-codes/scan/:qrData', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -904,7 +980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const qrCodes = [];
-      const userId = req.user.claims.sub;
+      const userId = getUserIdFromSession(req.user);
       const user = await storage.getUser(userId);
       const baseUrl = `${req.protocol}://${req.get('host')}`;
 
@@ -957,7 +1033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get blank QR codes (unclaimed)
   app.get('/api/qr-codes/blank', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -981,7 +1057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "cageId is required" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = getUserIdFromSession(req.user);
       const qrCode = await storage.claimQrCode(req.params.id, cageId, userId);
       
       // Create audit log
@@ -1011,7 +1087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/qr-codes/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1034,7 +1110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/qr-codes/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1047,7 +1123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "QR code not found" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = getUserIdFromSession(req.user);
       await storage.deleteQrCode(req.params.id, userId);
 
       // Create audit log only after successful deletion
@@ -1076,7 +1152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/qr-codes/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1095,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log only after successful restoration
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'RESTORE',
         tableName: 'qr_codes',
         recordId: req.params.id,
@@ -1118,7 +1194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get deleted QR codes (trash)
   app.get('/api/qr-codes/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1136,7 +1212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Permanently delete QR code (Admin only)
   app.delete('/api/qr-codes/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can permanently delete QR codes" });
       }
@@ -1160,7 +1236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'PERMANENT_DELETE',
         tableName: 'qr_codes',
         recordId: req.params.id,
@@ -1177,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch permanently delete QR codes (Admin only)
   app.post('/api/qr-codes/batch-delete', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can permanently delete QR codes" });
       }
@@ -1214,7 +1290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.permanentlyDeleteQrCode(id);
           await storage.createAuditLog({
-            userId: req.user.claims.sub,
+            userId: getUserIdFromSession(req.user),
             action: 'PERMANENT_DELETE',
             tableName: 'qr_codes',
             recordId: id,
@@ -1240,7 +1316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get QR codes by status
   app.get('/api/qr-codes/status/:status', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       const status = req.params.status as 'available' | 'unused' | 'used';
       
       if (!['available', 'unused', 'used'].includes(status)) {
@@ -1266,7 +1342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update QR code status
   app.patch('/api/qr-codes/:id/status', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       const { status } = req.body;
       
       if (!['available', 'unused', 'used'].includes(status)) {
@@ -1287,10 +1363,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "QR code not found" });
       }
 
-      const updatedQrCode = await storage.updateQrCodeStatus(req.params.id, status, req.user.claims.sub, companyId);
+      const updatedQrCode = await storage.updateQrCodeStatus(req.params.id, status, getUserIdFromSession(req.user), companyId);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'qr_codes',
         recordId: req.params.id,
@@ -1307,7 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mark QR codes as printed
   app.post('/api/qr-codes/mark-printed', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       const { ids } = req.body;
       
       if (!Array.isArray(ids) || ids.length === 0) {
@@ -1322,11 +1398,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User has no company assigned" });
       }
 
-      const updatedQrCodes = await storage.markQrCodesAsPrinted(ids, req.user.claims.sub, companyId);
+      const updatedQrCodes = await storage.markQrCodesAsPrinted(ids, getUserIdFromSession(req.user), companyId);
       
       for (const qrCode of updatedQrCodes) {
         await storage.createAuditLog({
-          userId: req.user.claims.sub,
+          userId: getUserIdFromSession(req.user),
           action: 'UPDATE',
           tableName: 'qr_codes',
           recordId: qrCode.id,
@@ -1344,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Strain color routes
   app.get('/api/strain-colors', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       
       // Validate user has access to resources
       let companyId: string | undefined;
@@ -1364,7 +1440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/strain-colors/:strainName', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       
       // Validate user has access to resources
       let companyId: string | undefined;
@@ -1388,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/strain-colors', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       const { strainName, backgroundColor } = req.body;
       
       if (!strainName || !backgroundColor) {
@@ -1407,13 +1483,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getStrainColorByName(strainName, companyId);
 
       const strainColor = await storage.upsertStrainColor({
-        companyId,
+        companyId: companyId!,
         strainName,
         backgroundColor,
       });
 
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: existing ? 'UPDATE' : 'CREATE',
         tableName: 'strain_colors',
         recordId: strainColor.id,
@@ -1434,7 +1510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit log routes (for Success Manager and Admin only)
   app.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Success Manager' && user?.role !== 'Admin') {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -1471,7 +1547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Strain routes
   app.get('/api/strains', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1488,7 +1564,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/strains', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
       const dataWithCompany = {
         ...req.body,
         companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })()
@@ -1499,7 +1578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'strains',
         recordId: strain.id,
@@ -1521,7 +1600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/strains/trash', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1539,7 +1618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/strains/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1552,11 +1631,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Strain not found" });
       }
 
-      await storage.deleteStrain(req.params.id, req.user.claims.sub);
+      await storage.deleteStrain(req.params.id, getUserIdFromSession(req.user));
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'DELETE',
         tableName: 'strains',
         recordId: req.params.id,
@@ -1573,7 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/strains/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1592,7 +1671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'RESTORE',
         tableName: 'strains',
         recordId: req.params.id,
@@ -1608,7 +1687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/strains/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin' && user?.role !== 'Director') {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -1632,7 +1711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'PERMANENT_DELETE',
         tableName: 'strains',
         recordId: req.params.id,
@@ -1649,7 +1728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch permanently delete strains (Admin/Director only)
   app.post('/api/strains/batch-delete', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin' && user?.role !== 'Director') {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -1686,7 +1765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.permanentlyDeleteStrain(id);
           await storage.createAuditLog({
-            userId: req.user.claims.sub,
+            userId: getUserIdFromSession(req.user),
             action: 'PERMANENT_DELETE',
             tableName: 'strains',
             recordId: id,
@@ -1712,7 +1791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Genotype routes
   app.get('/api/genotypes', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1729,7 +1808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/genotypes', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
@@ -1744,7 +1823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'genotypes',
         recordId: genotype.id,
@@ -1767,7 +1846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/genotypes/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this resource
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
         companyId = getCompanyIdForUser(user);
@@ -1784,7 +1863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'DELETE',
         tableName: 'genotypes',
         recordId: req.params.id,
@@ -1800,7 +1879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
@@ -1836,7 +1915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create user endpoint (for Admin and Director only)
   app.post('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUser(req.user.claims.sub);
+      const currentUser = await storage.getUser(getUserIdFromSession(req.user));
       if (currentUser?.role !== 'Admin' && currentUser?.role !== 'Director') {
         return res.status(403).json({ message: "Only Admin and Director can create users" });
       }
@@ -1897,7 +1976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'users',
         recordId: newUser.id,
@@ -1917,7 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user role endpoint (for Admin and Success Manager only)
   app.put('/api/users/:email/role', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Success Manager' && user?.role !== 'Admin') {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -1938,7 +2017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: updatedUser.id,
@@ -1955,7 +2034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user name endpoint
   app.put('/api/users/:id/name', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUser(req.user.claims.sub);
+      const currentUser = await storage.getUser(getUserIdFromSession(req.user));
       const targetUserId = req.params.id;
       
       // Users can update their own name, or admins/success managers can update any user's name
@@ -1979,7 +2058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: updatedUser.id,
@@ -1996,7 +2075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin setup endpoint - sets galindo243@live.com as admin
   app.post('/api/setup-admin', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUser(req.user.claims.sub);
+      const currentUser = await storage.getUser(getUserIdFromSession(req.user));
       
       // Only allow this if the user is galindo243@live.com or already an admin
       if (currentUser?.email !== 'galindo243@live.com' && currentUser?.role !== 'Admin') {
@@ -2011,7 +2090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: updatedUser.id,
@@ -2028,12 +2107,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Block user endpoint (Admin only)
   app.post('/api/users/:id/block', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can block users" });
       }
 
-      const blockedUser = await storage.blockUser(req.params.id, req.user.claims.sub);
+      const blockedUser = await storage.blockUser(req.params.id, getUserIdFromSession(req.user));
       
       if (!blockedUser) {
         return res.status(404).json({ message: "User not found" });
@@ -2041,7 +2120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: blockedUser.id,
@@ -2058,7 +2137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Unblock user endpoint (Admin only)
   app.post('/api/users/:id/unblock', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can unblock users" });
       }
@@ -2071,7 +2150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: unblockedUser.id,
@@ -2088,7 +2167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete user endpoint (Admin only)
   app.delete('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can delete users" });
       }
@@ -2099,11 +2178,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      await storage.deleteUser(req.params.id, req.user.claims.sub);
+      await storage.deleteUser(req.params.id, getUserIdFromSession(req.user));
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'DELETE',
         tableName: 'users',
         recordId: req.params.id,
@@ -2120,7 +2199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get deleted users (trash)
   app.get('/api/users-trash', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       
       // Admin can see all deleted users, others only see their company's deleted users
       let companyId: string | undefined;
@@ -2141,7 +2220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Restore user endpoint (Admin only)
   app.post('/api/users/:id/restore', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can restore users" });
       }
@@ -2154,7 +2233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: restoredUser.id,
@@ -2171,7 +2250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Permanently delete user (Admin only)
   app.delete('/api/users/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || user.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can permanently delete users" });
       }
@@ -2180,7 +2259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'DELETE',
         tableName: 'users',
         recordId: req.params.id,
@@ -2197,7 +2276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch permanently delete users (Admin only)
   app.post('/api/users/batch-delete', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (!user || user.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can permanently delete users" });
       }
@@ -2216,7 +2295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           await storage.permanentlyDeleteUser(id);
           await storage.createAuditLog({
-            userId: req.user.claims.sub,
+            userId: getUserIdFromSession(req.user),
             action: 'DELETE',
             tableName: 'users',
             recordId: id,
@@ -2242,7 +2321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User invitation endpoints (Admin and Director only)
   app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin' && user?.role !== 'Director') {
         return res.status(403).json({ message: "Only Admin and Director can create invitations" });
       }
@@ -2262,7 +2341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invitation = await storage.createInvitation({
         email,
         role,
-        invitedBy: req.user.claims.sub,
+        invitedBy: getUserIdFromSession(req.user),
         token,
         status: 'pending',
         expiresAt,
@@ -2271,7 +2350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'user_invitations',
         recordId: invitation.id,
@@ -2317,7 +2396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin' && user?.role !== 'Director') {
         return res.status(403).json({ message: "Only Admin and Director can view invitations" });
       }
@@ -2369,7 +2448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company management routes (Admin only)
   app.get('/api/companies', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can manage companies" });
       }
@@ -2384,7 +2463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/companies/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can manage companies" });
       }
@@ -2403,7 +2482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/companies', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can create companies" });
       }
@@ -2420,7 +2499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'CREATE',
         tableName: 'companies',
         recordId: company.id,
@@ -2436,7 +2515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/companies/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can update companies" });
       }
@@ -2453,7 +2532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'companies',
         recordId: company.id,
@@ -2469,7 +2548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/companies/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can delete companies" });
       }
@@ -2478,7 +2557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'DELETE',
         tableName: 'companies',
         recordId: req.params.id,
@@ -2495,7 +2574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get company overview with all filtered data
   app.get('/api/companies/:id/overview', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can view company overview" });
       }
@@ -2511,7 +2590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get users by company
   app.get('/api/companies/:id/users', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can view company users" });
       }
@@ -2527,7 +2606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Assign user to company
   app.post('/api/companies/:id/users', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can assign users to companies" });
       }
@@ -2541,7 +2620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: userId,
@@ -2558,7 +2637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Remove user from company
   app.delete('/api/companies/:id/users/:userId', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(getUserIdFromSession(req.user));
       if (user?.role !== 'Admin') {
         return res.status(403).json({ message: "Only Admin can remove users from companies" });
       }
@@ -2567,7 +2646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserIdFromSession(req.user),
         action: 'UPDATE',
         tableName: 'users',
         recordId: req.params.userId,

@@ -1,5 +1,6 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as LocalStrategy } from "passport-local";
 
 import passport from "passport";
 import session from "express-session";
@@ -102,6 +103,34 @@ export async function setupAuth(app: Express) {
     passport.use(strategy);
   }
 
+  // Configure passport-local strategy for local authentication
+  passport.use(new LocalStrategy(
+    {
+      usernameField: 'email',
+      passwordField: 'password'
+    },
+    async (email: string, password: string, done) => {
+      try {
+        const user = await storage.verifyUserCredentials(email, password);
+        
+        if (!user) {
+          return done(null, false, { message: 'Invalid email or password' });
+        }
+
+        // Store user data in session similar to OIDC
+        const sessionUser = {
+          id: user.id,
+          email: user.email,
+          authProvider: 'local'
+        };
+
+        return done(null, sessionUser);
+      } catch (error) {
+        return done(error);
+      }
+    }
+  ));
+
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
@@ -134,7 +163,17 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // For local auth users, just check if they're authenticated
+  if (user.authProvider === 'local') {
+    return next();
+  }
+
+  // For OIDC users, check token expiration and refresh if needed
+  if (!user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -157,5 +196,32 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   } catch (error) {
     res.status(401).json({ message: "Unauthorized" });
     return;
+  }
+};
+
+export const isAdmin: RequestHandler = async (req, res, next) => {
+  const sessionUser = req.user as any;
+
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Get user ID from session (different for OIDC vs local)
+  const userId = sessionUser.authProvider === 'local' ? sessionUser.id : sessionUser.claims?.sub;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const user = await storage.getUser(userId);
+    
+    if (!user || user.role !== 'Admin') {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    return next();
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to verify admin status" });
   }
 };
