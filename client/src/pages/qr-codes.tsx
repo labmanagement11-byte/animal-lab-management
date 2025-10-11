@@ -269,7 +269,7 @@ export default function QrCodes() {
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <div className="text-6xl font-bold text-destructive mb-2">
+              <div className="text-6xl font-bold mb-2 text-[#104acc]">
                 {deletedQrCodes?.length || 0}
               </div>
               <p className="text-sm text-muted-foreground">

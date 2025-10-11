@@ -168,11 +168,12 @@ export default function Animals() {
   return (
     <div className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <div>
-          <h2 className="text-lg md:text-2xl font-semibold text-foreground">Animals</h2>
-          <p className="text-xs md:text-sm text-muted-foreground hidden md:block">Manage laboratory animals and their information</p>
-        </div>
+      <div className="text-center mb-6 md:mb-8 pt-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground">Animals</h2>
+        <p className="text-sm md:text-base text-muted-foreground mt-2">Manage laboratory animals and their information</p>
+      </div>
+      
+      <div className="flex items-center justify-center mb-4 md:mb-6">
         <div className="hidden md:flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Button 

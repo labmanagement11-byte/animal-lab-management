@@ -93,11 +93,9 @@ export default function StrainsPage() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-8">
-        <div>
-          <h2 className="text-lg md:text-2xl font-semibold text-foreground">Strain Management</h2>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1">Add and manage laboratory animal strains</p>
-        </div>
+      <div className="text-center mb-6 md:mb-8 pt-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground">Strain Management</h2>
+        <p className="text-sm md:text-base text-muted-foreground mt-2">Add and manage laboratory animal strains</p>
       </div>
 
       {/* Add Strain Form */}

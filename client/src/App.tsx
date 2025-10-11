@@ -65,11 +65,11 @@ function AppContent() {
         {/* Desktop Hamburger Button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed top-6 left-20 z-50 p-3 rounded-lg bg-card border-2 border-border hover:bg-accent transition-colors shadow-lg"
+          className="fixed top-6 left-6 z-50 p-3 rounded-lg bg-card border-2 border-border hover:bg-accent transition-colors shadow-lg"
           data-testid="button-toggle-sidebar"
         >
           <svg
-            className="w-8 h-8 text-foreground"
+            className="w-6 h-6 text-foreground"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -93,7 +93,7 @@ function AppContent() {
           />
         </div>
         
-        <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-0 md:pt-0">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/animals" component={Animals} />

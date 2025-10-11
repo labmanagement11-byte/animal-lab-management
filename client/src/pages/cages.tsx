@@ -441,11 +441,12 @@ export default function Cages() {
   return (
     <div className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
-        <div>
-          <h2 className="text-xl md:text-2xl font-semibold text-foreground">Cages</h2>
-          <p className="text-sm text-muted-foreground hidden md:block">Manage laboratory animal housing</p>
-        </div>
+      <div className="text-center mb-6 md:mb-8 pt-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground">Cages</h2>
+        <p className="text-sm md:text-base text-muted-foreground mt-2">Manage laboratory animal housing</p>
+      </div>
+      
+      <div className="flex flex-col md:flex-row items-center justify-center mb-4 md:mb-6 gap-4">
         <div className="flex gap-2">
           <Button 
             onClick={() => setShowBlankQrGenerator(true)} 
