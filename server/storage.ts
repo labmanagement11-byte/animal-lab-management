@@ -35,6 +35,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt, inArray } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -49,6 +50,11 @@ export interface IStorage {
   restoreUser(id: string): Promise<User | undefined>;
   getDeletedUsers(companyId?: string): Promise<User[]>;
   permanentlyDeleteUser(id: string): Promise<void>;
+  
+  // Local authentication operations
+  createLocalUser(email: string, password: string, firstName: string, lastName: string, role: 'Admin' | 'Success Manager' | 'Director' | 'Employee', companyId: string): Promise<User>;
+  verifyUserCredentials(email: string, password: string): Promise<User | null>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   
   // Animal operations
   getAnimals(limit?: number, includeDeleted?: boolean, companyId?: string): Promise<Animal[]>;
@@ -173,10 +179,23 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private sanitizeUser(user: User | undefined): User | undefined {
+    if (!user) return undefined;
+    const { passwordHash, ...sanitized } = user;
+    return sanitized as User;
+  }
+
+  private sanitizeUsers(users: User[]): User[] {
+    return users.map(user => {
+      const { passwordHash, ...sanitized } = user;
+      return sanitized as User;
+    });
+  }
+
   // User operations (mandatory for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user as User | undefined;
+    return this.sanitizeUser(user as User | undefined);
   }
 
   async getAllUsers(companyId?: string): Promise<User[]> {
@@ -187,7 +206,7 @@ export class DatabaseStorage implements IStorage {
     const allUsers = await db.select().from(users)
       .where(conditions)
       .orderBy(users.email);
-    return allUsers as User[];
+    return this.sanitizeUsers(allUsers as User[]);
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -204,14 +223,14 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(users.email, userData.email))
         .returning();
-      return updatedUser as User;
+      return this.sanitizeUser(updatedUser as User)!;
     } else {
       // Insert new user
       const [newUser] = await db
         .insert(users)
         .values(userData)
         .returning();
-      return newUser as User;
+      return this.sanitizeUser(newUser as User)!;
     }
   }
 
@@ -221,7 +240,7 @@ export class DatabaseStorage implements IStorage {
       .set({ role, updatedAt: new Date() })
       .where(eq(users.email, email))
       .returning();
-    return user as User | undefined;
+    return this.sanitizeUser(user as User | undefined);
   }
 
   async updateUserName(id: string, firstName: string, lastName: string): Promise<User | undefined> {
@@ -230,7 +249,7 @@ export class DatabaseStorage implements IStorage {
       .set({ firstName, lastName, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user as User | undefined;
+    return this.sanitizeUser(user as User | undefined);
   }
 
   async blockUser(id: string, blockedBy: string): Promise<User | undefined> {
@@ -239,7 +258,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isBlocked: true, blockedAt: new Date(), blockedBy, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user as User | undefined;
+    return this.sanitizeUser(user as User | undefined);
   }
 
   async unblockUser(id: string): Promise<User | undefined> {
@@ -248,7 +267,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isBlocked: false, blockedAt: null, blockedBy: null, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user as User | undefined;
+    return this.sanitizeUser(user as User | undefined);
   }
 
   async deleteUser(id: string, deletedBy: string): Promise<void> {
@@ -264,7 +283,7 @@ export class DatabaseStorage implements IStorage {
       .set({ deletedAt: null, deletedBy: null, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user as User | undefined;
+    return this.sanitizeUser(user as User | undefined);
   }
 
   async getDeletedUsers(companyId?: string): Promise<User[]> {
@@ -277,12 +296,80 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(conditions)
       .orderBy(desc(users.deletedAt));
-    return result as User[];
+    return this.sanitizeUsers(result as User[]);
   }
 
   async permanentlyDeleteUser(id: string): Promise<void> {
     await db.delete(auditLogs).where(eq(auditLogs.userId, id));
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  // Local authentication operations
+  async createLocalUser(
+    email: string, 
+    password: string, 
+    firstName: string, 
+    lastName: string, 
+    role: 'Admin' | 'Success Manager' | 'Director' | 'Employee', 
+    companyId: string
+  ): Promise<User> {
+    const existingUser = await this.getUserByEmail(email);
+    if (existingUser) {
+      throw new Error(`A user with email "${email}" already exists. Please use a different email address.`);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        role,
+        companyId,
+        authProvider: 'local',
+      })
+      .returning();
+    
+    return this.sanitizeUser(newUser as User)!;
+  }
+
+  async verifyUserCredentials(email: string, password: string): Promise<User | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    
+    if (!user || !user.passwordHash) {
+      return null;
+    }
+
+    if (user.isBlocked) {
+      return null;
+    }
+
+    if (user.deletedAt) {
+      return null;
+    }
+    
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    
+    if (!isValid) {
+      return null;
+    }
+    
+    return this.sanitizeUser(user as User)!;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    
+    return this.sanitizeUser(user as User | undefined);
   }
 
   // Animal operations
@@ -1245,7 +1332,7 @@ export class DatabaseStorage implements IStorage {
         cage: row.cages
       })),
       cages: cagesResult,
-      users: usersResult as User[],
+      users: this.sanitizeUsers(usersResult as User[]),
       strains: strainsResult,
       genotypes: genotypesResult,
       qrCodes: qrCodesResult.map(row => ({
@@ -1517,7 +1604,7 @@ export class DatabaseStorage implements IStorage {
         isNull(users.deletedAt)
       ))
       .orderBy(users.email);
-    return result as User[];
+    return this.sanitizeUsers(result as User[]);
   }
 
   async assignUserToCompany(userId: string, companyId: string): Promise<User> {
@@ -1526,7 +1613,7 @@ export class DatabaseStorage implements IStorage {
       .set({ companyId, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
-    return user as User;
+    return this.sanitizeUser(user as User)!;
   }
 
   async removeUserFromCompany(userId: string): Promise<User> {
@@ -1535,7 +1622,7 @@ export class DatabaseStorage implements IStorage {
       .set({ companyId: null, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
-    return user as User;
+    return this.sanitizeUser(user as User)!;
   }
 }
 
