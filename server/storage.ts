@@ -34,7 +34,7 @@ import {
   type InsertStrainColor,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt } from "drizzle-orm";
+import { eq, desc, sql, and, ilike, or, isNull, isNotNull, lte, gte, lt, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
