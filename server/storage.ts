@@ -314,7 +314,8 @@ export class DatabaseStorage implements IStorage {
     companyId: string
   ): Promise<User> {
     const existingUser = await this.getUserByEmail(email);
-    if (existingUser) {
+    // Only block creation if user exists AND is not deleted
+    if (existingUser && !existingUser.deletedAt) {
       throw new Error(`A user with email "${email}" already exists. Please use a different email address.`);
     }
 
