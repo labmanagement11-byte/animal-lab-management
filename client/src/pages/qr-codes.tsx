@@ -205,7 +205,7 @@ export default function QrCodes() {
         >
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">QR Codes Usados</CardTitle>
+              <CardTitle className="text-lg">Used QR Codes</CardTitle>
               <QrCodeIcon className="w-8 h-8 text-primary" />
             </div>
           </CardHeader>
@@ -215,11 +215,11 @@ export default function QrCodes() {
                 {qrCodes?.filter(qr => !qr.isBlank && qr.cageId).length || 0}
               </div>
               <p className="text-sm text-muted-foreground">
-                Códigos QR asignados a jaulas
+                QR codes assigned to cages
               </p>
               {activeTab === 'used' && (
                 <p className="text-xs text-primary mt-2 font-medium">
-                  Seleccionado para exportar
+                  Selected for export
                 </p>
               )}
             </div>
@@ -234,7 +234,7 @@ export default function QrCodes() {
         >
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">QR Codes en Blanco</CardTitle>
+              <CardTitle className="text-lg">Blank QR Codes</CardTitle>
               <QrCodeIcon className="w-8 h-8 text-secondary-foreground" />
             </div>
           </CardHeader>
@@ -244,11 +244,11 @@ export default function QrCodes() {
                 {qrCodes?.filter(qr => qr.isBlank || !qr.cageId).length || 0}
               </div>
               <p className="text-sm text-muted-foreground">
-                Códigos QR disponibles para usar
+                QR codes available to use
               </p>
               {activeTab === 'blank' && (
                 <p className="text-xs text-primary mt-2 font-medium">
-                  Seleccionado para exportar
+                  Selected for export
                 </p>
               )}
             </div>
@@ -263,7 +263,7 @@ export default function QrCodes() {
         >
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">QR Codes Eliminados</CardTitle>
+              <CardTitle className="text-lg">Deleted QR Codes</CardTitle>
               <Trash2 className="w-8 h-8 text-destructive" />
             </div>
           </CardHeader>
@@ -273,11 +273,11 @@ export default function QrCodes() {
                 {deletedQrCodes?.length || 0}
               </div>
               <p className="text-sm text-muted-foreground">
-                Códigos QR en la papelera
+                QR codes in the trash
               </p>
               {activeTab === 'trash' && (
                 <p className="text-xs text-primary mt-2 font-medium">
-                  Seleccionado para exportar
+                  Selected for export
                 </p>
               )}
             </div>

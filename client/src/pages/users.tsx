@@ -848,9 +848,9 @@ export default function UsersPage() {
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+              <DialogTitle>Create New User</DialogTitle>
               <DialogDescription>
-                Crear un usuario directamente especificando sus datos. Solo Admin y Director pueden crear usuarios.
+                Create a user directly by specifying their details. Only Admin and Director can create users.
               </DialogDescription>
             </DialogHeader>
             <Form {...createForm}>
@@ -864,7 +864,7 @@ export default function UsersPage() {
                       <FormControl>
                         <Input 
                           type="email" 
-                          placeholder="usuario@ejemplo.com" 
+                          placeholder="user@example.com" 
                           {...field} 
                           data-testid="input-create-email"
                         />
@@ -899,10 +899,10 @@ export default function UsersPage() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nombre *</FormLabel>
+                        <FormLabel>First Name *</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="Juan" 
+                            placeholder="John" 
                             {...field} 
                             data-testid="input-create-firstname"
                           />
@@ -917,10 +917,10 @@ export default function UsersPage() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Apellido *</FormLabel>
+                        <FormLabel>Last Name *</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="Pérez" 
+                            placeholder="Smith" 
                             {...field} 
                             data-testid="input-create-lastname"
                           />
@@ -936,18 +936,18 @@ export default function UsersPage() {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Rol *</FormLabel>
+                      <FormLabel>Role *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-create-role">
-                            <SelectValue placeholder="Seleccionar un rol" />
+                            <SelectValue placeholder="Select a role" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="Employee">
                             <div className="flex items-center">
                               <UserCheck className="w-4 h-4 mr-2" />
-                              Empleado
+                              Employee
                             </div>
                           </SelectItem>
                           <SelectItem value="Director">
@@ -996,7 +996,7 @@ export default function UsersPage() {
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-create-company">
-                              <SelectValue placeholder="Seleccionar empresa" />
+                              <SelectValue placeholder="Select company" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1023,14 +1023,14 @@ export default function UsersPage() {
                     }}
                     data-testid="button-cancel-create"
                   >
-                    Cancelar
+                    Cancel
                   </Button>
                   <Button
                     type="submit"
                     disabled={createUserMutation.isPending}
                     data-testid="button-submit-create"
                   >
-                    {createUserMutation.isPending ? "Creando..." : "Crear Usuario"}
+                    {createUserMutation.isPending ? "Creating..." : "Create User"}
                   </Button>
                 </div>
               </form>

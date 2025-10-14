@@ -22,7 +22,7 @@ interface LabelData {
 export default function BlankQrPage() {
   const { toast } = useToast();
   const qrSize = 150;
-  const QR_COUNT = 30; // Ahora generamos 30 códigos QR
+  const QR_COUNT = 30; // Now we generate 30 QR codes
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<LabelData[]>(
     Array(QR_COUNT).fill(null).map(() => ({
@@ -71,15 +71,15 @@ export default function BlankQrPage() {
         backgroundColor: '#a8d5ba'
       })));
       toast({
-        title: "Éxito",
-        description: `Se generaron ${QR_COUNT} códigos QR con texto personalizado exitosamente`,
+        title: "Success",
+        description: `${QR_COUNT} QR codes with custom text generated successfully`,
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "No autorizado",
-          description: "Sesión expirada. Iniciando sesión nuevamente...",
+          title: "Unauthorized",
+          description: "Session expired. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -89,7 +89,7 @@ export default function BlankQrPage() {
       }
       toast({
         title: "Error",
-        description: error.message || "Error al generar códigos QR",
+        description: error.message || "Error generating QR codes",
         variant: "destructive",
       });
     },
@@ -109,15 +109,15 @@ export default function BlankQrPage() {
       refetchQrs();
       setSelectedQrs(new Set());
       toast({
-        title: "Éxito",
-        description: "Códigos QR eliminados exitosamente",
+        title: "Success",
+        description: "QR codes deleted successfully",
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "No autorizado",
-          description: "Sesión expirada. Iniciando sesión nuevamente...",
+          title: "Unauthorized",
+          description: "Session expired. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -127,7 +127,7 @@ export default function BlankQrPage() {
       }
       toast({
         title: "Error",
-        description: "Error al eliminar códigos QR",
+        description: "Error deleting QR codes",
         variant: "destructive",
       });
     },
@@ -146,15 +146,15 @@ export default function BlankQrPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/status/unused'] });
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes/status/used'] });
       toast({
-        title: "Éxito",
-        description: "Código QR marcado como usado",
+        title: "Success",
+        description: "QR code marked as used",
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "No autorizado",
-          description: "Sesión expirada. Iniciando sesión nuevamente...",
+          title: "Unauthorized",
+          description: "Session expired. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -164,7 +164,7 @@ export default function BlankQrPage() {
       }
       toast({
         title: "Error",
-        description: "Error al marcar código como usado",
+        description: "Error marking code as used",
         variant: "destructive",
       });
     },
@@ -236,7 +236,7 @@ export default function BlankQrPage() {
     if (!hasText) {
       toast({
         title: "Error",
-        description: "Ingresa al menos un texto para generar los códigos QR",
+        description: "Enter at least one text to generate the QR codes",
         variant: "destructive",
       });
       return;
@@ -248,7 +248,7 @@ export default function BlankQrPage() {
     if (selectedQrs.size === 0) {
       toast({
         title: "Error",
-        description: "Selecciona al menos un código QR para eliminar",
+        description: "Select at least one QR code to delete",
         variant: "destructive",
       });
       return;
@@ -297,7 +297,7 @@ export default function BlankQrPage() {
     if (selectedQrs.size === 0) {
       toast({
         title: "Error",
-        description: "Selecciona al menos un código QR para imprimir",
+        description: "Select at least one QR code to print",
         variant: "destructive",
       });
       return;
@@ -347,7 +347,7 @@ export default function BlankQrPage() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Imprimir Códigos QR - Avery 8160 (${selectedQrData.length} códigos)</title>
+          <title>Print QR Codes - Avery 8160 (${selectedQrData.length} codes)</title>
           <style>
             * {
               margin: 0;
@@ -619,8 +619,8 @@ export default function BlankQrPage() {
         setSelectedQrs(new Set());
         
         toast({
-          title: "Códigos marcados como impresos",
-          description: `${selectedIds.length} códigos QR movidos a "Sin Usar"`,
+          title: "Codes marked as printed",
+          description: `${selectedIds.length} QR codes moved to "Unused"`,
         });
         
         // Save strain-color associations (don't block on this)
@@ -635,8 +635,8 @@ export default function BlankQrPage() {
         Promise.all(saveColorPromises).catch((colorError) => {
           console.error('Error saving strain colors:', colorError);
           toast({
-            title: "Advertencia",
-            description: "Los códigos se marcaron como impresos pero no se pudieron guardar algunos colores",
+            title: "Warning",
+            description: "Codes were marked as printed but some colors could not be saved",
             variant: "destructive",
           });
         });
@@ -645,7 +645,7 @@ export default function BlankQrPage() {
         console.error('Error marking QR codes as printed:', error);
         toast({
           title: "Error",
-          description: "No se pudieron marcar los códigos como impresos",
+          description: "Codes could not be marked as printed",
           variant: "destructive",
         });
       });
@@ -656,10 +656,10 @@ export default function BlankQrPage() {
       <div className="mb-4 md:mb-6">
         <h1 className="text-lg md:text-3xl font-bold text-foreground flex items-center gap-2">
           <QrCodeIcon className="w-6 h-6 md:w-8 md:h-8" />
-          Generar QR con Texto Personalizado
+          Generate QR with Custom Text
         </h1>
         <p className="text-xs md:text-sm text-muted-foreground mt-2">
-          Crea 30 códigos QR con texto personalizado para imprimir en formato Avery 8160
+          Create 30 QR codes with custom text to print in Avery 8160 format
         </p>
       </div>
 
@@ -667,18 +667,18 @@ export default function BlankQrPage() {
         {/* Generador */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle>Generar 30 Códigos QR</CardTitle>
+            <CardTitle>Generate 30 QR Codes</CardTitle>
             <CardDescription>
-              Ingresa el texto personalizado para cada etiqueta (Avery 8160)
+              Enter custom text for each label (Avery 8160)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
-                Se generarán 30 códigos QR
+                30 QR codes will be generated
               </p>
               <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                Formato: 3 columnas × 10 filas en hoja carta (1" × 2⅝" - Avery 8160)
+                Format: 3 columns × 10 rows on letter sheet (1" × 2⅝" - Avery 8160)
               </p>
             </div>
 
@@ -688,27 +688,27 @@ export default function BlankQrPage() {
                 className="w-full"
                 data-testid="button-show-inputs"
               >
-                Ingresar Textos Personalizados
+                Enter Custom Texts
               </Button>
             ) : (
               <>
                 <div className="space-y-3 mb-4 p-3 bg-muted/50 rounded-lg">
-                  <label className="text-sm font-medium">Auto-rellenar todos los QR con los mismos valores</label>
+                  <label className="text-sm font-medium">Auto-fill all QRs with the same values</label>
                   <Input
                     value={customText}
                     onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="Texto principal (ej: Pmel)"
+                    placeholder="Main text (e.g.: Pmel)"
                     data-testid="input-custom-text"
                   />
                   <Input
                     value={customSecondaryText}
                     onChange={(e) => setCustomSecondaryText(e.target.value)}
-                    placeholder="Texto secundario (ej: 000-000-000-000)"
+                    placeholder="Secondary text (e.g.: 000-000-000-000)"
                     className="text-sm"
                     data-testid="input-custom-secondary"
                   />
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-muted-foreground">Color de fondo:</label>
+                    <label className="text-xs text-muted-foreground">Background color:</label>
                     <input
                       type="color"
                       value={customColor}
@@ -724,7 +724,7 @@ export default function BlankQrPage() {
                       data-testid="button-autofill"
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Auto-rellenar
+                      Auto-fill
                     </Button>
                   </div>
                 </div>
@@ -740,7 +740,7 @@ export default function BlankQrPage() {
                     size="sm"
                     data-testid="button-clear"
                   >
-                    Limpiar Todo
+                    Clear All
                   </Button>
                 </div>
 
@@ -753,7 +753,7 @@ export default function BlankQrPage() {
                           <Input
                             value={data.labelText}
                             onChange={(e) => handleLabelTextChange(index, e.target.value)}
-                            placeholder="Texto principal (ej: Pmel)"
+                            placeholder="Main text (e.g.: Pmel)"
                             className="w-full"
                             data-testid={`input-label-${index}`}
                           />
@@ -764,7 +764,7 @@ export default function BlankQrPage() {
                               newData[index] = { ...newData[index], secondaryText: e.target.value };
                               setLabelData(newData);
                             }}
-                            placeholder="Texto secundario (ej: 000-000-000-000)"
+                            placeholder="Secondary text (e.g.: 000-000-000-000)"
                             className="w-full text-sm"
                             data-testid={`input-secondary-${index}`}
                           />
@@ -799,7 +799,7 @@ export default function BlankQrPage() {
                     className="flex-1"
                     data-testid="button-cancel"
                   >
-                    Cancelar
+                    Cancel
                   </Button>
                   <Button
                     onClick={handleGenerate}
@@ -807,7 +807,7 @@ export default function BlankQrPage() {
                     className="flex-1"
                     data-testid="button-generate-qr"
                   >
-                    {generateQrMutation.isPending ? "Generando..." : `Generar ${QR_COUNT} QR`}
+                    {generateQrMutation.isPending ? "Generating..." : `Generate ${QR_COUNT} QR`}
                   </Button>
                 </div>
               </>
@@ -820,9 +820,9 @@ export default function BlankQrPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Códigos QR Disponibles ({blankQrCodes.length})</CardTitle>
+                <CardTitle>Available QR Codes ({blankQrCodes.length})</CardTitle>
                 <CardDescription>
-                  Selecciona los códigos que deseas imprimir
+                  Select the codes you want to print
                 </CardDescription>
               </div>
               {blankQrCodes.length > 0 && (
@@ -833,7 +833,7 @@ export default function BlankQrPage() {
                     onClick={handleSelectAll}
                     data-testid="button-select-all"
                   >
-                    {selectedQrs.size === blankQrCodes.length ? "Deseleccionar todo" : "Seleccionar todo"}
+                    {selectedQrs.size === blankQrCodes.length ? "Deselect all" : "Select all"}
                   </Button>
                   <Button
                     onClick={handlePrintSelected}
@@ -842,7 +842,7 @@ export default function BlankQrPage() {
                     data-testid="button-print-selected"
                   >
                     <Printer className="w-4 h-4 mr-2" />
-                    Imprimir ({selectedQrs.size})
+                    Print ({selectedQrs.size})
                   </Button>
                   <Button
                     onClick={handleDeleteSelected}
@@ -852,7 +852,7 @@ export default function BlankQrPage() {
                     data-testid="button-delete-selected"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {deleteQrMutation.isPending ? "Eliminando..." : `Eliminar (${selectedQrs.size})`}
+                    {deleteQrMutation.isPending ? "Deleting..." : `Delete (${selectedQrs.size})`}
                   </Button>
                 </div>
               )}
@@ -900,9 +900,9 @@ export default function BlankQrPage() {
             ) : (
               <div className="text-center py-12">
                 <QrCodeIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No hay códigos QR disponibles</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No available QR codes</h3>
                 <p className="text-sm text-muted-foreground">
-                  Genera códigos QR usando el formulario de la izquierda
+                  Generate QR codes using the form on the left
                 </p>
               </div>
             )}
@@ -910,31 +910,31 @@ export default function BlankQrPage() {
         </Card>
       </div>
 
-      {/* Tabs para códigos sin usar y usados */}
+      {/* Tabs for unused and used codes */}
       <div className="mt-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
           <TabsList className="grid w-full md:w-96 grid-cols-2">
             <TabsTrigger value="unused" data-testid="tab-unused">
               <Package className="w-4 h-4 mr-2" />
-              Sin Usar ({unusedQrCodes?.length || 0})
+              Unused ({unusedQrCodes?.length || 0})
             </TabsTrigger>
             <TabsTrigger value="used" data-testid="tab-used">
               <CheckCircle className="w-4 h-4 mr-2" />
-              Usados ({usedQrCodes?.length || 0})
+              Used ({usedQrCodes?.length || 0})
             </TabsTrigger>
           </TabsList>
 
-          {/* Códigos Sin Usar Tab */}
+          {/* Unused Codes Tab */}
           <TabsContent value="unused" className="mt-6">
             {!unusedQrCodes || unusedQrCodes.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Package className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground" data-testid="text-no-unused">
-                    No hay códigos QR sin usar
+                    No unused QR codes
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Los códigos QR aparecerán aquí después de imprimirlos
+                    QR codes will appear here after printing them
                   </p>
                 </CardContent>
               </Card>
@@ -949,7 +949,7 @@ export default function BlankQrPage() {
                     <CardContent className="p-4">
                       <div 
                         className="p-3 rounded-lg mb-3"
-                        style={{ backgroundColor: qrCode.backgroundColor }}
+                        style={{ backgroundColor: qrCode.backgroundColor || '#a8d5ba' }}
                       >
                         {qrCode.labelText && (
                           <p className="text-sm font-bold text-center text-gray-800">
@@ -964,7 +964,7 @@ export default function BlankQrPage() {
                       </div>
                       <div className="text-xs text-muted-foreground mb-3">
                         <p>ID: {qrCode.id.substring(0, 8)}</p>
-                        <p>Impreso: {qrCode.printedAt ? new Date(qrCode.printedAt).toLocaleDateString() : 'N/A'}</p>
+                        <p>Printed: {qrCode.printedAt ? new Date(qrCode.printedAt).toLocaleDateString() : 'N/A'}</p>
                       </div>
                       <Button
                         onClick={() => markAsUsedMutation.mutate(qrCode.id)}
@@ -974,7 +974,7 @@ export default function BlankQrPage() {
                         data-testid={`button-mark-used-${qrCode.id}`}
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Marcar como Usado
+                        Mark as Used
                       </Button>
                     </CardContent>
                   </Card>
@@ -983,17 +983,17 @@ export default function BlankQrPage() {
             )}
           </TabsContent>
 
-          {/* Códigos Usados Tab */}
+          {/* Used Codes Tab */}
           <TabsContent value="used" className="mt-6">
             {!usedQrCodes || usedQrCodes.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground" data-testid="text-no-used">
-                    No hay códigos QR usados
+                    No used QR codes
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Los códigos QR aparecerán aquí después de marcarlos como usados
+                    QR codes will appear here after marking them as used
                   </p>
                 </CardContent>
               </Card>
@@ -1007,7 +1007,7 @@ export default function BlankQrPage() {
                     <CardContent className="p-4">
                       <div 
                         className="p-3 rounded-lg mb-3"
-                        style={{ backgroundColor: qrCode.backgroundColor }}
+                        style={{ backgroundColor: qrCode.backgroundColor || '#a8d5ba' }}
                       >
                         {qrCode.labelText && (
                           <p className="text-sm font-bold text-center text-gray-800">
@@ -1022,11 +1022,10 @@ export default function BlankQrPage() {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         <p>ID: {qrCode.id.substring(0, 8)}</p>
-                        <p>Impreso: {qrCode.printedAt ? new Date(qrCode.printedAt).toLocaleDateString() : 'N/A'}</p>
-                        <p>Usado: {qrCode.usedAt ? new Date(qrCode.usedAt).toLocaleDateString() : 'N/A'}</p>
+                        <p>Printed: {qrCode.printedAt ? new Date(qrCode.printedAt).toLocaleDateString() : 'N/A'}</p>
                       </div>
                       <Badge className="mt-3 w-full justify-center" variant="secondary">
-                        En Uso
+                        In Use
                       </Badge>
                     </CardContent>
                   </Card>

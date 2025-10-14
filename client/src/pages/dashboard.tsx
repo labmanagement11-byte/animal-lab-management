@@ -164,14 +164,14 @@ export default function Dashboard() {
                         <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-qr-codes-in-use">
                           {stats?.qrCodesInUse || 0}
                         </p>
-                        <span className="text-xs text-muted-foreground">En Uso</span>
+                        <span className="text-xs text-muted-foreground">In Use</span>
                       </div>
                       <span className="text-2xl text-muted-foreground">/</span>
                       <div>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-qr-codes-blank">
                           {stats?.qrCodesBlank || 0}
                         </p>
-                        <span className="text-xs text-muted-foreground">En Blanco</span>
+                        <span className="text-xs text-muted-foreground">Blank</span>
                       </div>
                     </div>
                   </div>
