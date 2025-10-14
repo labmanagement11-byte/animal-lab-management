@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
+import LocalLogin from "@/pages/local-login";
 import Dashboard from "@/pages/dashboard";
 import Animals from "@/pages/animals";
 import Cages from "@/pages/cages";
@@ -36,13 +37,17 @@ import { useState } from "react";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleNavigate = (path: string) => {
     setLocation(path);
   };
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/', '/local-login'];
+  const isPublicRoute = publicRoutes.includes(location);
 
   if (isLoading) {
     return (
@@ -52,6 +57,17 @@ function AppContent() {
     );
   }
 
+  // Show public routes without authentication
+  if (!isAuthenticated && isPublicRoute) {
+    return (
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/local-login" component={LocalLogin} />
+      </Switch>
+    );
+  }
+
+  // Redirect to landing if not authenticated and trying to access protected route
   if (!isAuthenticated) {
     return <Landing />;
   }
