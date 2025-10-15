@@ -743,7 +743,8 @@ export class DatabaseStorage implements IStorage {
       .update(qrCodes)
       .set({ 
         cageId, 
-        isBlank: false, 
+        isBlank: false,
+        status: 'used',
         claimedAt: new Date(), 
         claimedBy: userId 
       })
