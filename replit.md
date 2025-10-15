@@ -146,10 +146,11 @@ Preferred communication style: Simple, everyday language.
   - **State Transitions**:
     - `available`: Initial state when QR codes are generated
     - `unused`: After printing (POST `/api/qr-codes/mark-printed`)
-    - `used`: After assigning to cage/animal (PATCH `/api/qr-codes/:id/status`)
+    - `used`: After assigning to cage/animal (PATCH `/api/qr-codes/:id/status` or POST `/api/qr-codes/:id/claim`)
   - **One-way enforcement**: Status can only progress forward (available → unused → used), preventing regressions
-  - **Tab-based UI**: Separate tabs for "Sin Usar" (unused) and "Usados" (used) codes with counts
-  - **Actions**: "Marcar como Usado" button in unused tab to transition codes to used state
+  - **Tab-based UI**: Separate tabs for "Unused" and "Used" codes with counts
+  - **Actions**: "Mark as Used" button in unused tab to transition codes to used state
+  - **Cage Assignment Fix** (October 15, 2025): Updated `claimQrCode` function to set `status='used'` when QR code is assigned to cage, ensuring assigned codes appear in "used" counts
 - **Strain Color Memory System** (October 10, 2025):
   - **Auto-save on print**: When QR codes are printed, strain-color associations are automatically saved
   - **Database table**: `strainColors` stores `strainName` → `backgroundColor` mappings per company
