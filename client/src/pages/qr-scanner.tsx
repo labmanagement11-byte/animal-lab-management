@@ -387,16 +387,22 @@ export default function QrScanner() {
   };
 
   const switchCamera = async () => {
-    if (!isScanning) return;
+    if (!isScanning) {
+      console.log("Cannot switch camera - not scanning");
+      return;
+    }
     
     const previousFacing = cameraFacing;
     const newFacing = cameraFacing === "environment" ? "user" : "environment";
+    
+    console.log(`Switching camera from ${previousFacing} to ${newFacing}`);
     
     // Stop current camera
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         scannerRef.current.clear();
+        console.log("Current camera stopped successfully");
       } catch (e) {
         console.error("Error stopping for camera switch:", e);
       }
@@ -409,6 +415,7 @@ export default function QrScanner() {
     
     // Try to start new camera
     try {
+      console.log("Creating new scanner instance");
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
@@ -427,6 +434,7 @@ export default function QrScanner() {
         }
       };
 
+      console.log(`Starting camera with facingMode: ${newFacing}`);
       await scanner.start(
         { facingMode: newFacing },
         config,
@@ -435,6 +443,7 @@ export default function QrScanner() {
       );
       
       // Only update state if start succeeded
+      console.log("Camera started successfully");
       setCameraFacing(newFacing);
       await initializeFocusControl();
       
@@ -445,9 +454,11 @@ export default function QrScanner() {
       });
     } catch (error: any) {
       console.error("Error switching to new camera, falling back to previous:", error);
+      console.error("Error details:", error.name, error.message);
       
       // Fallback: restart with previous camera
       try {
+        console.log(`Attempting fallback to ${previousFacing} camera`);
         const scanner = new Html5Qrcode("qr-reader");
         scannerRef.current = scanner;
 
@@ -473,6 +484,7 @@ export default function QrScanner() {
           (errorMessage) => {}
         );
         
+        console.log("Fallback camera started successfully");
         // Keep previous cameraFacing state
         await initializeFocusControl();
         
@@ -484,6 +496,7 @@ export default function QrScanner() {
         });
       } catch (fallbackError: any) {
         console.error("Fallback camera also failed:", fallbackError);
+        console.error("Fallback error details:", fallbackError.name, fallbackError.message);
         setIsScanning(false);
         toast({
           title: "Error de Cámara",
