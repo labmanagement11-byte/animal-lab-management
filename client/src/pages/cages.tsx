@@ -38,6 +38,12 @@ const cageFormSchema = z.object({
   status: z.enum(['Active', 'Breeding', 'Holding', 'Experimental']).default('Active'),
   isActive: z.boolean().default(true),
   strainInput: z.string().optional(),
+  breedingStartDate: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const date = new Date(val);
+    const today = new Date();
+    return date <= today;
+  }, "Breeding start date cannot be in the future"),
 });
 
 type CageFormData = z.infer<typeof cageFormSchema>;
@@ -95,6 +101,9 @@ export default function Cages() {
       status: editingCage?.status || "Active",
       isActive: editingCage?.isActive ?? true,
       strainInput: "",
+      breedingStartDate: editingCage?.breedingStartDate 
+        ? new Date(editingCage.breedingStartDate).toISOString().split('T')[0] 
+        : "",
     },
   });
 
@@ -132,6 +141,7 @@ export default function Cages() {
         status: data.status,
         isActive: data.isActive,
         strainId,
+        breedingStartDate: data.breedingStartDate || undefined,
       };
       const response = await apiRequest("/api/cages", {
         method: "POST",
@@ -235,6 +245,7 @@ export default function Cages() {
         status: data.status,
         isActive: data.isActive,
         strainId,
+        breedingStartDate: data.breedingStartDate || undefined,
       };
       await apiRequest(`/api/cages/${editingCage!.id}`, {
         method: "PUT",
@@ -1155,6 +1166,20 @@ export default function Cages() {
                         </Command>
                       </PopoverContent>
                     </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="breedingStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Breeding Start Date (Optional)</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-breeding-start-date" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

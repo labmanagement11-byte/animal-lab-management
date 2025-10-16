@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Primary Database**: PostgreSQL with the following core entities:
   - Users: Authentication and role-based access control
   - Animals: Core animal data including health status, physical attributes, and tracking information
-  - Cages: Housing information with capacity and location tracking
+  - Cages: Housing information with capacity, location tracking, and breeding start date
   - QR Codes: Generated codes linking to animal and cage information
   - Audit Logs: Activity tracking for compliance and monitoring
   - Sessions: Secure session storage for authentication persistence
@@ -94,6 +94,19 @@ Preferred communication style: Simple, everyday language.
   - Global search and reports filter results by company
 - **Company management**: Admin-only UI at `/companies` route for managing organizations
 - **Data isolation enforcement**: Users without companyId assignment receive 403 errors to prevent unauthorized access
+
+### Animal Management Features
+- **Batch Animal Creation** (October 16, 2025):
+  - **Quantity Selector**: UI field to specify how many similar animals to create (1-50)
+  - **Auto-increment Logic**: System auto-generates animal numbers based on pattern (e.g., M-001 → M-002 → M-003)
+  - **Backend Endpoint**: POST `/api/animals/batch` - creates multiple animals in one request
+  - **Smart Routing**: Frontend automatically uses batch endpoint when quantity > 1, single endpoint when quantity = 1
+  - **Audit Trail**: Each created animal gets individual audit log entry for compliance tracking
+- **Breeding Start Date Migration** (October 16, 2025):
+  - **Field Location Change**: Moved from animal form to cage form for better data organization
+  - **Database Update**: Added `breeding_start_date` timestamp column to cages table
+  - **Backward Compatibility**: Column remains in animals table for existing data (not shown in UI)
+  - **Cage Form Enhancement**: New optional date field for tracking when breeding activities begin in a cage
 
 ### QR Code Integration
 - Dynamic QR code generation containing animal and cage metadata

@@ -316,6 +316,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch create animals
+  app.post('/api/animals/batch', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const { quantity, animalNumber, ...restData } = req.body;
+      const count = parseInt(quantity) || 1;
+      
+      if (count < 1 || count > 50) {
+        return res.status(400).json({ message: "Quantity must be between 1 and 50" });
+      }
+
+      const createdAnimals = [];
+      const baseAnimalNumber = animalNumber || 'A-001';
+      
+      // Extract prefix and number from animal number (e.g., M-001 -> M, 001)
+      const match = baseAnimalNumber.match(/^([A-Za-z]+)-(\d+)$/i);
+      const prefix = match ? match[1] : 'A';
+      const startNumber = match ? parseInt(match[2]) : 1;
+      
+      for (let i = 0; i < count; i++) {
+        const currentAnimalNumber = `${prefix}-${String(startNumber + i).padStart(3, '0')}`;
+        
+        // Transform date strings to Date objects
+        const transformedData = {
+          ...restData,
+          animalNumber: currentAnimalNumber,
+          companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
+          dateOfBirth: restData.dateOfBirth ? new Date(restData.dateOfBirth) : undefined,
+          breedingStartDate: restData.breedingStartDate ? new Date(restData.breedingStartDate) : undefined,
+          dateOfGenotyping: restData.dateOfGenotyping ? new Date(restData.dateOfGenotyping) : undefined,
+        };
+        
+        const validatedData = insertAnimalSchema.parse(transformedData);
+        const animal = await storage.createAnimal(validatedData);
+        createdAnimals.push(animal);
+        
+        // Create audit log
+        await storage.createAuditLog({
+          userId: getUserIdFromSession(req.user),
+          action: 'CREATE',
+          tableName: 'animals',
+          recordId: animal.id,
+          changes: validatedData,
+        });
+      }
+
+      res.status(201).json(createdAnimals);
+    } catch (error) {
+      console.error("Error creating animals in batch:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      res.status(500).json({ message: "Failed to create animals" });
+    }
+  });
+
   app.put('/api/animals/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Validate user has access to this animal

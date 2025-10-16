@@ -19,6 +19,10 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Animal, Cage, User, Strain, Genotype } from "@shared/schema";
 
 const animalFormSchema = z.object({
+  quantity: z.string().refine((val) => {
+    const num = parseInt(val);
+    return !isNaN(num) && num >= 1 && num <= 50;
+  }, "Quantity must be between 1 and 50"),
   animalNumber: z.string()
     .min(1, "Animal number is required")
     .regex(/^[A-Za-z0-9-]+$/i, "Animal number should contain only letters, numbers, and hyphens (e.g., M-001, F-123)")
@@ -46,12 +50,6 @@ const animalFormSchema = z.object({
     return !isNaN(gen) && gen >= 0 && gen <= 20;
   }, "Generation must be a number between 0 and 20"),
   protocol: z.string().optional(),
-  breedingStartDate: z.string().optional().refine((val) => {
-    if (!val) return true;
-    const date = new Date(val);
-    const today = new Date();
-    return date <= today;
-  }, "Breeding start date cannot be in the future"),
   dateOfGenotyping: z.string().optional().refine((val) => {
     if (!val) return true;
     const date = new Date(val);
@@ -107,6 +105,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
   const form = useForm<AnimalFormData>({
     resolver: zodResolver(animalFormSchema),
     defaultValues: {
+      quantity: "1",
       animalNumber: animal?.animalNumber || generateAnimalNumber(),
       cageId: animal?.cageId || initialCageId || "none",
       breed: animal?.breed || "",
@@ -117,7 +116,6 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
       color: animal?.color || "",
       generation: animal?.generation?.toString() || "",
       protocol: animal?.protocol || "",
-      breedingStartDate: animal?.breedingStartDate ? new Date(animal.breedingStartDate).toISOString().split('T')[0] : "",
       dateOfGenotyping: animal?.dateOfGenotyping ? new Date(animal.dateOfGenotyping).toISOString().split('T')[0] : "",
       genotypingUserId: animal?.genotypingUserId || "none",
       probes: animal?.probes || false,
@@ -132,24 +130,37 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
 
   const createAnimalMutation = useMutation({
     mutationFn: async (data: AnimalFormData) => {
-      const payload = {
-        ...data,
+      const quantity = parseInt(data.quantity);
+      const { quantity: _, ...dataWithoutQuantity } = data;
+      
+      const basePayload = {
+        ...dataWithoutQuantity,
         cageId: data.cageId === "none" ? undefined : data.cageId,
         weight: data.weight || undefined,
         generation: data.generation ? parseInt(data.generation) : undefined,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
-        breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
         dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
         genotypingUserId: (data.genotypingUserId === "none" || data.genotypingUserId === "") ? undefined : data.genotypingUserId,
         genotype: data.genotype === "none" ? undefined : data.genotype,
       };
-      await apiRequest("/api/animals", {
-        method: "POST",
-        body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" }
-      });
+      
+      // Use batch endpoint if quantity > 1
+      if (quantity > 1) {
+        await apiRequest("/api/animals/batch", {
+          method: "POST",
+          body: JSON.stringify({ ...basePayload, quantity }),
+          headers: { "Content-Type": "application/json" }
+        });
+      } else {
+        await apiRequest("/api/animals", {
+          method: "POST",
+          body: JSON.stringify(basePayload),
+          headers: { "Content-Type": "application/json" }
+        });
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      const quantity = parseInt(variables.quantity);
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
@@ -158,7 +169,9 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
       });
       toast({
         title: "Success",
-        description: "Animal created successfully",
+        description: quantity > 1 
+          ? `${quantity} animals created successfully` 
+          : "Animal created successfully",
       });
       onClose();
     },
@@ -184,13 +197,13 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
 
   const updateAnimalMutation = useMutation({
     mutationFn: async (data: AnimalFormData) => {
+      const { quantity: _, ...dataWithoutQuantity } = data;
       const payload = {
-        ...data,
+        ...dataWithoutQuantity,
         cageId: data.cageId === "none" ? undefined : data.cageId,
         weight: data.weight || undefined,
         generation: data.generation ? parseInt(data.generation) : undefined,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
-        breedingStartDate: data.breedingStartDate ? new Date(data.breedingStartDate).toISOString() : undefined,
         dateOfGenotyping: data.dateOfGenotyping ? new Date(data.dateOfGenotyping).toISOString() : undefined,
         genotypingUserId: (data.genotypingUserId === "none" || data.genotypingUserId === "") ? undefined : data.genotypingUserId,
         genotype: data.genotype === "none" ? undefined : data.genotype,
@@ -252,6 +265,34 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-medium border-b pb-2">Basic Information</h3>
+          
+          {/* Quantity Counter - Only show when creating new animals */}
+          {!animal && (
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+              <Label htmlFor="quantity" className="text-base font-semibold">
+                How many animals to create? *
+              </Label>
+              <Input
+                id="quantity"
+                type="number"
+                min="1"
+                max="50"
+                placeholder="1"
+                {...form.register("quantity")}
+                className="mt-2 text-lg font-medium"
+                data-testid="input-quantity"
+              />
+              {form.formState.errors.quantity && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.quantity.message}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground mt-2">
+                Enter the number of similar animals to create (1-50). The system will auto-generate unique animal numbers for each.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="animalNumber">Animal Number *</Label>
@@ -512,21 +553,6 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
                 {...form.register("protocol")}
                 data-testid="input-protocol"
               />
-            </div>
-
-            <div>
-              <Label htmlFor="breedingStartDate">Breeding Start Date</Label>
-              <Input
-                id="breedingStartDate"
-                type="date"
-                {...form.register("breedingStartDate")}
-                data-testid="input-breeding-start-date"
-              />
-              {form.formState.errors.breedingStartDate && (
-                <p className="text-sm text-destructive mt-1">
-                  {form.formState.errors.breedingStartDate.message}
-                </p>
-              )}
             </div>
 
             <div>
