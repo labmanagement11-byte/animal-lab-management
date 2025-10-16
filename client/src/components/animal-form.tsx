@@ -895,10 +895,13 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
         {/* Batch Animals Table - Only show when editing individual data */}
         {showBatchTable && batchAnimals.length > 0 && (
           <div className="space-y-4 mt-6">
-            <h3 className="text-lg font-medium border-b pb-2">Individual Animal Data</h3>
-            <p className="text-sm text-muted-foreground">Edit each animal's information below. Click Submit when done.</p>
+            <div>
+              <h3 className="text-lg font-medium border-b pb-2">Individual Animal Data</h3>
+              <p className="text-sm text-muted-foreground mt-2">Edit each animal's information below. Click Submit when done.</p>
+              <p className="text-xs text-muted-foreground mt-1 md:hidden">💡 Swipe left/right to see all columns</p>
+            </div>
             
-            <div className="overflow-x-auto border rounded-lg">
+            <div className="overflow-x-auto border rounded-lg -mx-4 md:mx-0">
               <Table>
                 <TableHeader>
                   <TableRow>
