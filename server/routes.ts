@@ -1872,12 +1872,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/genotyping-reports/upload-url', isAuthenticated, async (req: any, res) => {
     try {
       const { fileName } = req.body;
+      
+      if (!fileName) {
+        return res.status(400).json({ message: "fileName is required" });
+      }
+      
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL(fileName || undefined);
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL(fileName);
+      
+      if (!uploadURL) {
+        throw new Error("Failed to generate upload URL");
+      }
+      
+      console.log("Generated upload URL successfully for file:", fileName);
       res.json({ uploadURL });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Failed to get upload URL" });
+      res.status(500).json({ 
+        message: error?.message || "Failed to get upload URL",
+        error: error?.toString()
+      });
     }
   });
 

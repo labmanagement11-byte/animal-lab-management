@@ -1471,16 +1471,12 @@ export class DatabaseStorage implements IStorage {
 
   // Genotyping Report operations
   async getGenotypingReports(companyId?: string): Promise<GenotypingReport[]> {
-    let query = db
+    const result = await db
       .select()
-      .from(genotypingReports);
+      .from(genotypingReports)
+      .where(companyId ? eq(genotypingReports.companyId, companyId) : sql`true`)
+      .orderBy(desc(genotypingReports.uploadedAt));
     
-    if (companyId) {
-      query = query.where(eq(genotypingReports.companyId, companyId));
-    }
-    
-    query = query.orderBy(desc(genotypingReports.uploadedAt));
-    const result = await query;
     return result;
   }
 

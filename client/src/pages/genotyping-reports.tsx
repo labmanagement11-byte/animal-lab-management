@@ -50,14 +50,21 @@ export default function GenotypingReportsPage() {
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       // Step 1: Get upload URL
-      const response = await apiRequest('/api/genotyping-reports/upload-url', {
+      const uploadUrlResponse = await apiRequest('/api/genotyping-reports/upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name }),
-      }) as unknown as { uploadURL: string };
+      });
+
+      const { uploadURL } = await uploadUrlResponse.json() as { uploadURL: string };
+
+      // Validate upload URL
+      if (!uploadURL) {
+        throw new Error('Failed to get upload URL from server');
+      }
 
       // Step 2: Upload file to object storage
-      await fetch(response.uploadURL, {
+      const uploadResponse = await fetch(uploadURL, {
         method: 'PUT',
         body: file,
         headers: {
@@ -65,9 +72,13 @@ export default function GenotypingReportsPage() {
         },
       });
 
+      if (!uploadResponse.ok) {
+        throw new Error(`File upload failed: ${uploadResponse.statusText}`);
+      }
+
       // Step 3: Create report record
-      const fileURL = response.uploadURL.split('?')[0];
-      return apiRequest('/api/genotyping-reports', {
+      const fileURL = uploadURL.split('?')[0];
+      const reportResponse = await apiRequest('/api/genotyping-reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,6 +89,8 @@ export default function GenotypingReportsPage() {
           strainIds: selectedStrains,
         }),
       });
+
+      return reportResponse.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/genotyping-reports'] });
