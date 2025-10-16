@@ -178,31 +178,68 @@ export default function QrScanner() {
 
   const startCamera = async () => {
     try {
+      // Make sure any previous scanner is stopped
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+          scannerRef.current.clear();
+        } catch (e) {
+          // Ignore errors when stopping
+        }
+      }
+
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
-      await scanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        handleScanSuccess,
-        (errorMessage) => {
-          // Ignore scan errors (they happen frequently when no QR is in view)
+      // Try to get camera permissions first
+      try {
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        // First try with rear camera (environment)
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          handleScanSuccess,
+          (errorMessage) => {
+            // Ignore scan errors (they happen frequently when no QR is in view)
+          }
+        );
+      } catch (envError) {
+        console.log("Rear camera not available, trying front camera:", envError);
+        // If rear camera fails, try front camera
+        try {
+          await scanner.start(
+            { facingMode: "user" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            handleScanSuccess,
+            (errorMessage) => {
+              // Ignore scan errors
+            }
+          );
+        } catch (userError) {
+          console.log("Front camera failed, trying any available camera:", userError);
+          // If both fail, try any available camera
+          await scanner.start(
+            { facingMode: { ideal: "environment" } },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            handleScanSuccess,
+            (errorMessage) => {
+              // Ignore scan errors
+            }
+          );
         }
-      );
+      }
       
       setIsScanning(true);
       toast({
-        title: "Scanner Started",
-        description: "Point camera at QR code to scan",
+        title: "Escáner Iniciado",
+        description: "Apunta la cámara al código QR para escanear",
       });
     } catch (error) {
       console.error("Camera error:", error);
       toast({
-        title: "Camera Error",
-        description: "Unable to access camera. Please check permissions.",
+        title: "Error de Cámara",
+        description: "No se puede acceder a la cámara. Por favor verifica los permisos en la configuración de tu navegador.",
         variant: "destructive",
       });
     }
@@ -290,8 +327,8 @@ export default function QrScanner() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 md:mb-8">
         <div>
-          <h2 className="text-lg md:text-2xl font-semibold text-foreground">QR Code Scanner</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">Scan QR codes to view animal information</p>
+          <h2 className="text-lg md:text-2xl font-semibold text-foreground">Escáner de Código QR</h2>
+          <p className="text-xs md:text-sm text-muted-foreground">Escanea códigos QR para ver información de animales</p>
         </div>
       </div>
 
@@ -301,18 +338,19 @@ export default function QrScanner() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <QrCode className="w-5 h-5 mr-2" />
-              Scanner
+              Escáner
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {!isScanning ? (
                 <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-                  <div className="text-center">
+                  <div className="text-center px-4">
                     <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground mb-4">Click to start camera</p>
+                    <p className="text-muted-foreground mb-2">Haz clic para activar la cámara</p>
+                    <p className="text-xs text-muted-foreground mb-4">Se te pedirá permiso para usar la cámara</p>
                     <Button onClick={startCamera} data-testid="button-start-camera">
-                      Start Scanner
+                      Iniciar Escáner
                     </Button>
                   </div>
                 </div>
@@ -324,7 +362,7 @@ export default function QrScanner() {
                 {isScanning ? (
                   <>
                     <Button variant="outline" onClick={stopCamera} data-testid="button-stop-camera">
-                      Stop Scanner
+                      Detener Escáner
                     </Button>
                     <div className="flex space-x-2">
                       <Button onClick={simulateQrScan} data-testid="button-simulate-scan" className="flex-1">
