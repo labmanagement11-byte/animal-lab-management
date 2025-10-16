@@ -36,11 +36,12 @@ interface GenotypingReport {
 export default function GenotypingReportsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedStrains, setSelectedStrains] = useState<string[]>([]);
+  const [filterStrainId, setFilterStrainId] = useState<string>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { data: reports, isLoading: reportsLoading } = useQuery<GenotypingReport[]>({
-    queryKey: ['/api/genotyping-reports'],
+    queryKey: filterStrainId === 'all' ? ['/api/genotyping-reports'] : ['/api/genotyping-reports/strain', filterStrainId],
   });
 
   const { data: strains, isLoading: strainsLoading } = useQuery<Strain[]>({
@@ -317,10 +318,30 @@ export default function GenotypingReportsPage() {
       {/* Reports List */}
       <Card>
         <CardHeader>
-          <CardTitle>Uploaded Reports</CardTitle>
-          <CardDescription>
-            View and manage all genotyping reports
-          </CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <CardTitle>Uploaded Reports</CardTitle>
+              <CardDescription>
+                View and manage all genotyping reports
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="strain-filter" className="text-sm text-muted-foreground">Filter by Strain:</Label>
+              <Select value={filterStrainId} onValueChange={setFilterStrainId}>
+                <SelectTrigger className="w-[200px]" id="strain-filter" data-testid="select-strain-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Strains</SelectItem>
+                  {strains?.map((strain) => (
+                    <SelectItem key={strain.id} value={strain.id}>
+                      {strain.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {reportsLoading ? (
