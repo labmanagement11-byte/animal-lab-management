@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Camera, CheckCircle, Focus, Zap, SwitchCamera } from "lucide-react";
+import { QrCode, Camera, CheckCircle, Focus, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,7 +42,6 @@ export default function QrScanner() {
   const [selectedCageId, setSelectedCageId] = useState<string>("");
   const [qrClaimed, setQrClaimed] = useState(false);
   const [focusMode, setFocusMode] = useState<"auto" | "manual">("auto");
-  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
   const [torch, setTorch] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -267,10 +266,10 @@ export default function QrScanner() {
         }
       };
 
-      // Try to start camera with selected facing mode
+      // Start camera with rear-facing mode only
       try {
         const cameraStartPromise = scanner.start(
-          { facingMode: cameraFacing },
+          { facingMode: "environment" },
           config,
           handleScanSuccess,
           (errorMessage) => {
@@ -281,92 +280,41 @@ export default function QrScanner() {
         await cameraStartPromise;
         await initializeFocusControl();
         
-        const cameraName = cameraFacing === "environment" ? "trasera" : "frontal";
         toast({
           title: "Escáner Iniciado",
-          description: `Usando cámara ${cameraName}. Apunta al código QR`,
+          description: "Apunta la cámara trasera al código QR",
         });
       } catch (error: any) {
-        console.error(`${cameraFacing} camera error:`, error);
+        console.error("Camera error:", error);
+        setIsScanning(false);
         
-        // Check for permission denied
+        let errorMessage = "No se pudo acceder a la cámara trasera";
+        
         if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
-          setIsScanning(false);
-          toast({
-            title: "Permiso Denegado",
-            description: "Debes permitir el acceso a la cámara en tu navegador",
-            variant: "destructive",
-          });
-          return;
+          errorMessage = "Debes permitir el acceso a la cámara en tu navegador. Haz clic en el ícono de candado 🔒 en la barra de direcciones";
+        } else if (error?.name === 'NotFoundError') {
+          errorMessage = "No se encontró ninguna cámara en este dispositivo";
+        } else if (error?.name === 'NotReadableError') {
+          errorMessage = "La cámara está en uso por otra aplicación. Cierra otras apps que usen la cámara";
+        } else if (error?.name === 'NotSupportedError') {
+          errorMessage = "Este navegador no soporta acceso a la cámara. Intenta con Chrome, Firefox o Safari";
+        } else if (error?.message) {
+          errorMessage = `Error: ${error.message}`;
         }
         
-        // If selected camera fails, try the other one
-        const alternateFacing = cameraFacing === "environment" ? "user" : "environment";
-        try {
-          await scanner.start(
-            { facingMode: alternateFacing },
-            config,
-            handleScanSuccess,
-            (errorMessage) => {
-              // Ignore scan errors
-            }
-          );
-          
-          await initializeFocusControl();
-          
-          // Update the state to reflect which camera is actually being used
-          setCameraFacing(alternateFacing);
-          
-          const cameraName = alternateFacing === "environment" ? "trasera" : "frontal";
-          toast({
-            title: "Escáner Iniciado",
-            description: `Usando cámara ${cameraName}. Apunta al código QR`,
-          });
-        } catch (altError: any) {
-          console.error("Alternate camera error:", altError);
-          setIsScanning(false);
-          
-          let errorMessage = "No se pudo acceder a ninguna cámara";
-          
-          if (altError?.name === 'NotAllowedError' || altError?.name === 'PermissionDeniedError') {
-            errorMessage = "Debes permitir el acceso a la cámara en tu navegador";
-          } else if (altError?.name === 'NotFoundError' || altError?.name === 'DevicesNotFoundError') {
-            errorMessage = "No se encontró ninguna cámara en este dispositivo";
-          } else if (altError?.name === 'NotReadableError' || altError?.name === 'TrackStartError') {
-            errorMessage = "La cámara está siendo usada por otra aplicación";
-          } else if (altError?.name === 'NotSupportedError') {
-            errorMessage = "Tu navegador no soporta acceso a la cámara";
-          }
-          
-          toast({
-            title: "Error de Cámara",
-            description: errorMessage,
-            variant: "destructive",
-          });
-          return;
-        }
+        toast({
+          title: "Error de Cámara",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
-      console.error("Camera error:", error);
+      console.error("Scanner initialization error:", error);
       setIsScanning(false);
       
-      let errorMessage = "No se pudo iniciar el escáner";
-      
-      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
-        errorMessage = "Debes permitir el acceso a la cámara en tu navegador. Haz clic en el ícono de candado 🔒 en la barra de direcciones";
-      } else if (error?.name === 'NotFoundError') {
-        errorMessage = "No se encontró ninguna cámara en este dispositivo";
-      } else if (error?.name === 'NotReadableError') {
-        errorMessage = "La cámara está en uso por otra aplicación. Cierra otras apps que usen la cámara";
-      } else if (error?.name === 'NotSupportedError') {
-        errorMessage = "Este navegador no soporta acceso a la cámara. Intenta con Chrome, Firefox o Safari";
-      } else if (error?.message) {
-        errorMessage = `Error: ${error.message}`;
-      }
-      
       toast({
-        title: "Error de Cámara",
-        description: errorMessage,
+        title: "Error de Inicialización",
+        description: "No se pudo inicializar el escáner",
         variant: "destructive",
       });
     }
@@ -386,126 +334,6 @@ export default function QrScanner() {
     setIsScanning(false);
   };
 
-  const switchCamera = async () => {
-    if (!isScanning) {
-      console.log("Cannot switch camera - not scanning");
-      return;
-    }
-    
-    const previousFacing = cameraFacing;
-    const newFacing = cameraFacing === "environment" ? "user" : "environment";
-    
-    console.log(`Switching camera from ${previousFacing} to ${newFacing}`);
-    
-    // Stop current camera
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-        console.log("Current camera stopped successfully");
-      } catch (e) {
-        console.error("Error stopping for camera switch:", e);
-      }
-    }
-    
-    videoStreamRef.current = null;
-    
-    // Wait a bit for cleanup
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Try to start new camera
-    try {
-      console.log("Creating new scanner instance");
-      const scanner = new Html5Qrcode("qr-reader");
-      scannerRef.current = scanner;
-
-      const config = { 
-        fps: 60,
-        qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
-          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-          const qrboxSize = Math.floor(minEdgeSize * 0.75);
-          return { width: qrboxSize, height: qrboxSize };
-        },
-        aspectRatio: 1.0,
-        disableFlip: false,
-        videoConstraints: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        }
-      };
-
-      console.log(`Starting camera with facingMode: ${newFacing}`);
-      await scanner.start(
-        { facingMode: newFacing },
-        config,
-        handleScanSuccess,
-        (errorMessage) => {}
-      );
-      
-      // Only update state if start succeeded
-      console.log("Camera started successfully");
-      setCameraFacing(newFacing);
-      await initializeFocusControl();
-      
-      const cameraName = newFacing === "environment" ? "trasera" : "frontal";
-      toast({
-        title: "Cámara Cambiada",
-        description: `Usando cámara ${cameraName}`,
-      });
-    } catch (error: any) {
-      console.error("Error switching to new camera, falling back to previous:", error);
-      console.error("Error details:", error.name, error.message);
-      
-      // Fallback: restart with previous camera
-      try {
-        console.log(`Attempting fallback to ${previousFacing} camera`);
-        const scanner = new Html5Qrcode("qr-reader");
-        scannerRef.current = scanner;
-
-        const config = { 
-          fps: 60,
-          qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
-            const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-            const qrboxSize = Math.floor(minEdgeSize * 0.75);
-            return { width: qrboxSize, height: qrboxSize };
-          },
-          aspectRatio: 1.0,
-          disableFlip: false,
-          videoConstraints: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          }
-        };
-
-        await scanner.start(
-          { facingMode: previousFacing },
-          config,
-          handleScanSuccess,
-          (errorMessage) => {}
-        );
-        
-        console.log("Fallback camera started successfully");
-        // Keep previous cameraFacing state
-        await initializeFocusControl();
-        
-        const cameraName = newFacing === "environment" ? "trasera" : "frontal";
-        toast({
-          title: "Cámara No Disponible",
-          description: `Cámara ${cameraName} no disponible. Continuando con la actual`,
-          variant: "destructive",
-        });
-      } catch (fallbackError: any) {
-        console.error("Fallback camera also failed:", fallbackError);
-        console.error("Fallback error details:", fallbackError.name, fallbackError.message);
-        setIsScanning(false);
-        toast({
-          title: "Error de Cámara",
-          description: "No se pudo acceder a ninguna cámara",
-          variant: "destructive",
-        });
-      }
-    }
-  };
 
   const toggleFocusMode = async () => {
     if (!videoStreamRef.current) return;
@@ -763,15 +591,6 @@ export default function QrScanner() {
               {isScanning && (
                 <div className="space-y-2">
                   <div className="flex gap-2 items-stretch">
-                    <Button 
-                      variant="outline"
-                      onClick={switchCamera}
-                      className="min-h-[44px] touch-manipulation"
-                      data-testid="button-switch-camera"
-                    >
-                      <SwitchCamera className="w-5 h-5 mr-2" />
-                      <span className="font-medium">{cameraFacing === "environment" ? "Trasera" : "Frontal"}</span>
-                    </Button>
                     <Button 
                       variant={focusMode === "auto" ? "default" : "outline"} 
                       onClick={toggleFocusMode}
