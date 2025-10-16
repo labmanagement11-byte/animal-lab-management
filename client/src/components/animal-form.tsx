@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -73,6 +74,18 @@ interface AnimalFormProps {
   initialCageId?: string;
 }
 
+interface IndividualAnimalData {
+  animalNumber: string;
+  breed: string;
+  genotype?: string;
+  weight?: string;
+  gender?: "Male" | "Female";
+  dateOfBirth?: string;
+  healthStatus: "Healthy" | "Monitoring" | "Sick" | "Quarantine";
+  diseases?: string;
+  notes?: string;
+}
+
 export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -80,6 +93,8 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
   const [genotypeComboOpen, setGenotypeComboOpen] = useState(false);
   const [newAllele, setNewAllele] = useState("");
   const [hasLastAnimal, setHasLastAnimal] = useState(false);
+  const [showBatchTable, setShowBatchTable] = useState(false);
+  const [batchAnimals, setBatchAnimals] = useState<IndividualAnimalData[]>([]);
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -292,11 +307,61 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
     }
   };
 
+  // Prepare batch animals when quantity changes
+  const prepareBatchAnimals = () => {
+    const currentFormData = form.getValues();
+    const quantity = parseInt(currentFormData.quantity);
+    
+    if (quantity > 1) {
+      const animals: IndividualAnimalData[] = [];
+      const baseNumber = currentFormData.animalNumber.replace(/\d+$/, '');
+      const startNum = parseInt(currentFormData.animalNumber.match(/\d+$/)?.[0] || '1');
+      
+      for (let i = 0; i < quantity; i++) {
+        const animalNumber = baseNumber + String(startNum + i).padStart(3, '0');
+        animals.push({
+          animalNumber,
+          breed: currentFormData.breed,
+          genotype: currentFormData.genotype === "none" ? undefined : currentFormData.genotype,
+          weight: currentFormData.weight,
+          gender: currentFormData.gender,
+          dateOfBirth: currentFormData.dateOfBirth,
+          healthStatus: currentFormData.healthStatus,
+          diseases: currentFormData.diseases,
+          notes: currentFormData.notes,
+        });
+      }
+      
+      setBatchAnimals(animals);
+      setShowBatchTable(true);
+    } else {
+      setShowBatchTable(false);
+      setBatchAnimals([]);
+    }
+  };
+
+  const updateBatchAnimal = (index: number, field: keyof IndividualAnimalData, value: any) => {
+    setBatchAnimals(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
   const onSubmit = (data: AnimalFormData) => {
     if (animal) {
       updateAnimalMutation.mutate(data);
     } else {
-      createAnimalMutation.mutate(data);
+      const quantity = parseInt(data.quantity);
+      if (quantity > 1 && showBatchTable) {
+        // Submit with individual data
+        createAnimalMutation.mutate({
+          ...data,
+          individualAnimals: batchAnimals
+        } as any);
+      } else {
+        createAnimalMutation.mutate(data);
+      }
     }
   };
 
@@ -340,23 +405,38 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
               <Label htmlFor="quantity" className="text-base font-semibold">
                 How many animals to create? *
               </Label>
-              <Input
-                id="quantity"
-                type="number"
-                min="1"
-                max="50"
-                placeholder="1"
-                {...form.register("quantity")}
-                className="mt-2 text-lg font-medium"
-                data-testid="input-quantity"
-              />
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  max="50"
+                  placeholder="1"
+                  {...form.register("quantity")}
+                  className="text-lg font-medium flex-1"
+                  data-testid="input-quantity"
+                />
+                {parseInt(form.watch("quantity") || "1") > 1 && (
+                  <Button
+                    type="button"
+                    onClick={prepareBatchAnimals}
+                    variant="secondary"
+                    data-testid="button-prepare-individual"
+                  >
+                    Prepare Individual Data
+                  </Button>
+                )}
+              </div>
               {form.formState.errors.quantity && (
                 <p className="text-sm text-destructive mt-1">
                   {form.formState.errors.quantity.message}
                 </p>
               )}
               <p className="text-sm text-muted-foreground mt-2">
-                Enter the number of similar animals to create (1-50). The system will auto-generate unique animal numbers for each.
+                {parseInt(form.watch("quantity") || "1") > 1 
+                  ? "Click 'Prepare Individual Data' to enter information for each animal separately."
+                  : "Enter the number of similar animals to create (1-50). The system will auto-generate unique animal numbers for each."
+                }
               </p>
             </div>
           )}
@@ -811,6 +891,129 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
             </div>
           </div>
         </div>
+
+        {/* Batch Animals Table - Only show when editing individual data */}
+        {showBatchTable && batchAnimals.length > 0 && (
+          <div className="space-y-4 mt-6">
+            <h3 className="text-lg font-medium border-b pb-2">Individual Animal Data</h3>
+            <p className="text-sm text-muted-foreground">Edit each animal's information below. Click Submit when done.</p>
+            
+            <div className="overflow-x-auto border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[120px]">Animal #</TableHead>
+                    <TableHead className="min-w-[150px]">Strain</TableHead>
+                    <TableHead className="min-w-[120px]">Genotype</TableHead>
+                    <TableHead className="min-w-[100px]">Weight (g)</TableHead>
+                    <TableHead className="min-w-[100px]">Gender</TableHead>
+                    <TableHead className="min-w-[130px]">Birth Date</TableHead>
+                    <TableHead className="min-w-[120px]">Health</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {batchAnimals.map((animal, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Input
+                          value={animal.animalNumber}
+                          onChange={(e) => updateBatchAnimal(index, 'animalNumber', e.target.value)}
+                          className="min-w-[100px]"
+                          data-testid={`input-batch-animal-number-${index}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={animal.breed}
+                          onValueChange={(value) => updateBatchAnimal(index, 'breed', value)}
+                        >
+                          <SelectTrigger data-testid={`select-batch-strain-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {strains?.map((strain) => (
+                              <SelectItem key={strain.id} value={strain.name}>
+                                {strain.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={animal.genotype || "none"}
+                          onValueChange={(value) => updateBatchAnimal(index, 'genotype', value === "none" ? undefined : value)}
+                        >
+                          <SelectTrigger data-testid={`select-batch-genotype-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No genotype</SelectItem>
+                            {genotypes?.map((genotype) => (
+                              <SelectItem key={genotype.id} value={genotype.name}>
+                                {genotype.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={animal.weight || ""}
+                          onChange={(e) => updateBatchAnimal(index, 'weight', e.target.value)}
+                          placeholder="25"
+                          className="min-w-[80px]"
+                          data-testid={`input-batch-weight-${index}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={animal.gender || "none"}
+                          onValueChange={(value) => updateBatchAnimal(index, 'gender', value === "none" ? undefined : value as any)}
+                        >
+                          <SelectTrigger data-testid={`select-batch-gender-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">-</SelectItem>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="date"
+                          value={animal.dateOfBirth || ""}
+                          onChange={(e) => updateBatchAnimal(index, 'dateOfBirth', e.target.value)}
+                          className="min-w-[120px]"
+                          data-testid={`input-batch-dob-${index}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={animal.healthStatus}
+                          onValueChange={(value) => updateBatchAnimal(index, 'healthStatus', value as any)}
+                        >
+                          <SelectTrigger data-testid={`select-batch-health-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Healthy">Healthy</SelectItem>
+                            <SelectItem value="Monitoring">Monitoring</SelectItem>
+                            <SelectItem value="Sick">Sick</SelectItem>
+                            <SelectItem value="Quarantine">Quarantine</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-end space-x-4 pt-4 border-t border-border">
           <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel">

@@ -326,7 +326,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
       
-      const { quantity, animalNumber, ...restData } = req.body;
+      const { quantity, animalNumber, individualAnimals, ...restData } = req.body;
+      
+      // Check if we have individual animal data
+      if (individualAnimals && Array.isArray(individualAnimals)) {
+        // Create animals with individual data
+        const createdAnimals = [];
+        
+        for (const individualData of individualAnimals) {
+          const transformedData = {
+            ...restData,
+            ...individualData,
+            animalNumber: individualData.animalNumber,
+            companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
+            dateOfBirth: individualData.dateOfBirth ? new Date(individualData.dateOfBirth) : undefined,
+            dateOfGenotyping: restData.dateOfGenotyping ? new Date(restData.dateOfGenotyping) : undefined,
+          };
+          
+          const validatedData = insertAnimalSchema.parse(transformedData);
+          const animal = await storage.createAnimal(validatedData);
+          
+          // Create audit log
+          await storage.createAuditLog({
+            userId: getUserIdFromSession(req.user),
+            action: 'CREATE',
+            tableName: 'animals',
+            recordId: animal.id,
+            changes: validatedData,
+          });
+          
+          createdAnimals.push(animal);
+        }
+        
+        return res.status(201).json(createdAnimals);
+      }
+      
+      // Original batch logic with auto-generated numbers
       const count = parseInt(quantity) || 1;
       
       if (count < 1 || count > 50) {
