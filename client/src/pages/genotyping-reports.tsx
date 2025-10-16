@@ -330,17 +330,17 @@ export default function GenotypingReportsPage() {
       {/* Reports List */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col gap-4">
             <div>
               <CardTitle>Uploaded Reports</CardTitle>
               <CardDescription>
                 View and manage all genotyping reports
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="strain-filter" className="text-sm text-muted-foreground">Filter by Strain:</Label>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <Label htmlFor="strain-filter" className="text-sm text-muted-foreground sm:whitespace-nowrap">Filter by Strain:</Label>
               <Select value={filterStrainId} onValueChange={setFilterStrainId}>
-                <SelectTrigger className="w-[200px]" id="strain-filter" data-testid="select-strain-filter">
+                <SelectTrigger className="w-full sm:w-[200px]" id="strain-filter" data-testid="select-strain-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -365,28 +365,32 @@ export default function GenotypingReportsPage() {
               {reports.map((report) => (
                 <div
                   key={report.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   data-testid={`report-${report.id}`}
                 >
-                  <div className="flex items-center gap-4 flex-1">
-                    {getFileIcon(report.fileType)}
-                    <div className="flex-1">
-                      <h3 className="font-medium text-foreground">{report.originalName}</h3>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                    <div className="flex-shrink-0">
+                      {getFileIcon(report.fileType)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground truncate">{report.originalName}</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-sm text-muted-foreground">
                         <span>{formatFileSize(report.fileSize)}</span>
-                        <span>•</span>
-                        <span>{formatDate(report.uploadedAt)}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="truncate">{formatDate(report.uploadedAt)}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleDownload(report)}
                       data-testid={`button-download-${report.id}`}
+                      className="flex-1 sm:flex-initial"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-4 h-4 sm:mr-0" />
+                      <span className="sm:hidden ml-2">Download</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -394,8 +398,10 @@ export default function GenotypingReportsPage() {
                       onClick={() => handleDelete(report.id)}
                       disabled={deleteMutation.isPending}
                       data-testid={`button-delete-${report.id}`}
+                      className="flex-1 sm:flex-initial"
                     >
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                      <Trash2 className="w-4 h-4 text-destructive sm:mr-0" />
+                      <span className="sm:hidden ml-2">Delete</span>
                     </Button>
                   </div>
                 </div>
