@@ -42,7 +42,7 @@ export default function StrainDetail() {
   });
 
   const { data: genotypingReports, isLoading: reportsLoading } = useQuery<GenotypingReport[]>({
-    queryKey: strainId ? ['/api/genotyping-reports/strain', strainId] : ['/api/genotyping-reports'],
+    queryKey: strainId ? [`/api/genotyping-reports/strain/${strainId}`] : ['/api/genotyping-reports'],
     enabled: !!strainId,
   });
 
