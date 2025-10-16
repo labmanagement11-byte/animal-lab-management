@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Camera, CheckCircle, Focus, Zap } from "lucide-react";
+import { QrCode, Camera, CheckCircle, Focus, Zap, SwitchCamera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,6 +42,7 @@ export default function QrScanner() {
   const [selectedCageId, setSelectedCageId] = useState<string>("");
   const [qrClaimed, setQrClaimed] = useState(false);
   const [focusMode, setFocusMode] = useState<"auto" | "manual">("auto");
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
   const [torch, setTorch] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -266,11 +267,10 @@ export default function QrScanner() {
         }
       };
 
-      // Try to get camera permissions first
+      // Try to start camera with selected facing mode
       try {
-        // First try with rear camera (environment) with enhanced settings
         const cameraStartPromise = scanner.start(
-          { facingMode: "environment" },
+          { facingMode: cameraFacing },
           config,
           handleScanSuccess,
           (errorMessage) => {
@@ -281,15 +281,16 @@ export default function QrScanner() {
         await cameraStartPromise;
         await initializeFocusControl();
         
+        const cameraName = cameraFacing === "environment" ? "trasera" : "frontal";
         toast({
           title: "Escáner Iniciado",
-          description: "Apunta la cámara al código QR para escanear",
+          description: `Usando cámara ${cameraName}. Apunta al código QR`,
         });
-      } catch (envError: any) {
-        console.error("Rear camera error:", envError);
+      } catch (error: any) {
+        console.error(`${cameraFacing} camera error:`, error);
         
         // Check for permission denied
-        if (envError?.name === 'NotAllowedError' || envError?.name === 'PermissionDeniedError') {
+        if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
           setIsScanning(false);
           toast({
             title: "Permiso Denegado",
@@ -299,10 +300,11 @@ export default function QrScanner() {
           return;
         }
         
-        // If rear camera fails, try front camera
+        // If selected camera fails, try the other one
+        const alternateFacing = cameraFacing === "environment" ? "user" : "environment";
         try {
           await scanner.start(
-            { facingMode: "user" },
+            { facingMode: alternateFacing },
             config,
             handleScanSuccess,
             (errorMessage) => {
@@ -312,64 +314,36 @@ export default function QrScanner() {
           
           await initializeFocusControl();
           
+          // Update the state to reflect which camera is actually being used
+          setCameraFacing(alternateFacing);
+          
+          const cameraName = alternateFacing === "environment" ? "trasera" : "frontal";
           toast({
             title: "Escáner Iniciado",
-            description: "Usando cámara frontal. Apunta al código QR",
+            description: `Usando cámara ${cameraName}. Apunta al código QR`,
           });
-        } catch (userError: any) {
-          console.error("Front camera error:", userError);
+        } catch (altError: any) {
+          console.error("Alternate camera error:", altError);
+          setIsScanning(false);
           
-          // Check for permission denied
-          if (userError?.name === 'NotAllowedError' || userError?.name === 'PermissionDeniedError') {
-            setIsScanning(false);
-            toast({
-              title: "Permiso Denegado",
-              description: "Debes permitir el acceso a la cámara en tu navegador",
-              variant: "destructive",
-            });
-            return;
+          let errorMessage = "No se pudo acceder a ninguna cámara";
+          
+          if (altError?.name === 'NotAllowedError' || altError?.name === 'PermissionDeniedError') {
+            errorMessage = "Debes permitir el acceso a la cámara en tu navegador";
+          } else if (altError?.name === 'NotFoundError' || altError?.name === 'DevicesNotFoundError') {
+            errorMessage = "No se encontró ninguna cámara en este dispositivo";
+          } else if (altError?.name === 'NotReadableError' || altError?.name === 'TrackStartError') {
+            errorMessage = "La cámara está siendo usada por otra aplicación";
+          } else if (altError?.name === 'NotSupportedError') {
+            errorMessage = "Tu navegador no soporta acceso a la cámara";
           }
           
-          // If both fail, try any available camera with basic config
-          try {
-            await scanner.start(
-              { facingMode: { ideal: "environment" } },
-              config,
-              handleScanSuccess,
-              (errorMessage) => {
-                // Ignore scan errors
-              }
-            );
-            
-            await initializeFocusControl();
-            
-            toast({
-              title: "Escáner Iniciado",
-              description: "Apunta la cámara al código QR para escanear",
-            });
-          } catch (finalError: any) {
-            console.error("All camera attempts failed:", finalError);
-            setIsScanning(false);
-            
-            let errorMessage = "No se pudo acceder a ninguna cámara";
-            
-            if (finalError?.name === 'NotAllowedError' || finalError?.name === 'PermissionDeniedError') {
-              errorMessage = "Debes permitir el acceso a la cámara en tu navegador";
-            } else if (finalError?.name === 'NotFoundError' || finalError?.name === 'DevicesNotFoundError') {
-              errorMessage = "No se encontró ninguna cámara en este dispositivo";
-            } else if (finalError?.name === 'NotReadableError' || finalError?.name === 'TrackStartError') {
-              errorMessage = "La cámara está siendo usada por otra aplicación";
-            } else if (finalError?.name === 'NotSupportedError') {
-              errorMessage = "Tu navegador no soporta acceso a la cámara";
-            }
-            
-            toast({
-              title: "Error de Cámara",
-              description: errorMessage,
-              variant: "destructive",
-            });
-            return;
-          }
+          toast({
+            title: "Error de Cámara",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          return;
         }
       }
     } catch (error: any) {
@@ -410,6 +384,114 @@ export default function QrScanner() {
     }
     videoStreamRef.current = null;
     setIsScanning(false);
+  };
+
+  const switchCamera = async () => {
+    if (!isScanning) return;
+    
+    const previousFacing = cameraFacing;
+    const newFacing = cameraFacing === "environment" ? "user" : "environment";
+    
+    // Stop current camera
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (e) {
+        console.error("Error stopping for camera switch:", e);
+      }
+    }
+    
+    videoStreamRef.current = null;
+    
+    // Wait a bit for cleanup
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Try to start new camera
+    try {
+      const scanner = new Html5Qrcode("qr-reader");
+      scannerRef.current = scanner;
+
+      const config = { 
+        fps: 60,
+        qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
+          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+          const qrboxSize = Math.floor(minEdgeSize * 0.75);
+          return { width: qrboxSize, height: qrboxSize };
+        },
+        aspectRatio: 1.0,
+        disableFlip: false,
+        videoConstraints: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        }
+      };
+
+      await scanner.start(
+        { facingMode: newFacing },
+        config,
+        handleScanSuccess,
+        (errorMessage) => {}
+      );
+      
+      // Only update state if start succeeded
+      setCameraFacing(newFacing);
+      await initializeFocusControl();
+      
+      const cameraName = newFacing === "environment" ? "trasera" : "frontal";
+      toast({
+        title: "Cámara Cambiada",
+        description: `Usando cámara ${cameraName}`,
+      });
+    } catch (error: any) {
+      console.error("Error switching to new camera, falling back to previous:", error);
+      
+      // Fallback: restart with previous camera
+      try {
+        const scanner = new Html5Qrcode("qr-reader");
+        scannerRef.current = scanner;
+
+        const config = { 
+          fps: 60,
+          qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
+            const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+            const qrboxSize = Math.floor(minEdgeSize * 0.75);
+            return { width: qrboxSize, height: qrboxSize };
+          },
+          aspectRatio: 1.0,
+          disableFlip: false,
+          videoConstraints: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          }
+        };
+
+        await scanner.start(
+          { facingMode: previousFacing },
+          config,
+          handleScanSuccess,
+          (errorMessage) => {}
+        );
+        
+        // Keep previous cameraFacing state
+        await initializeFocusControl();
+        
+        const cameraName = newFacing === "environment" ? "trasera" : "frontal";
+        toast({
+          title: "Cámara No Disponible",
+          description: `Cámara ${cameraName} no disponible. Continuando con la actual`,
+          variant: "destructive",
+        });
+      } catch (fallbackError: any) {
+        console.error("Fallback camera also failed:", fallbackError);
+        setIsScanning(false);
+        toast({
+          title: "Error de Cámara",
+          description: "No se pudo acceder a ninguna cámara",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const toggleFocusMode = async () => {
@@ -666,19 +748,30 @@ export default function QrScanner() {
               )}
               
               {isScanning && (
-                <div className="flex gap-2 items-stretch">
-                  <Button 
-                    variant={focusMode === "auto" ? "default" : "outline"} 
-                    onClick={toggleFocusMode}
-                    className="flex-1 min-h-[44px] touch-manipulation"
-                    data-testid="button-toggle-focus"
-                  >
-                    <Focus className="w-5 h-5 mr-2" />
-                    <span className="font-medium">{focusMode === "auto" ? "Auto" : "Manual"}</span>
-                  </Button>
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 rounded-md min-w-[70px]">
-                    <Zap className="w-4 h-4 text-amber-500" />
-                    <span className="font-semibold">60fps</span>
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-stretch">
+                    <Button 
+                      variant="outline"
+                      onClick={switchCamera}
+                      className="min-h-[44px] touch-manipulation"
+                      data-testid="button-switch-camera"
+                    >
+                      <SwitchCamera className="w-5 h-5 mr-2" />
+                      <span className="font-medium">{cameraFacing === "environment" ? "Trasera" : "Frontal"}</span>
+                    </Button>
+                    <Button 
+                      variant={focusMode === "auto" ? "default" : "outline"} 
+                      onClick={toggleFocusMode}
+                      className="flex-1 min-h-[44px] touch-manipulation"
+                      data-testid="button-toggle-focus"
+                    >
+                      <Focus className="w-5 h-5 mr-2" />
+                      <span className="font-medium">{focusMode === "auto" ? "Auto" : "Manual"}</span>
+                    </Button>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 rounded-md min-w-[70px]">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      <span className="font-semibold">60fps</span>
+                    </div>
                   </div>
                 </div>
               )}
