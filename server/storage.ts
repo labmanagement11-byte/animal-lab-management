@@ -1479,7 +1479,8 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(genotypingReports.companyId, companyId));
     }
     
-    const result = await query.orderBy(desc(genotypingReports.uploadedAt));
+    query = query.orderBy(desc(genotypingReports.uploadedAt));
+    const result = await query;
     return result;
   }
 

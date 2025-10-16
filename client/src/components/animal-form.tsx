@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -79,6 +79,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
   const [cageComboOpen, setCageComboOpen] = useState(false);
   const [genotypeComboOpen, setGenotypeComboOpen] = useState(false);
   const [newAllele, setNewAllele] = useState("");
+  const [hasLastAnimal, setHasLastAnimal] = useState(false);
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -161,6 +162,13 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
     },
     onSuccess: (_, variables) => {
       const quantity = parseInt(variables.quantity);
+      
+      // Save last animal data to localStorage for quick copy
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastAnimalData', JSON.stringify(variables));
+        setHasLastAnimal(true);
+      }
+      
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const queryKey = query.queryKey;
@@ -247,6 +255,43 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
     },
   });
 
+  const copyLastAnimal = () => {
+    const lastAnimalDataStr = localStorage.getItem('lastAnimalData');
+    if (!lastAnimalDataStr) {
+      toast({
+        title: "No previous animal",
+        description: "Create an animal first to use this feature.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const lastData = JSON.parse(lastAnimalDataStr) as AnimalFormData;
+      
+      // Generate new animal number
+      const newAnimalNumber = generateAnimalNumber();
+      
+      // Fill form with last animal data, but with new number
+      form.reset({
+        ...lastData,
+        animalNumber: newAnimalNumber,
+        quantity: "1", // Reset quantity to 1
+      });
+
+      toast({
+        title: "Success",
+        description: "Form filled with last animal data. Change the animal number if needed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load last animal data.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const onSubmit = (data: AnimalFormData) => {
     if (animal) {
       updateAnimalMutation.mutate(data);
@@ -255,10 +300,33 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
     }
   };
 
+  // Check localStorage for last animal data on mount and when dialog opens
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const lastAnimalData = localStorage.getItem('lastAnimalData');
+      setHasLastAnimal(!!lastAnimalData);
+    }
+  }, []);
+
   return (
     <div>
       <DialogHeader>
-        <DialogTitle>{animal ? 'Edit Animal' : 'Add New Animal'}</DialogTitle>
+        <div className="flex items-center justify-between">
+          <DialogTitle>{animal ? 'Edit Animal' : 'Add New Animal'}</DialogTitle>
+          {!animal && hasLastAnimal && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={copyLastAnimal}
+              className="ml-2"
+              data-testid="button-copy-last-animal"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Copy Last
+            </Button>
+          )}
+        </div>
       </DialogHeader>
       
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4 max-h-[80vh] overflow-y-auto">
