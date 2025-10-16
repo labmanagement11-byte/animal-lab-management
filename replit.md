@@ -14,6 +14,7 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: React 18 with TypeScript
 - **Styling**: Tailwind CSS with shadcn/ui for consistent, accessible design
 - **Responsiveness**: Mobile-first design with dedicated mobile navigation, touch-optimized inputs, and responsive sizing for padding, text, icons, and spacing.
+- **Accessibility**: Enhanced contrast in light mode with explicit color utilities (text-gray-600 dark:text-gray-400) for better readability.
 - **QR Code Printing**: Optimized CSS for Avery 8160 labels (3x10 grid per sheet) including custom text labels, QR code, and footer bar.
 
 ### Technical Implementations
