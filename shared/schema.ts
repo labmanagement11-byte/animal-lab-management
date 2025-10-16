@@ -115,6 +115,29 @@ export const genotypes = pgTable("genotypes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Genotyping Reports table - for storing uploaded genotyping reports
+export const genotypingReports = pgTable("genotyping_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  fileType: varchar("file_type").notNull(), // application/pdf, application/vnd.ms-excel, etc.
+  fileSize: integer("file_size"), // in bytes
+  filePath: varchar("file_path").notNull(), // object storage path
+  uploadedBy: varchar("uploaded_by").references(() => users.id).notNull(),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Junction table for many-to-many relationship between reports and strains
+export const genotypingReportStrains = pgTable("genotyping_report_strains", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reportId: varchar("report_id").references(() => genotypingReports.id, { onDelete: 'cascade' }).notNull(),
+  strainId: varchar("strain_id").references(() => strains.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // File attachments table
 export const fileAttachments = pgTable("file_attachments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -356,6 +379,18 @@ export const insertGenotypeSchema = createInsertSchema(genotypes).omit({
   createdAt: true,
 });
 
+export const insertGenotypingReportSchema = createInsertSchema(genotypingReports).omit({
+  id: true,
+  createdAt: true,
+  deletedAt: true,
+  deletedBy: true,
+});
+
+export const insertGenotypingReportStrainSchema = createInsertSchema(genotypingReportStrains).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserInvitationSchema = createInsertSchema(userInvitations).omit({
   id: true,
   createdAt: true,
@@ -386,6 +421,12 @@ export type InsertStrain = z.infer<typeof insertStrainSchema>;
 
 export type Genotype = typeof genotypes.$inferSelect;
 export type InsertGenotype = z.infer<typeof insertGenotypeSchema>;
+
+export type GenotypingReport = typeof genotypingReports.$inferSelect;
+export type InsertGenotypingReport = z.infer<typeof insertGenotypingReportSchema>;
+
+export type GenotypingReportStrain = typeof genotypingReportStrains.$inferSelect;
+export type InsertGenotypingReportStrain = z.infer<typeof insertGenotypingReportStrainSchema>;
 
 export type UserInvitation = typeof userInvitations.$inferSelect;
 export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;
