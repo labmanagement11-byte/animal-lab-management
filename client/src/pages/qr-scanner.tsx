@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Cage, QrCode as QrCodeType } from "@shared/schema";
+import { Html5Qrcode } from "html5-qrcode";
 
 interface ScannedAnimalData {
   animalId: string;
@@ -40,6 +41,7 @@ export default function QrScanner() {
   const [blankQrData, setBlankQrData] = useState<BlankQrData | null>(null);
   const [selectedCageId, setSelectedCageId] = useState<string>("");
   const [qrClaimed, setQrClaimed] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const { data: cages } = useQuery<Cage[]>({
@@ -97,17 +99,107 @@ export default function QrScanner() {
     }
   };
 
-  const startCamera = async () => {
+  const handleScanSuccess = async (decodedText: string) => {
+    // Try to fetch animal/QR data from the scanned URL or ID
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
+      // Check if it's a QR code URL or direct ID
+      const qrId = decodedText.includes('/qr/') 
+        ? decodedText.split('/qr/').pop()?.split('?')[0]
+        : decodedText;
+
+      if (!qrId) {
+        toast({
+          title: "Invalid QR Code",
+          description: "Could not extract ID from scanned code",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Try to fetch QR code data
+      const response = await fetch(`/api/qr-codes/${qrId}`, { credentials: 'include' });
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsScanning(true);
+      if (response.ok) {
+        const qrData = await response.json();
+        
+        // Check if it's a blank QR code or linked to animal/cage
+        if (qrData.status === 'available' || qrData.status === 'unused') {
+          // Blank QR code
+          setBlankQrData({
+            id: qrData.id,
+            qrData: decodedText,
+            isBlank: true,
+          });
+          setScannedData(null);
+          setQrClaimed(false);
+          await stopCamera();
+          
+          toast({
+            title: "Blank QR Code Scanned",
+            description: "Link this QR code to a cage below",
+          });
+        } else if (qrData.animalId) {
+          // QR linked to animal - fetch animal data
+          const animalResponse = await fetch(`/api/animals/${qrData.animalId}`, { credentials: 'include' });
+          if (animalResponse.ok) {
+            const animalData = await animalResponse.json();
+            setScannedData({
+              animalId: animalData.id,
+              animalNumber: animalData.animalNumber,
+              cageId: animalData.cageId,
+              breed: animalData.breed,
+              age: animalData.age,
+              weight: animalData.weight,
+              gender: animalData.gender,
+              healthStatus: animalData.healthStatus,
+              diseases: animalData.diseases,
+              notes: animalData.notes,
+            });
+            setBlankQrData(null);
+            setQrClaimed(false);
+            await stopCamera();
+            
+            toast({
+              title: "QR Code Scanned",
+              description: "Animal information loaded successfully",
+            });
+          }
+        }
       }
     } catch (error) {
+      console.error("Error processing scanned QR:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process scanned QR code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      const scanner = new Html5Qrcode("qr-reader");
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        handleScanSuccess,
+        (errorMessage) => {
+          // Ignore scan errors (they happen frequently when no QR is in view)
+        }
+      );
+      
+      setIsScanning(true);
+      toast({
+        title: "Scanner Started",
+        description: "Point camera at QR code to scan",
+      });
+    } catch (error) {
+      console.error("Camera error:", error);
       toast({
         title: "Camera Error",
         description: "Unable to access camera. Please check permissions.",
@@ -116,11 +208,15 @@ export default function QrScanner() {
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+  const stopCamera = async () => {
+    if (scannerRef.current && isScanning) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      } catch (error) {
+        console.error("Error stopping scanner:", error);
+      }
     }
     setIsScanning(false);
   };
@@ -221,17 +317,7 @@ export default function QrScanner() {
                   </div>
                 </div>
               ) : (
-                <div className="aspect-square relative">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-48 h-48 border-2 border-primary rounded-lg"></div>
-                  </div>
-                </div>
+                <div id="qr-reader" className="w-full"></div>
               )}
               
               <div className="flex flex-col space-y-2">
