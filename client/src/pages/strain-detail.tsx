@@ -4,11 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Beaker, Box, Users, MoreVertical } from "lucide-react";
+import { ArrowLeft, Beaker, Box, Users, MoreVertical, FileText, File, Download } from "lucide-react";
 import type { Strain, Cage, Animal } from "@shared/schema";
 import { formatDate } from "@/utils/dateUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+interface GenotypingReport {
+  id: string;
+  fileName: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+  filePath: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  companyId: string;
+}
 
 export default function StrainDetail() {
   const [, params] = useRoute("/strains/:id");
@@ -27,6 +39,11 @@ export default function StrainDetail() {
 
   const { data: animals, isLoading: animalsLoading } = useQuery<Animal[]>({
     queryKey: ['/api/animals'],
+  });
+
+  const { data: genotypingReports, isLoading: reportsLoading } = useQuery<GenotypingReport[]>({
+    queryKey: strainId ? ['/api/genotyping-reports/strain', strainId] : ['/api/genotyping-reports'],
+    enabled: !!strainId,
   });
 
   const updateAnimalStatusMutation = useMutation({
@@ -86,6 +103,35 @@ export default function StrainDetail() {
 
   const handleStatusChange = (animal: Animal, newStatus: string) => {
     updateAnimalStatusMutation.mutate({ animal, status: newStatus });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatReportDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.includes('pdf')) {
+      return <FileText className="w-8 h-8 text-red-500" />;
+    }
+    return <File className="w-8 h-8 text-green-500" />;
+  };
+
+  const handleDownloadReport = (report: GenotypingReport) => {
+    window.open(report.filePath, '_blank');
   };
 
   if (isLoading) {
@@ -403,6 +449,66 @@ export default function StrainDetail() {
             <div className="text-center py-8">
               <Users className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">No animals with this strain</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Genotyping Reports */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Genotyping Reports ({genotypingReports?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {reportsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : genotypingReports && genotypingReports.length > 0 ? (
+            <div className="space-y-3">
+              {genotypingReports.map((report) => (
+                <div
+                  key={report.id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => handleDownloadReport(report)}
+                  data-testid={`report-${report.id}`}
+                >
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                    <div className="flex-shrink-0">
+                      {getFileIcon(report.fileType)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground truncate">{report.originalName}</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-sm text-muted-foreground">
+                        <span>{formatFileSize(report.fileSize)}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="truncate">{formatReportDate(report.uploadedAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadReport(report);
+                    }}
+                    data-testid={`button-download-${report.id}`}
+                    className="self-end sm:self-auto"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    <span className="sm:inline">Open</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">No genotyping reports for this strain</p>
             </div>
           )}
         </CardContent>
