@@ -33,6 +33,8 @@ Preferred communication style: Simple, everyday language.
 - **QR Code Integration**:
     - Dynamic QR code generation with metadata.
     - In-app camera-based QR code scanning using `html5-qrcode` to identify and fetch animal/QR data.
+    - **Camera Controls**: Front/rear camera selector with automatic fallback, manual/auto focus modes with tap-to-focus, 60 FPS scanning, HD video (1920x1080), responsive QR box (75% viewport).
+    - **Mobile Optimized Scanner**: Touch-optimized controls (44px+ buttons), dual touch/mouse event support, visual focus indicators, Spanish UI for accessibility.
     - Generation of "blank" QR codes with custom labels for Avery 8160 sheets (30 per batch) with auto-fill option.
     - **Dashboard**: Summary cards for "Used", "Blank", and "Deleted" QR codes with real-time counts and interactive selection for export. "Used" and "Blank" counts differentiate between `status='used'` and `status='unused'/'available'`.
     - **Export**: Multi-format export (CSV, Excel, PDF) of selected QR code categories with automated naming and professional formatting.
