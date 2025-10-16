@@ -188,6 +188,26 @@ export default function QrScanner() {
         }
       }
 
+      // First set isScanning to true so the div appears
+      setIsScanning(true);
+
+      // Wait for React to render the div - check for element existence
+      const waitForElement = async (id: string, maxAttempts = 50) => {
+        for (let i = 0; i < maxAttempts; i++) {
+          if (document.getElementById(id)) {
+            return true;
+          }
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        return false;
+      };
+
+      const elementExists = await waitForElement("qr-reader");
+      if (!elementExists) {
+        setIsScanning(false);
+        throw new Error("Scanner element failed to render");
+      }
+
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
@@ -204,6 +224,11 @@ export default function QrScanner() {
             // Ignore scan errors (they happen frequently when no QR is in view)
           }
         );
+        
+        toast({
+          title: "Escáner Iniciado",
+          description: "Apunta la cámara al código QR para escanear",
+        });
       } catch (envError) {
         console.log("Rear camera not available, trying front camera:", envError);
         // If rear camera fails, try front camera
@@ -216,27 +241,38 @@ export default function QrScanner() {
               // Ignore scan errors
             }
           );
+          
+          toast({
+            title: "Escáner Iniciado",
+            description: "Apunta la cámara al código QR para escanear",
+          });
         } catch (userError) {
           console.log("Front camera failed, trying any available camera:", userError);
           // If both fail, try any available camera
-          await scanner.start(
-            { facingMode: { ideal: "environment" } },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            handleScanSuccess,
-            (errorMessage) => {
-              // Ignore scan errors
-            }
-          );
+          try {
+            await scanner.start(
+              { facingMode: { ideal: "environment" } },
+              { fps: 10, qrbox: { width: 250, height: 250 } },
+              handleScanSuccess,
+              (errorMessage) => {
+                // Ignore scan errors
+              }
+            );
+            
+            toast({
+              title: "Escáner Iniciado",
+              description: "Apunta la cámara al código QR para escanear",
+            });
+          } catch (finalError) {
+            // All attempts failed
+            setIsScanning(false);
+            throw finalError;
+          }
         }
       }
-      
-      setIsScanning(true);
-      toast({
-        title: "Escáner Iniciado",
-        description: "Apunta la cámara al código QR para escanear",
-      });
     } catch (error) {
       console.error("Camera error:", error);
+      setIsScanning(false);
       toast({
         title: "Error de Cámara",
         description: "No se puede acceder a la cámara. Por favor verifica los permisos en la configuración de tu navegador.",
