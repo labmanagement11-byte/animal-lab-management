@@ -2,10 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
-import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema, insertCompanySchema, insertUserSchema } from "@shared/schema";
+import { insertAnimalSchema, insertCageSchema, insertQrCodeSchema, insertStrainSchema, insertGenotypeSchema, insertUserInvitationSchema, insertCompanySchema, insertUserSchema, insertGenotypingReportSchema, insertGenotypingReportStrainSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import passport from "passport";
+import multer from "multer";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 // Helper function to get user ID from session (supports both OIDC and local auth)
 function getUserIdFromSession(sessionUser: any): string {
@@ -1848,6 +1850,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error batch deleting strains:", error);
       res.status(500).json({ message: "Failed to batch delete strains" });
+    }
+  });
+
+  // Genotyping Reports routes
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF and Excel files are allowed'));
+      }
+    }
+  });
+
+  // Get upload URL for object entity
+  app.post('/api/genotyping-reports/upload-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const { fileName } = req.body;
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL(fileName || undefined);
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Create genotyping report after file upload
+  app.post('/api/genotyping-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const { fileURL, fileName, fileType, fileSize, strainIds } = req.body;
+
+      // Normalize object path and set ACL policy
+      const filePath = await objectStorageService.trySetObjectEntityAclPolicy(
+        fileURL,
+        {
+          owner: getUserIdFromSession(req.user),
+          visibility: "private"
+        }
+      );
+
+      // Create report in database
+      const reportData = {
+        companyId: user.companyId || (() => { throw new Error('User has no company assigned'); })(),
+        fileName: fileName,
+        originalName: fileName,
+        fileType: fileType,
+        fileSize: fileSize,
+        filePath: filePath,
+        uploadedBy: getUserIdFromSession(req.user),
+      };
+
+      const validatedData = insertGenotypingReportSchema.parse(reportData);
+      const report = await storage.createGenotypingReport(validatedData);
+
+      // Associate with strains
+      if (strainIds && Array.isArray(strainIds) && strainIds.length > 0) {
+        for (const strainId of strainIds) {
+          await storage.createGenotypingReportStrain({
+            reportId: report.id,
+            strainId: strainId,
+          });
+        }
+      }
+
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Error creating genotyping report:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      if (error instanceof Error && error.message === 'User has no company assigned') {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      res.status(500).json({ message: "Failed to create genotyping report" });
+    }
+  });
+
+  // Get all genotyping reports
+  app.get('/api/genotyping-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      const reports = await storage.getGenotypingReports(companyId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching genotyping reports:", error);
+      res.status(500).json({ message: "Failed to fetch genotyping reports" });
+    }
+  });
+
+  // Get reports for a specific strain
+  app.get('/api/genotyping-reports/strain/:strainId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      const reports = await storage.getGenotypingReportsByStrain(req.params.strainId, companyId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching strain reports:", error);
+      res.status(500).json({ message: "Failed to fetch strain reports" });
+    }
+  });
+
+  // Download/serve genotyping report file
+  app.get('/objects/:objectPath(*)', isAuthenticated, async (req: any, res) => {
+    const userId = getUserIdFromSession(req.user);
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: undefined,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Delete genotyping report
+  app.delete('/api/genotyping-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(getUserIdFromSession(req.user));
+      let companyId: string | undefined;
+      try {
+        companyId = getCompanyIdForUser(user);
+      } catch (error) {
+        return res.status(403).json({ message: "User has no company assigned" });
+      }
+      
+      const userId = getUserIdFromSession(req.user);
+      await storage.deleteGenotypingReport(req.params.id, userId, companyId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting genotyping report:", error);
+      res.status(500).json({ message: "Failed to delete genotyping report" });
     }
   });
 

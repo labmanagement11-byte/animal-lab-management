@@ -35,6 +35,13 @@ Preferred communication style: Simple, everyday language.
     - **Export**: Multi-format export (CSV, Excel, PDF) of selected QR code categories with automated naming and professional formatting.
     - **Lifecycle Management**: QR codes transition through `available` → `unused` → `used` states, enforced as one-way. "Mark as Used" functionality and correct status updates upon cage assignment.
     - **Strain Color Memory**: Automatic saving of strain-color associations upon QR code printing, with auto-completion and manual override.
+- **Genotyping Reports**: 
+    - File upload system for PDF and Excel genotyping history reports (50MB max file size).
+    - Multi-strain association: Each report can be linked to multiple strains via many-to-many relationship.
+    - Secure file storage using Replit Object Storage with ACL-based access control.
+    - Protected file downloads restricted to authenticated users with proper permissions.
+    - File management: List, download, and delete reports with automatic cleanup of associated data.
+    - Company-based data isolation: Reports are scoped to user's company (except Admin users who have global access).
 
 ## External Dependencies
 

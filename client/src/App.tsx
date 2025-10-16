@@ -12,6 +12,7 @@ import Cages from "@/pages/cages";
 import Strains from "@/pages/strains";
 import StrainDetail from "@/pages/strain-detail";
 import Genotypes from "@/pages/genotypes";
+import GenotypingReports from "@/pages/genotyping-reports";
 import Companies from "@/pages/companies";
 import CompanyDetail from "@/pages/company-detail";
 import QrScanner from "@/pages/qr-scanner";
@@ -117,6 +118,7 @@ function AppContent() {
             <Route path="/strains/:id" component={StrainDetail} />
             <Route path="/strains" component={Strains} />
             <Route path="/genotypes" component={Genotypes} />
+            <Route path="/genotyping-reports" component={GenotypingReports} />
             <Route path="/qr-scanner" component={QrScanner} />
             <Route path="/qr-codes" component={QrCodes} />
             <Route path="/health-alerts" component={HealthAlerts} />

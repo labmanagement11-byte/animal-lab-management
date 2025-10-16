@@ -7,6 +7,8 @@ import {
   fileAttachments,
   strains,
   genotypes,
+  genotypingReports,
+  genotypingReportStrains,
   userInvitations,
   companies,
   strainColors,
@@ -26,6 +28,10 @@ import {
   type InsertStrain,
   type Genotype,
   type InsertGenotype,
+  type GenotypingReport,
+  type InsertGenotypingReport,
+  type GenotypingReportStrain,
+  type InsertGenotypingReportStrain,
   type UserInvitation,
   type InsertUserInvitation,
   type Company,
@@ -144,6 +150,14 @@ export interface IStorage {
   getGenotype(id: string, companyId?: string): Promise<Genotype | undefined>;
   createGenotype(genotype: InsertGenotype): Promise<Genotype>;
   deleteGenotype(id: string): Promise<void>;
+
+  // Genotyping Report operations
+  getGenotypingReports(companyId?: string): Promise<GenotypingReport[]>;
+  getGenotypingReport(id: string, companyId?: string): Promise<GenotypingReport | undefined>;
+  createGenotypingReport(report: InsertGenotypingReport): Promise<GenotypingReport>;
+  deleteGenotypingReport(id: string, userId: string, companyId?: string): Promise<void>;
+  createGenotypingReportStrain(data: InsertGenotypingReportStrain): Promise<GenotypingReportStrain>;
+  getGenotypingReportsByStrain(strainId: string, companyId?: string): Promise<GenotypingReport[]>;
 
   // User invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
@@ -1453,6 +1467,93 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGenotype(id: string): Promise<void> {
     await db.delete(genotypes).where(eq(genotypes.id, id));
+  }
+
+  // Genotyping Report operations
+  async getGenotypingReports(companyId?: string): Promise<GenotypingReport[]> {
+    let query = db
+      .select()
+      .from(genotypingReports);
+    
+    if (companyId) {
+      query = query.where(eq(genotypingReports.companyId, companyId));
+    }
+    
+    const result = await query.orderBy(desc(genotypingReports.uploadedAt));
+    return result;
+  }
+
+  async getGenotypingReport(id: string, companyId?: string): Promise<GenotypingReport | undefined> {
+    const [report] = await db
+      .select()
+      .from(genotypingReports)
+      .where(
+        companyId 
+          ? and(eq(genotypingReports.id, id), eq(genotypingReports.companyId, companyId))
+          : eq(genotypingReports.id, id)
+      );
+    return report;
+  }
+
+  async createGenotypingReport(reportData: InsertGenotypingReport): Promise<GenotypingReport> {
+    const [report] = await db
+      .insert(genotypingReports)
+      .values(reportData)
+      .returning();
+    return report;
+  }
+
+  async deleteGenotypingReport(id: string, userId: string, companyId?: string): Promise<void> {
+    // First verify the report exists and user has permission
+    const report = await this.getGenotypingReport(id, companyId);
+    if (!report) {
+      throw new Error('Report not found');
+    }
+
+    // Delete associated strain relationships first
+    await db
+      .delete(genotypingReportStrains)
+      .where(eq(genotypingReportStrains.reportId, id));
+
+    // Then delete the report
+    await db
+      .delete(genotypingReports)
+      .where(eq(genotypingReports.id, id));
+  }
+
+  async createGenotypingReportStrain(data: InsertGenotypingReportStrain): Promise<GenotypingReportStrain> {
+    const [reportStrain] = await db
+      .insert(genotypingReportStrains)
+      .values(data)
+      .returning();
+    return reportStrain;
+  }
+
+  async getGenotypingReportsByStrain(strainId: string, companyId?: string): Promise<GenotypingReport[]> {
+    const result = await db
+      .select({
+        id: genotypingReports.id,
+        companyId: genotypingReports.companyId,
+        fileName: genotypingReports.fileName,
+        originalName: genotypingReports.originalName,
+        fileType: genotypingReports.fileType,
+        fileSize: genotypingReports.fileSize,
+        filePath: genotypingReports.filePath,
+        uploadedBy: genotypingReports.uploadedBy,
+        uploadedAt: genotypingReports.uploadedAt,
+      })
+      .from(genotypingReports)
+      .innerJoin(genotypingReportStrains, eq(genotypingReportStrains.reportId, genotypingReports.id))
+      .where(
+        companyId
+          ? and(
+              eq(genotypingReportStrains.strainId, strainId),
+              eq(genotypingReports.companyId, companyId)
+            )
+          : eq(genotypingReportStrains.strainId, strainId)
+      )
+      .orderBy(desc(genotypingReports.uploadedAt));
+    return result;
   }
 
   // User invitation operations

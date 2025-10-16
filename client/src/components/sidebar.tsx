@@ -60,6 +60,7 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
     { id: 'cages', label: t.nav.cages as string, icon: Home, path: '/cages' },
     { id: 'strains', label: t.nav.strains as string, icon: Dna, path: '/strains' },
     { id: 'genotypes', label: 'Genotypes', icon: Dna, path: '/genotypes' },
+    { id: 'genotyping-reports', label: 'Genotyping Reports', icon: FileText, path: '/genotyping-reports' },
     { id: 'blank-qr', label: t.nav.blankQr as string, icon: QrCode, path: '/blank-qr' },
     { id: 'reports', label: t.nav.reports as string, icon: FileText, path: '/reports' },
     { id: 'trash', label: t.nav.trash as string, icon: Trash2, path: '/trash' },
