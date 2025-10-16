@@ -14,7 +14,8 @@ import {
   Sun,
   Trash2,
   ChevronRight,
-  Languages
+  Languages,
+  Scan
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/theme-context";
@@ -60,6 +61,7 @@ export default function MobileMenu({ open, onOpenChange, onNavigate }: MobileMen
     { id: 'animals', label: t.nav.animals as string, icon: QrCode, path: '/animals' },
     { id: 'cages', label: t.nav.cages as string, icon: Home, path: '/cages' },
     { id: 'strains', label: t.nav.strains as string, icon: Dna, path: '/strains' },
+    { id: 'qr-scanner', label: 'QR Scanner', icon: Scan, path: '/qr-scanner' },
     { id: 'genotyping-reports', label: 'Genotyping Reports', icon: FileText, path: '/genotyping-reports' },
     { id: 'blank-qr', label: t.nav.blankQr as string, icon: QrCode, path: '/blank-qr' },
     { id: 'reports', label: t.nav.reports as string, icon: FileText, path: '/reports' },
