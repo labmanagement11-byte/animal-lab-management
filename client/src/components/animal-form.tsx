@@ -376,7 +376,7 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
   return (
     <div>
       <DialogHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <DialogTitle>{animal ? 'Edit Animal' : 'Add New Animal'}</DialogTitle>
           {!animal && hasLastAnimal && (
             <Button
@@ -384,11 +384,11 @@ export default function AnimalForm({ animal, onClose, initialCageId }: AnimalFor
               variant="outline"
               size="sm"
               onClick={copyLastAnimal}
-              className="ml-2"
+              className="w-full sm:w-auto"
               data-testid="button-copy-last-animal"
             >
               <Plus className="w-4 h-4 mr-1" />
-              Copy Last
+              Copy Last Animal
             </Button>
           )}
         </div>
