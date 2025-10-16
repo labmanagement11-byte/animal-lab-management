@@ -111,13 +111,13 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{t.dashboard.totalAnimals}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{t.dashboard.totalAnimals}</p>
                     <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-total-animals">
                       {stats?.totalAnimals || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
-                      <TrendingUp className="w-4 h-4 text-green-500" />
-                      <span className="text-xs text-green-500">{t.dashboard.active}</span>
+                      <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-500" />
+                      <span className="text-xs text-green-600 dark:text-green-500">{t.dashboard.active}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
@@ -135,12 +135,12 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{t.dashboard.activeCages}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{t.dashboard.activeCages}</p>
                     <p className="text-3xl font-bold text-foreground mt-2" data-testid="text-active-cages">
                       {stats?.activeCages || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
-                      <span className="text-xs text-muted-foreground">{t.dashboard.inUse}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">{t.dashboard.inUse}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-2xl flex items-center justify-center">
@@ -158,20 +158,20 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{t.dashboard.qrCodes}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{t.dashboard.qrCodes}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <div>
                         <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-qr-codes-in-use">
                           {stats?.qrCodesInUse || 0}
                         </p>
-                        <span className="text-xs text-muted-foreground">In Use</span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">In Use</span>
                       </div>
-                      <span className="text-2xl text-muted-foreground">/</span>
+                      <span className="text-2xl text-gray-500 dark:text-gray-400">/</span>
                       <div>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-qr-codes-blank">
                           {stats?.qrCodesBlank || 0}
                         </p>
-                        <span className="text-xs text-muted-foreground">Blank</span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">Blank</span>
                       </div>
                     </div>
                   </div>
@@ -190,13 +190,13 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{t.dashboard.healthAlerts}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{t.dashboard.healthAlerts}</p>
                     <p className="text-3xl font-bold text-destructive mt-2" data-testid="text-health-alerts">
                       {stats?.healthAlerts || 0}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
-                      <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      <span className="text-xs text-orange-500">{t.dashboard.attention}</span>
+                      <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-500" />
+                      <span className="text-xs text-orange-600 dark:text-orange-500">{t.dashboard.attention}</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-2xl flex items-center justify-center">
@@ -214,11 +214,11 @@ export default function Dashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">QR Scanner</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">QR Scanner</p>
                     <p className="text-xl font-semibold text-foreground mt-2">Scan QR Codes</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <Scan className="w-4 h-4 text-purple-500" />
-                      <span className="text-xs text-purple-500">Quick Access</span>
+                      <Scan className="w-4 h-4 text-purple-600 dark:text-purple-500" />
+                      <span className="text-xs text-purple-600 dark:text-purple-500">Quick Access</span>
                     </div>
                   </div>
                   <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-2xl flex items-center justify-center">
