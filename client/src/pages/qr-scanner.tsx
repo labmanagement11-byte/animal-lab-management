@@ -260,20 +260,17 @@ export default function QrScanner() {
         },
         aspectRatio: 1.0, // Square aspect ratio for QR codes
         disableFlip: false, // Enable mirroring if needed
-      };
-
-      // Advanced video constraints for optimal QR scanning
-      const videoConstraints: any = {
-        facingMode: "environment",
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
+        videoConstraints: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        }
       };
 
       // Try to get camera permissions first
       try {
         // First try with rear camera (environment) with enhanced settings
         const cameraStartPromise = scanner.start(
-          videoConstraints,
+          { facingMode: "environment" },
           config,
           handleScanSuccess,
           (errorMessage) => {
@@ -288,8 +285,20 @@ export default function QrScanner() {
           title: "Escáner Iniciado",
           description: "Apunta la cámara al código QR para escanear",
         });
-      } catch (envError) {
-        console.log("Rear camera not available, trying front camera:", envError);
+      } catch (envError: any) {
+        console.error("Rear camera error:", envError);
+        
+        // Check for permission denied
+        if (envError?.name === 'NotAllowedError' || envError?.name === 'PermissionDeniedError') {
+          setIsScanning(false);
+          toast({
+            title: "Permiso Denegado",
+            description: "Debes permitir el acceso a la cámara en tu navegador",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         // If rear camera fails, try front camera
         try {
           await scanner.start(
@@ -305,10 +314,22 @@ export default function QrScanner() {
           
           toast({
             title: "Escáner Iniciado",
-            description: "Apunta la cámara al código QR para escanear",
+            description: "Usando cámara frontal. Apunta al código QR",
           });
-        } catch (userError) {
-          console.log("Front camera failed, trying any available camera:", userError);
+        } catch (userError: any) {
+          console.error("Front camera error:", userError);
+          
+          // Check for permission denied
+          if (userError?.name === 'NotAllowedError' || userError?.name === 'PermissionDeniedError') {
+            setIsScanning(false);
+            toast({
+              title: "Permiso Denegado",
+              description: "Debes permitir el acceso a la cámara en tu navegador",
+              variant: "destructive",
+            });
+            return;
+          }
+          
           // If both fail, try any available camera with basic config
           try {
             await scanner.start(
@@ -326,19 +347,52 @@ export default function QrScanner() {
               title: "Escáner Iniciado",
               description: "Apunta la cámara al código QR para escanear",
             });
-          } catch (finalError) {
-            // All attempts failed
+          } catch (finalError: any) {
+            console.error("All camera attempts failed:", finalError);
             setIsScanning(false);
-            throw finalError;
+            
+            let errorMessage = "No se pudo acceder a ninguna cámara";
+            
+            if (finalError?.name === 'NotAllowedError' || finalError?.name === 'PermissionDeniedError') {
+              errorMessage = "Debes permitir el acceso a la cámara en tu navegador";
+            } else if (finalError?.name === 'NotFoundError' || finalError?.name === 'DevicesNotFoundError') {
+              errorMessage = "No se encontró ninguna cámara en este dispositivo";
+            } else if (finalError?.name === 'NotReadableError' || finalError?.name === 'TrackStartError') {
+              errorMessage = "La cámara está siendo usada por otra aplicación";
+            } else if (finalError?.name === 'NotSupportedError') {
+              errorMessage = "Tu navegador no soporta acceso a la cámara";
+            }
+            
+            toast({
+              title: "Error de Cámara",
+              description: errorMessage,
+              variant: "destructive",
+            });
+            return;
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Camera error:", error);
       setIsScanning(false);
+      
+      let errorMessage = "No se pudo iniciar el escáner";
+      
+      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
+        errorMessage = "Debes permitir el acceso a la cámara en tu navegador. Haz clic en el ícono de candado 🔒 en la barra de direcciones";
+      } else if (error?.name === 'NotFoundError') {
+        errorMessage = "No se encontró ninguna cámara en este dispositivo";
+      } else if (error?.name === 'NotReadableError') {
+        errorMessage = "La cámara está en uso por otra aplicación. Cierra otras apps que usen la cámara";
+      } else if (error?.name === 'NotSupportedError') {
+        errorMessage = "Este navegador no soporta acceso a la cámara. Intenta con Chrome, Firefox o Safari";
+      } else if (error?.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
       toast({
         title: "Error de Cámara",
-        description: "No se puede acceder a la cámara. Por favor verifica los permisos en la configuración de tu navegador.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
