@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Camera, CheckCircle } from "lucide-react";
+import { QrCode, Camera, CheckCircle, Focus, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,8 +41,11 @@ export default function QrScanner() {
   const [blankQrData, setBlankQrData] = useState<BlankQrData | null>(null);
   const [selectedCageId, setSelectedCageId] = useState<string>("");
   const [qrClaimed, setQrClaimed] = useState(false);
+  const [focusMode, setFocusMode] = useState<"auto" | "manual">("auto");
+  const [torch, setTorch] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -96,6 +99,38 @@ export default function QrScanner() {
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const initializeFocusControl = async () => {
+    // Wait for video element to be ready
+    let video: HTMLVideoElement | null = null;
+    for (let i = 0; i < 20; i++) {
+      video = document.querySelector('#qr-reader video') as HTMLVideoElement;
+      if (video && video.srcObject) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    if (!video || !video.srcObject) {
+      console.log("Video element not found for focus control");
+      return;
+    }
+    
+    // Store video stream reference for focus control
+    videoStreamRef.current = video.srcObject as MediaStream;
+    
+    // Apply initial focus settings
+    const track = videoStreamRef.current.getVideoTracks()[0];
+    const capabilities = track.getCapabilities?.() as any;
+    
+    if (capabilities?.focusMode) {
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: focusMode === "auto" ? "continuous" : "manual" } as any]
+        });
+      } catch (e) {
+        console.log("Focus mode not supported:", e);
+      }
     }
   };
 
@@ -213,30 +248,41 @@ export default function QrScanner() {
 
       // Enhanced camera configuration for better quality and QR detection
       const config = { 
-        fps: 30, // Higher fps for smoother scanning
+        fps: 60, // Higher fps for faster, smoother scanning
         qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
-          // Dynamic QR box size - 70% of the smaller dimension
+          // Dynamic QR box size - 75% of the smaller dimension
           const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-          const qrboxSize = Math.floor(minEdgeSize * 0.7);
+          const qrboxSize = Math.floor(minEdgeSize * 0.75);
           return {
             width: qrboxSize,
             height: qrboxSize
           };
         },
         aspectRatio: 1.0, // Square aspect ratio for QR codes
+        disableFlip: false, // Enable mirroring if needed
+      };
+
+      // Advanced video constraints for optimal QR scanning
+      const videoConstraints: any = {
+        facingMode: "environment",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
       };
 
       // Try to get camera permissions first
       try {
         // First try with rear camera (environment) with enhanced settings
-        await scanner.start(
-          { facingMode: "environment" },
+        const cameraStartPromise = scanner.start(
+          videoConstraints,
           config,
           handleScanSuccess,
           (errorMessage) => {
             // Ignore scan errors (they happen frequently when no QR is in view)
           }
         );
+
+        await cameraStartPromise;
+        await initializeFocusControl();
         
         toast({
           title: "Escáner Iniciado",
@@ -255,6 +301,8 @@ export default function QrScanner() {
             }
           );
           
+          await initializeFocusControl();
+          
           toast({
             title: "Escáner Iniciado",
             description: "Apunta la cámara al código QR para escanear",
@@ -271,6 +319,8 @@ export default function QrScanner() {
                 // Ignore scan errors
               }
             );
+            
+            await initializeFocusControl();
             
             toast({
               title: "Escáner Iniciado",
@@ -304,7 +354,142 @@ export default function QrScanner() {
         console.error("Error stopping scanner:", error);
       }
     }
+    videoStreamRef.current = null;
     setIsScanning(false);
+  };
+
+  const toggleFocusMode = async () => {
+    if (!videoStreamRef.current) return;
+    
+    const track = videoStreamRef.current.getVideoTracks()[0];
+    const capabilities = track.getCapabilities?.() as any;
+    
+    if (!capabilities?.focusMode) {
+      toast({
+        title: "No disponible",
+        description: "Este dispositivo no soporta control de enfoque",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newMode = focusMode === "auto" ? "manual" : "auto";
+    
+    // Check if manual mode is actually supported
+    if (newMode === "manual" && !capabilities.focusMode.includes("manual")) {
+      toast({
+        title: "No disponible",
+        description: "Enfoque manual no soportado en este dispositivo",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await track.applyConstraints({
+        advanced: [{ focusMode: newMode === "auto" ? "continuous" : "manual" } as any]
+      });
+      
+      setFocusMode(newMode);
+      
+      toast({
+        title: `Enfoque ${newMode === "auto" ? "Automático" : "Manual"}`,
+        description: newMode === "auto" ? "El enfoque se ajustará automáticamente" : "Toca la pantalla para enfocar",
+      });
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar el modo de enfoque",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFocusTap = async (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    if (focusMode !== "manual" || !videoStreamRef.current) return;
+    
+    const track = videoStreamRef.current.getVideoTracks()[0];
+    const capabilities = track.getCapabilities?.() as any;
+    
+    // Check if any form of manual focus is supported
+    if (!capabilities?.pointsOfInterest && !capabilities?.focusDistance) {
+      // Fall back to auto focus mode with proper constraints
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: "continuous" } as any]
+        });
+        setFocusMode("auto");
+        toast({
+          title: "Modo Auto",
+          description: "Enfoque manual no soportado. Cambiado a modo automático",
+          variant: "destructive",
+        });
+      } catch (e) {
+        console.log("Failed to revert to auto focus:", e);
+      }
+      return;
+    }
+    
+    try {
+      // Calculate focus point based on tap/touch position
+      const rect = e.currentTarget.getBoundingClientRect();
+      let clientX: number;
+      let clientY: number;
+      
+      if ('touches' in e) {
+        // Touch event
+        const touch = e.touches[0] || e.changedTouches[0];
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        // Mouse event
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+      
+      // Try pointsOfInterest first (more precise)
+      if (capabilities?.pointsOfInterest) {
+        await track.applyConstraints({
+          advanced: [{ 
+            focusMode: "manual",
+            pointsOfInterest: [{ x, y }]
+          } as any]
+        });
+      } else if (capabilities?.focusDistance) {
+        // Fallback to focusDistance adjustment
+        const distance = 1.0 - Math.sqrt(x * x + y * y) / Math.sqrt(2);
+        await track.applyConstraints({
+          advanced: [{ 
+            focusMode: "manual",
+            focusDistance: Math.max(0, Math.min(1, distance))
+          } as any]
+        });
+      }
+      
+      toast({
+        title: "Enfocando",
+        description: `Punto ajustado (${Math.round(x * 100)}%, ${Math.round(y * 100)}%)`,
+      });
+    } catch (error) {
+      console.log("Tap-to-focus failed, reverting to auto:", error);
+      // Revert to auto focus on failure
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: "continuous" } as any]
+        });
+        setFocusMode("auto");
+        toast({
+          title: "Modo Auto",
+          description: "Error en enfoque manual. Cambiado a modo automático",
+          variant: "destructive",
+        });
+      } catch (e) {
+        console.log("Failed to revert to auto focus:", e);
+      }
+    }
   };
 
   const simulateQrScan = () => {
@@ -395,39 +580,100 @@ export default function QrScanner() {
               {!isScanning ? (
                 <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
                   <div className="text-center px-4">
-                    <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground mb-2">Haz clic para activar la cámara</p>
+                    <Camera className="w-12 h-12 md:w-16 md:h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-sm md:text-base text-muted-foreground mb-2">Toca para activar la cámara</p>
                     <p className="text-xs text-muted-foreground mb-4">Se te pedirá permiso para usar la cámara</p>
-                    <Button onClick={startCamera} data-testid="button-start-camera">
+                    <Button 
+                      onClick={startCamera} 
+                      data-testid="button-start-camera"
+                      className="min-h-[44px] px-6 touch-manipulation font-medium"
+                      size="lg"
+                    >
                       Iniciar Escáner
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div id="qr-reader" className="w-full"></div>
+                <div className="relative">
+                  <div 
+                    id="qr-reader" 
+                    className="w-full relative touch-manipulation"
+                    onClick={handleFocusTap}
+                    onTouchStart={handleFocusTap}
+                  ></div>
+                  {focusMode === "manual" && (
+                    <div className="absolute bottom-2 left-0 right-0 text-center">
+                      <p className="text-xs text-white bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full inline-block">
+                        👆 Toca la pantalla para enfocar
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {isScanning && (
+                <div className="flex gap-2 items-stretch">
+                  <Button 
+                    variant={focusMode === "auto" ? "default" : "outline"} 
+                    onClick={toggleFocusMode}
+                    className="flex-1 min-h-[44px] touch-manipulation"
+                    data-testid="button-toggle-focus"
+                  >
+                    <Focus className="w-5 h-5 mr-2" />
+                    <span className="font-medium">{focusMode === "auto" ? "Auto" : "Manual"}</span>
+                  </Button>
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 rounded-md min-w-[70px]">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    <span className="font-semibold">60fps</span>
+                  </div>
+                </div>
               )}
               
               <div className="flex flex-col space-y-2">
                 {isScanning ? (
                   <>
-                    <Button variant="outline" onClick={stopCamera} data-testid="button-stop-camera">
+                    <Button 
+                      variant="outline" 
+                      onClick={stopCamera} 
+                      data-testid="button-stop-camera"
+                      className="min-h-[44px] touch-manipulation"
+                    >
                       Detener Escáner
                     </Button>
                     <div className="flex space-x-2">
-                      <Button onClick={simulateQrScan} data-testid="button-simulate-scan" className="flex-1">
+                      <Button 
+                        onClick={simulateQrScan} 
+                        data-testid="button-simulate-scan" 
+                        className="flex-1 min-h-[44px] touch-manipulation"
+                      >
                         Demo Animal QR
                       </Button>
-                      <Button onClick={simulateBlankQrScan} data-testid="button-simulate-blank-qr" className="flex-1" variant="secondary">
+                      <Button 
+                        onClick={simulateBlankQrScan} 
+                        data-testid="button-simulate-blank-qr" 
+                        className="flex-1 min-h-[44px] touch-manipulation" 
+                        variant="secondary"
+                      >
                         Demo Blank QR
                       </Button>
                     </div>
                   </>
                 ) : (
                   <div className="flex space-x-2">
-                    <Button onClick={simulateQrScan} variant="outline" data-testid="button-demo-scan" className="flex-1">
+                    <Button 
+                      onClick={simulateQrScan} 
+                      variant="outline" 
+                      data-testid="button-demo-scan" 
+                      className="flex-1 min-h-[44px] touch-manipulation"
+                    >
                       Demo Animal QR
                     </Button>
-                    <Button onClick={simulateBlankQrScan} variant="outline" data-testid="button-demo-blank-scan" className="flex-1">
+                    <Button 
+                      onClick={simulateBlankQrScan} 
+                      variant="outline" 
+                      data-testid="button-demo-blank-scan" 
+                      className="flex-1 min-h-[44px] touch-manipulation"
+                    >
                       Demo Blank QR
                     </Button>
                   </div>
