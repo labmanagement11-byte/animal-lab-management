@@ -211,11 +211,24 @@ export default function QrScanner() {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
+      // Enhanced camera configuration for better quality and QR detection
+      const config = { 
+        fps: 30, // Higher fps for smoother scanning
+        qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
+          // Dynamic QR box size - 70% of the smaller dimension
+          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+          const qrboxSize = Math.floor(minEdgeSize * 0.7);
+          return {
+            width: qrboxSize,
+            height: qrboxSize
+          };
+        },
+        aspectRatio: 1.0, // Square aspect ratio for QR codes
+      };
+
       // Try to get camera permissions first
       try {
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        // First try with rear camera (environment)
+        // First try with rear camera (environment) with enhanced settings
         await scanner.start(
           { facingMode: "environment" },
           config,
@@ -235,7 +248,7 @@ export default function QrScanner() {
         try {
           await scanner.start(
             { facingMode: "user" },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
+            config,
             handleScanSuccess,
             (errorMessage) => {
               // Ignore scan errors
@@ -248,11 +261,11 @@ export default function QrScanner() {
           });
         } catch (userError) {
           console.log("Front camera failed, trying any available camera:", userError);
-          // If both fail, try any available camera
+          // If both fail, try any available camera with basic config
           try {
             await scanner.start(
               { facingMode: { ideal: "environment" } },
-              { fps: 10, qrbox: { width: 250, height: 250 } },
+              config,
               handleScanSuccess,
               (errorMessage) => {
                 // Ignore scan errors
