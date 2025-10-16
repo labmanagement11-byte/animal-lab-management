@@ -44,6 +44,7 @@ const cageFormSchema = z.object({
     const today = new Date();
     return date <= today;
   }, "Breeding start date cannot be in the future"),
+  gender: z.enum(['Male', 'Female']).optional(),
 });
 
 type CageFormData = z.infer<typeof cageFormSchema>;
@@ -104,8 +105,12 @@ export default function Cages() {
       breedingStartDate: editingCage?.breedingStartDate 
         ? new Date(editingCage.breedingStartDate).toISOString().split('T')[0] 
         : "",
+      gender: editingCage?.gender || undefined,
     },
   });
+
+  // Watch the status field to show/hide conditional fields
+  const cageStatus = form.watch("status");
 
   const createCageMutation = useMutation({
     mutationFn: async (data: CageFormData) => {
@@ -142,6 +147,7 @@ export default function Cages() {
         isActive: data.isActive,
         strainId,
         breedingStartDate: data.breedingStartDate || undefined,
+        gender: data.gender || undefined,
       };
       const response = await apiRequest("/api/cages", {
         method: "POST",
@@ -246,6 +252,7 @@ export default function Cages() {
         isActive: data.isActive,
         strainId,
         breedingStartDate: data.breedingStartDate || undefined,
+        gender: data.gender || undefined,
       };
       await apiRequest(`/api/cages/${editingCage!.id}`, {
         method: "PUT",
@@ -1171,19 +1178,47 @@ export default function Cages() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="breedingStartDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Breeding Start Date (Optional)</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-breeding-start-date" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Show Gender field only for Holding or Experimental cages */}
+              {(cageStatus === 'Holding' || cageStatus === 'Experimental') && (
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} data-testid="select-cage-gender">
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Show Breeding Start Date only for Breeding cages */}
+              {cageStatus === 'Breeding' && (
+                <FormField
+                  control={form.control}
+                  name="breedingStartDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Breeding Start Date (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} data-testid="input-breeding-start-date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="flex items-center justify-end space-x-4 pt-4">
                 <Button 

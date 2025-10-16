@@ -84,6 +84,7 @@ export const cages = pgTable("cages", {
   }).default('Active'),
   strainId: varchar("strain_id").references(() => strains.id),
   breedingStartDate: timestamp("breeding_start_date"),
+  gender: varchar("gender", { enum: ['Male', 'Female'] }),
   notes: text("notes"),
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by").references(() => users.id),
