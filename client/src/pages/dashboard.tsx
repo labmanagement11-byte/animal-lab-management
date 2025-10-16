@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, QrCodeIcon, Eye, Edit, QrCode as QrCodeLucide, TrendingUp, AlertTriangle } from "lucide-react";
+import { Plus, QrCodeIcon, Eye, Edit, QrCode as QrCodeLucide, TrendingUp, AlertTriangle, Scan } from "lucide-react";
 import { useState } from "react";
 import AnimalForm from "@/components/animal-form";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -201,6 +201,28 @@ export default function Dashboard() {
                   </div>
                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-2xl flex items-center justify-center">
                     <QrCodeIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="flex-shrink-0 w-72 md:w-auto snap-center cursor-pointer hover:shadow-lg transition-shadow bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
+              onClick={() => setLocation('/qr-scanner')}
+              data-testid="card-qr-scanner"
+            >
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">QR Scanner</p>
+                    <p className="text-xl font-semibold text-foreground mt-2">Scan QR Codes</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <Scan className="w-4 h-4 text-purple-500" />
+                      <span className="text-xs text-purple-500">Quick Access</span>
+                    </div>
+                  </div>
+                  <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-2xl flex items-center justify-center">
+                    <Scan className="w-8 h-8 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </CardContent>
