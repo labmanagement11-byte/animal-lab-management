@@ -94,7 +94,13 @@ export default function GenotypingReportsPage() {
       return reportResponse.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/genotyping-reports'] });
+      // Invalidate all genotyping reports queries (both filtered and unfiltered)
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return key === '/api/genotyping-reports' || key === '/api/genotyping-reports/strain';
+        }
+      });
       toast({
         title: "Success",
         description: "Report uploaded successfully.",
@@ -117,7 +123,13 @@ export default function GenotypingReportsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/genotyping-reports/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/genotyping-reports'] });
+      // Invalidate all genotyping reports queries (both filtered and unfiltered)
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return key === '/api/genotyping-reports' || key === '/api/genotyping-reports/strain';
+        }
+      });
       toast({
         title: "Success",
         description: "Report deleted successfully.",
