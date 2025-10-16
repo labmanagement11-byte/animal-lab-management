@@ -189,7 +189,14 @@ export class ObjectStorageService {
   
     // Extract the path from the URL by removing query parameters and domain
     const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
+    let rawObjectPath = url.pathname;
+    
+    // Remove leading bucket name from path (e.g., /bucket-name/.private/... -> /.private/...)
+    const pathParts = rawObjectPath.split('/');
+    if (pathParts.length > 2) {
+      // Reconstruct path without the bucket (first two parts are '' and 'bucket-name')
+      rawObjectPath = '/' + pathParts.slice(2).join('/');
+    }
   
     let objectEntityDir = this.getPrivateObjectDir();
     if (!objectEntityDir.endsWith("/")) {

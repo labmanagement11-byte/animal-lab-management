@@ -125,6 +125,7 @@ export const genotypingReports = pgTable("genotyping_reports", {
   fileSize: integer("file_size"), // in bytes
   filePath: varchar("file_path").notNull(), // object storage path
   uploadedBy: varchar("uploaded_by").references(() => users.id).notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
