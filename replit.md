@@ -25,7 +25,9 @@ Preferred communication style: Simple, everyday language.
 - **API**: RESTful design with structured endpoints for authentication, animal, cage, and QR code management, dashboard statistics, and search.
 
 ### Feature Specifications
-- **Animal Management**: Batch animal creation with auto-incrementing numbers, audit trail for each animal created.
+- **Animal Management**: 
+    - Batch animal creation with auto-incrementing numbers, audit trail for each animal created.
+    - **Copy Last Animal**: Quick-add functionality that saves the last created animal data to localStorage and displays a "Copy Last Animal" button for rapid data entry. Auto-fills all fields except animal number (which is freshly generated) and quantity (reset to 1).
 - **Cage Management**: Conditional form fields for gender (Holding/Experimental cages) and breeding start date (Breeding cages). `breeding_start_date` moved from animal to cage form.
 - **QR Code Integration**:
     - Dynamic QR code generation with metadata.
