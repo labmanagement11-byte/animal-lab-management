@@ -660,11 +660,17 @@ export default function QrScanner() {
                     <SelectValue placeholder="Selecciona una jaula" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cages?.filter(c => c.status === 'Active').map((cage) => (
-                      <SelectItem key={cage.id} value={cage.id}>
-                        Jaula {cage.cageNumber} - {cage.location}
+                    {cages && cages.length > 0 ? (
+                      cages.map((cage) => (
+                        <SelectItem key={cage.id} value={cage.id}>
+                          Jaula {cage.cageNumber} - {cage.location} {cage.status !== 'Active' && `(${cage.status})`}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-cages" disabled>
+                        No hay jaulas disponibles
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
