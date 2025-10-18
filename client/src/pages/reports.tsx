@@ -185,7 +185,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <Button onClick={exportReport} data-testid="button-export-report" className="sm:self-start">
+          <Button onClick={exportReport} data-testid="button-export-report" className="min-h-[44px] sm:self-start">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
@@ -271,7 +271,7 @@ export default function ReportsPage() {
                       <CardTitle className="text-sm font-medium">Total Actions</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold" data-testid="monthly-total-actions">{monthlyReport.totalActions}</div>
+                      <div className="text-3xl font-bold min-h-[44px] flex items-center" data-testid="monthly-total-actions">{monthlyReport.totalActions}</div>
                     </CardContent>
                   </Card>
                   
@@ -368,7 +368,7 @@ export default function ReportsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-animals">{stats.totalAnimals}</div>
+            <div className="text-2xl md:text-3xl font-bold min-h-[44px] flex items-center" data-testid="stat-total-animals">{stats.totalAnimals}</div>
             <p className="text-xs text-muted-foreground">
               {stats.activeAnimals} active
             </p>
@@ -381,7 +381,7 @@ export default function ReportsPage() {
             <Home className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-cages">{stats.totalCages}</div>
+            <div className="text-2xl md:text-3xl font-bold min-h-[44px] flex items-center" data-testid="stat-total-cages">{stats.totalCages}</div>
             <p className="text-xs text-muted-foreground">
               {stats.activeCages} active
             </p>
@@ -394,7 +394,7 @@ export default function ReportsPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="stat-healthy-animals">
+            <div className="text-2xl md:text-3xl font-bold text-green-600 min-h-[44px] flex items-center" data-testid="stat-healthy-animals">
               {stats.healthyAnimals}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -409,7 +409,7 @@ export default function ReportsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-users">{stats.totalUsers}</div>
+            <div className="text-2xl md:text-3xl font-bold min-h-[44px] flex items-center" data-testid="stat-total-users">{stats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
               Registered users
             </p>
