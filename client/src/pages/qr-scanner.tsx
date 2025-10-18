@@ -98,9 +98,9 @@ export default function QrScanner() {
       });
 
       if (animalResponse.ok) {
-        const animal = await animalResponse.json();
+        const qrData = await animalResponse.json();
         
-        if (animal.isBlank) {
+        if (qrData.isBlank) {
           // Handle blank QR code - redirect to create new cage
           toast({
             title: "Código QR en Blanco",
@@ -110,8 +110,20 @@ export default function QrScanner() {
           await stopCamera();
           
           // Redirect to cages page with QR ID to create new cage and link it
-          setLocation(`/cages?createNew=true&qrId=${animal.id}`);
-        } else {
+          setLocation(`/cages?createNew=true&qrId=${qrData.id}`);
+        } else if (qrData.cageId) {
+          // Handle cage QR code - redirect to cage detail page
+          toast({
+            title: "Jaula Encontrada",
+            description: `Redirigiendo a detalles de la jaula...`,
+          });
+          
+          // Stop camera and redirect
+          await stopCamera();
+          
+          // Redirect to cage detail page
+          setLocation(`/qr/cage/${qrData.cageId}`);
+        } else if (qrData.animalId) {
           // Handle animal QR code - redirect to detail page immediately
           toast({
             title: "Animal Encontrado",
@@ -122,7 +134,18 @@ export default function QrScanner() {
           await stopCamera();
           
           // Redirect to animal detail page (same as mobile scan behavior)
-          setLocation(`/animal-qr-detail/${animal.animalId}`);
+          setLocation(`/animal-qr-detail/${qrData.animalId}`);
+        } else {
+          // QR code exists but has no association
+          toast({
+            title: "QR Sin Asignar",
+            description: "Este código QR no está asociado a ningún animal o jaula",
+            variant: "destructive",
+          });
+          
+          // Reset and allow scanning again
+          isProcessingRef.current = false;
+          lastScannedCodeRef.current = null;
         }
       } else {
         toast({

@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import type { QrCode } from "@shared/schema";
 import { formatDate } from "@/utils/dateUtils";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -92,6 +93,7 @@ function QrCodeItem({ qrCode, onView, onDelete }: { qrCode: QrCode; onView: () =
 
 export default function QrCodes() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("used");
   const [viewingQr, setViewingQr] = useState<QrCode | null>(null);
   const [deletingQr, setDeletingQr] = useState<QrCode | null>(null);
@@ -434,7 +436,15 @@ export default function QrCodes() {
                 <QrCodeItem
                   key={qr.id}
                   qrCode={qr}
-                  onView={() => setViewingQr(qr)}
+                  onView={() => {
+                    // If QR is assigned to a cage, navigate to cage detail page
+                    if (qr.cageId) {
+                      setLocation(`/qr/cage/${qr.cageId}`);
+                    } else {
+                      // Otherwise, show QR in modal
+                      setViewingQr(qr);
+                    }
+                  }}
                   onDelete={() => setDeletingQr(qr)}
                 />
               ))}
