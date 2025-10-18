@@ -32,6 +32,8 @@ export default function QrScanner() {
   const [scannedData, setScannedData] = useState<ScannedAnimalData | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const lastScannedCodeRef = useRef<string | null>(null);
+  const isProcessingRef = useRef(false);
   
   // Camera controls
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -64,12 +66,24 @@ export default function QrScanner() {
   }, []);
 
   const handleQrCodeSuccess = async (decodedText: string) => {
+    // Prevent duplicate scans - ignore if we're already processing or if it's the same code
+    if (isProcessingRef.current || lastScannedCodeRef.current === decodedText) {
+      return;
+    }
+    
+    // Mark as processing and store the code
+    isProcessingRef.current = true;
+    lastScannedCodeRef.current = decodedText;
+    
     console.log("QR Code escaneado:", decodedText);
     
-    // Prevent multiple scans of the same code
-    if (scannerRef.current && isScanning) {
-      // Temporarily disable scanning to prevent duplicates
-      setIsScanning(false);
+    // Stop scanner immediately to prevent further scans
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch (e) {
+        console.log("Error stopping scanner:", e);
+      }
     }
     
     // Haptic feedback on mobile - vibration pattern for success
@@ -117,8 +131,9 @@ export default function QrScanner() {
           variant: "destructive",
         });
         
-        // Re-enable scanning
-        setIsScanning(true);
+        // Reset and allow scanning again
+        isProcessingRef.current = false;
+        lastScannedCodeRef.current = null;
       }
     } catch (error) {
       console.error("Error fetching QR data:", error);
@@ -128,8 +143,9 @@ export default function QrScanner() {
         variant: "destructive",
       });
       
-      // Re-enable scanning
-      setIsScanning(true);
+      // Reset and allow scanning again
+      isProcessingRef.current = false;
+      lastScannedCodeRef.current = null;
     }
   };
 
@@ -256,6 +272,9 @@ export default function QrScanner() {
     setSupportsFocus(false);
     setZoomLevel(1);
     setFocusMode('auto');
+    // Reset scan tracking
+    isProcessingRef.current = false;
+    lastScannedCodeRef.current = null;
   };
 
   const handleZoomChange = async (value: number[]) => {
