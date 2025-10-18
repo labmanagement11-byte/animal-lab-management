@@ -201,22 +201,113 @@ export default function QrScanner() {
       
       setIsScanning(true);
 
-      // Simple configuration that works on most devices
+      // Enhanced configuration for better QR scanning
       const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
+        fps: 30, // Higher FPS for better capture (tripled from 10)
+        qrbox: { width: 280, height: 280 }, // Larger scan box for easier targeting
+        aspectRatio: 1.0,
+        disableFlip: false,
+        rememberLastUsedCamera: true,
+        // Experimental features for better scanning
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true // Use native barcode detector if available
+        }
       };
 
-      // Start with rear camera - use 'ideal' instead of 'exact' for better compatibility
+      // Start with rear camera with optimal video constraints (no strict minimums to avoid OverconstrainedError)
       await qrScanner.start(
-        { facingMode: "environment" },
+        { 
+          facingMode: "environment",
+          // Request good resolution without forcing minimums
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
         config,
         handleQrCodeSuccess,
         (errorMessage) => {
           // Ignore scan errors silently - they happen when no QR is in view
         }
       );
+
+      // After starting, try to adjust camera settings to reduce overexposure
+      try {
+        // Get the video element to access the media stream
+        const videoElement = document.getElementById("qr-reader")?.querySelector("video");
+        if (videoElement && videoElement instanceof HTMLVideoElement) {
+          const stream = videoElement.srcObject as MediaStream;
+          if (stream) {
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack) {
+              // Get supported capabilities (using any for extended properties not in TypeScript types)
+              const capabilities = videoTrack.getCapabilities?.() as any;
+              const settings = videoTrack.getSettings();
+              
+              console.log("Camera capabilities:", capabilities);
+              console.log("Current settings:", settings);
+              
+              // Build constraints object with supported features
+              const adjustConstraints: any = {};
+              
+              // Try to set manual exposure if supported (check it's in the supported modes array)
+              if (capabilities?.exposureMode && Array.isArray(capabilities.exposureMode)) {
+                if (capabilities.exposureMode.includes("manual")) {
+                  adjustConstraints.exposureMode = "manual";
+                } else if (capabilities.exposureMode.includes("continuous")) {
+                  adjustConstraints.exposureMode = "continuous";
+                }
+              }
+              
+              // Reduce exposure compensation if supported
+              if (capabilities?.exposureCompensation) {
+                const min = capabilities.exposureCompensation.min ?? -3;
+                const max = capabilities.exposureCompensation.max ?? 3;
+                // Set to minimum to reduce brightness (more negative = darker)
+                adjustConstraints.exposureCompensation = Math.max(min, -2);
+              }
+              
+              // Reduce brightness if supported
+              if (capabilities?.brightness && typeof capabilities.brightness === 'object') {
+                const min = capabilities.brightness.min ?? 0;
+                const max = capabilities.brightness.max ?? 255;
+                // Set to 30% of range (darker)
+                const targetBrightness = min + (max - min) * 0.3;
+                adjustConstraints.brightness = Math.floor(Math.max(min, Math.min(max, targetBrightness)));
+              }
+              
+              // Increase contrast if supported
+              if (capabilities?.contrast && typeof capabilities.contrast === 'object') {
+                const min = capabilities.contrast.min ?? 0;
+                const max = capabilities.contrast.max ?? 255;
+                // Set to 70% of range (higher contrast)
+                const targetContrast = min + (max - min) * 0.7;
+                adjustConstraints.contrast = Math.floor(Math.max(min, Math.min(max, targetContrast)));
+              }
+              
+              // Apply constraints if we have any
+              if (Object.keys(adjustConstraints).length > 0) {
+                console.log("Attempting to apply camera adjustments:", adjustConstraints);
+                
+                await videoTrack.applyConstraints({
+                  advanced: [adjustConstraints]
+                }).then(() => {
+                  console.log("✓ Camera adjustments applied successfully");
+                  const newSettings = videoTrack.getSettings();
+                  console.log("New camera settings:", newSettings);
+                }).catch((err: any) => {
+                  console.warn("✗ Could not apply camera constraints:", err.message || err);
+                  // Not critical - continue scanning even if constraints fail
+                });
+              } else {
+                console.log("No supported camera adjustments available on this device");
+              }
+            }
+          }
+        }
+      } catch (adjustError) {
+        console.log("Could not adjust camera settings:", adjustError);
+        // Not critical - camera will still work with default settings
+      }
 
       toast({
         title: "Cámara Activada",
