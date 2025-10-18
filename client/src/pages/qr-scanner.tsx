@@ -107,18 +107,15 @@ export default function QrScanner() {
   const handleQrCodeSuccess = async (decodedText: string) => {
     console.log("QR Code escaneado:", decodedText);
     
+    // Prevent multiple scans of the same code
+    if (scannerRef.current && isScanning) {
+      // Temporarily disable scanning to prevent duplicates
+      setIsScanning(false);
+    }
+    
     // Haptic feedback on mobile - vibration pattern for success
     if ('vibrate' in navigator) {
       navigator.vibrate([100, 50, 100]); // Double pulse vibration
-    }
-    
-    // Stop scanning immediately to prevent multiple scans
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.pause(true);
-      } catch (e) {
-        console.log("Error pausing scanner:", e);
-      }
     }
 
     try {
@@ -147,18 +144,17 @@ export default function QrScanner() {
             description: "Este código está disponible para asignar",
           });
         } else {
-          // Handle animal QR code - redirect to detail page
-          await stopCamera();
-          
+          // Handle animal QR code - redirect to detail page immediately
           toast({
             title: "Animal Encontrado",
             description: `Redirigiendo a detalles del animal...`,
           });
           
+          // Stop camera and redirect
+          await stopCamera();
+          
           // Redirect to animal detail page (same as mobile scan behavior)
-          setTimeout(() => {
-            setLocation(`/animal-qr-detail/${animal.animalId}`);
-          }, 500);
+          setLocation(`/animal-qr-detail/${animal.animalId}`);
         }
       } else {
         toast({
@@ -167,14 +163,8 @@ export default function QrScanner() {
           variant: "destructive",
         });
         
-        // Resume scanning for new code
-        if (scannerRef.current) {
-          try {
-            await scannerRef.current.resume();
-          } catch (e) {
-            console.log("Error resuming scanner:", e);
-          }
-        }
+        // Re-enable scanning
+        setIsScanning(true);
       }
     } catch (error) {
       console.error("Error fetching QR data:", error);
@@ -184,14 +174,8 @@ export default function QrScanner() {
         variant: "destructive",
       });
       
-      // Resume scanning
-      if (scannerRef.current) {
-        try {
-          await scannerRef.current.resume();
-        } catch (e) {
-          console.log("Error resuming scanner:", e);
-        }
-      }
+      // Re-enable scanning
+      setIsScanning(true);
     }
   };
 
