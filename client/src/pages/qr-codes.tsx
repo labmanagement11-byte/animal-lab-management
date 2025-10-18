@@ -1,14 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { QrCode as QrCodeIcon, Trash2, Download, FileText, FileSpreadsheet } from "lucide-react";
-import { useState } from "react";
+import { QrCode as QrCodeIcon, Trash2, Download, FileText, FileSpreadsheet, Eye, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import type { QrCode } from "@shared/schema";
 import { formatDate } from "@/utils/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCodeLib from 'qrcode';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -16,10 +17,85 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+// QR Code item component with visual QR
+function QrCodeItem({ qrCode, onView, onDelete }: { qrCode: QrCode; onView: () => void; onDelete: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (canvasRef.current && qrCode.qrData) {
+      QRCodeLib.toCanvas(canvasRef.current, qrCode.qrData, {
+        width: 150,
+        margin: 1,
+      }).catch(err => console.error('Error generating QR code:', err));
+    }
+  }, [qrCode.qrData]);
+
+  return (
+    <Card className="hover:shadow-lg transition-all">
+      <CardContent className="pt-6">
+        <div className="flex flex-col items-center">
+          <canvas ref={canvasRef} className="mb-4 bg-white p-2 rounded" />
+          {qrCode.labelText && (
+            <p className="text-sm font-medium text-center mb-2" data-testid={`qr-label-${qrCode.id}`}>
+              {qrCode.labelText}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground text-center mb-4">
+            {formatDate(qrCode.createdAt)}
+          </p>
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onView}
+              className="flex-1"
+              data-testid={`button-view-qr-${qrCode.id}`}
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              Ver
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onDelete}
+              className="flex-1"
+              data-testid={`button-delete-qr-${qrCode.id}`}
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function QrCodes() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("used");
+  const [viewingQr, setViewingQr] = useState<QrCode | null>(null);
+  const [deletingQr, setDeletingQr] = useState<QrCode | null>(null);
+  const viewCanvasRef = useRef<HTMLCanvasElement>(null);
   
   const { data: qrCodes, isLoading } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes'],
@@ -27,6 +103,41 @@ export default function QrCodes() {
 
   const { data: deletedQrCodes, isLoading: isLoadingDeleted } = useQuery<QrCode[]>({
     queryKey: ['/api/qr-codes-trash'],
+  });
+
+  // Generate QR code in view modal
+  useEffect(() => {
+    if (viewCanvasRef.current && viewingQr?.qrData) {
+      QRCodeLib.toCanvas(viewCanvasRef.current, viewingQr.qrData, {
+        width: 300,
+        margin: 2,
+      }).catch(err => console.error('Error generating QR code:', err));
+    }
+  }, [viewingQr]);
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (qrId: string) => {
+      await apiRequest(`/api/qr-codes/${qrId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes-trash'] });
+      toast({
+        title: "Código QR eliminado",
+        description: "El código QR ha sido movido a la papelera",
+      });
+      setDeletingQr(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el código QR",
+        variant: "destructive",
+      });
+    },
   });
 
   // Export functions
@@ -284,6 +395,103 @@ export default function QrCodes() {
           </CardContent>
         </Card>
       </div>
+
+      {/* QR Codes List */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold mb-4">
+          {activeTab === 'used' && 'Códigos QR Usados'}
+          {activeTab === 'blank' && 'Códigos QR Sin Usar'}
+          {activeTab === 'trash' && 'Códigos QR Eliminados'}
+        </h3>
+        
+        {(() => {
+          let displayQrCodes: QrCode[] = [];
+          
+          if (activeTab === 'used') {
+            displayQrCodes = qrCodes?.filter(qr => !qr.isBlank && qr.cageId) || [];
+          } else if (activeTab === 'blank') {
+            displayQrCodes = qrCodes?.filter(qr => qr.isBlank || !qr.cageId) || [];
+          } else if (activeTab === 'trash') {
+            displayQrCodes = deletedQrCodes || [];
+          }
+
+          if (displayQrCodes.length === 0) {
+            return (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center text-muted-foreground">
+                    <QrCodeIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No hay códigos QR en esta categoría</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {displayQrCodes.map((qr) => (
+                <QrCodeItem
+                  key={qr.id}
+                  qrCode={qr}
+                  onView={() => setViewingQr(qr)}
+                  onDelete={() => setDeletingQr(qr)}
+                />
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* View QR Code Dialog */}
+      <Dialog open={!!viewingQr} onOpenChange={() => setViewingQr(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Código QR</DialogTitle>
+            <DialogDescription>
+              Escanea este código QR con tu dispositivo
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <canvas ref={viewCanvasRef} className="bg-white p-4 rounded-lg shadow-inner" />
+            {viewingQr?.labelText && (
+              <p className="text-lg font-semibold">{viewingQr.labelText}</p>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Creado: {viewingQr && formatDate(viewingQr.createdAt)}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingQr} onOpenChange={() => setDeletingQr(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar código QR?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción moverá el código QR a la papelera. 
+              {deletingQr?.labelText && (
+                <span className="block mt-2 font-medium">
+                  Código: {deletingQr.labelText}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingQr && deleteMutation.mutate(deletingQr.id)}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
