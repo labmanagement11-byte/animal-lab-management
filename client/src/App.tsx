@@ -146,8 +146,8 @@ function AppContent() {
           />
         </div>
 
-        {/* Floating QR Scanner Button - Only show on mobile and not on scanner page */}
-        {location !== '/qr-scanner' && (
+        {/* Floating QR Scanner Button - Only show on mobile dashboard */}
+        {location === '/' && (
           <FloatingActionButton
             onClick={() => handleNavigate('/qr-scanner')}
             icon={<QrCode className="w-6 h-6" />}
