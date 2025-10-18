@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { QrCode, Camera, CheckCircle, AlertCircle, Sparkles, Zap } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { QrCode, Camera, CheckCircle, AlertCircle, Sparkles, Zap, ZoomIn, ZoomOut, Focus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -41,6 +42,15 @@ export default function QrScanner() {
   const [selectedCageId, setSelectedCageId] = useState<string>("");
   const [qrClaimed, setQrClaimed] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+  
+  // Camera controls
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomRange, setZoomRange] = useState({ min: 1, max: 1 });
+  const [focusMode, setFocusMode] = useState<'auto' | 'manual'>('auto');
+  const [focusDistance, setFocusDistance] = useState(0.5);
+  const [supportsZoom, setSupportsZoom] = useState(false);
+  const [supportsFocus, setSupportsFocus] = useState(false);
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -205,7 +215,7 @@ export default function QrScanner() {
         }
       );
 
-      // Intentar mejorar el enfoque después de iniciar
+      // Detectar capacidades de la cámara después de iniciar
       setTimeout(async () => {
         try {
           const videoElement = document.getElementById("qr-reader")?.querySelector("video");
@@ -214,12 +224,27 @@ export default function QrScanner() {
             if (stream) {
               const videoTrack = stream.getVideoTracks()[0];
               if (videoTrack) {
+                videoTrackRef.current = videoTrack;
                 const capabilities = videoTrack.getCapabilities?.() as any;
                 
-                // Aplicar enfoque continuo si está disponible
+                console.log("Capacidades de la cámara:", capabilities);
+                
+                // Detectar soporte de zoom
+                if (capabilities?.zoom) {
+                  setSupportsZoom(true);
+                  setZoomRange({
+                    min: capabilities.zoom.min || 1,
+                    max: capabilities.zoom.max || 10
+                  });
+                  setZoomLevel(capabilities.zoom.min || 1);
+                }
+                
+                // Detectar soporte de enfoque
                 if (capabilities?.focusMode && Array.isArray(capabilities.focusMode)) {
-                  const constraints: any = {};
+                  setSupportsFocus(true);
                   
+                  // Aplicar enfoque continuo por defecto
+                  const constraints: any = {};
                   if (capabilities.focusMode.includes("continuous")) {
                     constraints.focusMode = "continuous";
                   } else if (capabilities.focusMode.includes("auto")) {
@@ -237,7 +262,7 @@ export default function QrScanner() {
             }
           }
         } catch (e) {
-          console.log("No se pudo ajustar el enfoque:", e);
+          console.log("No se pudo detectar capacidades de la cámara:", e);
         }
       }, 500);
 
@@ -276,11 +301,87 @@ export default function QrScanner() {
         await scannerRef.current.stop();
         scannerRef.current.clear();
         scannerRef.current = null;
+        videoTrackRef.current = null;
       } catch (error) {
         console.error("Error stopping camera:", error);
       }
     }
     setIsScanning(false);
+    // Reset controls
+    setSupportsZoom(false);
+    setSupportsFocus(false);
+    setZoomLevel(1);
+    setFocusMode('auto');
+  };
+
+  const handleZoomChange = async (value: number[]) => {
+    const newZoom = value[0];
+    setZoomLevel(newZoom);
+    
+    if (videoTrackRef.current && supportsZoom) {
+      try {
+        await videoTrackRef.current.applyConstraints({
+          advanced: [{ zoom: newZoom } as any]
+        });
+      } catch (e) {
+        console.log("Error aplicando zoom:", e);
+      }
+    }
+  };
+
+  const toggleFocusMode = async () => {
+    if (!videoTrackRef.current || !supportsFocus) return;
+    
+    const newMode = focusMode === 'auto' ? 'manual' : 'auto';
+    setFocusMode(newMode);
+    
+    try {
+      const capabilities = videoTrackRef.current.getCapabilities?.() as any;
+      const constraints: any = {};
+      
+      if (newMode === 'auto') {
+        if (capabilities?.focusMode?.includes('continuous')) {
+          constraints.focusMode = 'continuous';
+        } else if (capabilities?.focusMode?.includes('auto')) {
+          constraints.focusMode = 'auto';
+        }
+      } else {
+        if (capabilities?.focusMode?.includes('manual')) {
+          constraints.focusMode = 'manual';
+          if (capabilities?.focusDistance) {
+            constraints.focusDistance = focusDistance;
+          }
+        }
+      }
+      
+      if (Object.keys(constraints).length > 0) {
+        await videoTrackRef.current.applyConstraints({
+          advanced: [constraints]
+        });
+        
+        toast({
+          title: `Enfoque ${newMode === 'auto' ? 'Automático' : 'Manual'}`,
+          description: `Modo de enfoque cambiado a ${newMode === 'auto' ? 'automático' : 'manual'}`,
+        });
+      }
+    } catch (e) {
+      console.log("Error cambiando modo de enfoque:", e);
+    }
+  };
+
+  const handleFocusDistanceChange = async (value: number[]) => {
+    const newDistance = value[0];
+    setFocusDistance(newDistance);
+    
+    if (videoTrackRef.current && supportsFocus && focusMode === 'manual') {
+      try {
+        await videoTrackRef.current.applyConstraints({
+          advanced: [{ focusDistance: newDistance } as any]
+        });
+      } catch (e) {
+        console.log("Error ajustando distancia de enfoque:", e);
+      }
+    }
   };
 
   const handleClaimQr = () => {
@@ -457,6 +558,87 @@ export default function QrScanner() {
                     <Sparkles className="w-4 h-4" />
                   </p>
                 </motion.div>
+
+                {/* Camera Controls */}
+                {(supportsZoom || supportsFocus) && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 p-4 bg-muted/50 rounded-lg space-y-4"
+                  >
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Camera className="w-4 h-4" />
+                      Controles de Cámara
+                    </p>
+
+                    {/* Zoom Control */}
+                    {supportsZoom && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm flex items-center gap-2">
+                            <ZoomIn className="w-4 h-4" />
+                            Zoom: {zoomLevel.toFixed(1)}x
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <ZoomOut className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {zoomRange.min.toFixed(1)}x - {zoomRange.max.toFixed(1)}x
+                            </span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[zoomLevel]}
+                          onValueChange={handleZoomChange}
+                          min={zoomRange.min}
+                          max={zoomRange.max}
+                          step={0.1}
+                          className="w-full"
+                          data-testid="slider-zoom"
+                        />
+                      </div>
+                    )}
+
+                    {/* Focus Control */}
+                    {supportsFocus && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-sm flex items-center gap-2">
+                            <Focus className="w-4 h-4" />
+                            Enfoque
+                          </label>
+                          <Button
+                            onClick={toggleFocusMode}
+                            variant={focusMode === 'manual' ? 'default' : 'outline'}
+                            size="sm"
+                            className="min-h-[36px]"
+                            data-testid="button-toggle-focus"
+                          >
+                            {focusMode === 'auto' ? 'Auto' : 'Manual'}
+                          </Button>
+                        </div>
+
+                        {focusMode === 'manual' && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Cerca</span>
+                              <span className="text-xs text-muted-foreground">Lejos</span>
+                            </div>
+                            <Slider
+                              value={[focusDistance]}
+                              onValueChange={handleFocusDistanceChange}
+                              min={0}
+                              max={1}
+                              step={0.01}
+                              className="w-full"
+                              data-testid="slider-focus"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
                 <div className="mt-4 flex gap-2">
                   <Button 
                     onClick={stopCamera} 
