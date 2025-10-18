@@ -31,10 +31,12 @@ import Sidebar from "@/components/sidebar";
 import MobileHeader from "@/components/mobile-header";
 import MobileBottomNav from "@/components/mobile-bottom-nav";
 import MobileMenu from "@/components/mobile-menu";
+import FloatingActionButton from "@/components/floating-action-button";
 import { useLocation } from "wouter";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { LanguageProvider } from "@/contexts/language-context";
 import { useState } from "react";
+import { QrCode } from "lucide-react";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -143,6 +145,16 @@ function AppContent() {
             onMenuClick={() => setMobileMenuOpen(true)}
           />
         </div>
+
+        {/* Floating QR Scanner Button - Only show on mobile and not on scanner page */}
+        {location !== '/qr-scanner' && (
+          <FloatingActionButton
+            onClick={() => handleNavigate('/qr-scanner')}
+            icon={<QrCode className="w-6 h-6" />}
+            label="Escanear"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          />
+        )}
 
         {/* Mobile Menu - Only for mobile */}
         <MobileMenu

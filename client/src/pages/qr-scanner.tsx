@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { QrCode, Camera, CheckCircle, AlertCircle } from "lucide-react";
+import { QrCode, Camera, CheckCircle, AlertCircle, Sparkles, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -105,6 +106,11 @@ export default function QrScanner() {
 
   const handleQrCodeSuccess = async (decodedText: string) => {
     console.log("QR Code escaneado:", decodedText);
+    
+    // Haptic feedback on mobile - vibration pattern for success
+    if ('vibrate' in navigator) {
+      navigator.vibrate([100, 50, 100]); // Double pulse vibration
+    }
     
     // Stop scanning immediately to prevent multiple scans
     if (scannerRef.current) {
@@ -317,62 +323,128 @@ export default function QrScanner() {
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <QrCode className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3"
+        >
+          <motion.div
+            animate={{ 
+              rotate: [0, 5, -5, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              repeatDelay: 3
+            }}
+          >
+            <QrCode className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+          </motion.div>
           <div>
             <h1 className="text-xl md:text-3xl font-bold" data-testid="text-page-title">Escáner de Código QR</h1>
             <p className="text-xs md:text-sm text-muted-foreground">
               Escanea códigos QR para ver información de animales
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Scanner Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="w-5 h-5" />
-              Escáner
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Camera View */}
-            {!isScanning && (
-              <div className="flex flex-col items-center justify-center p-8 md:p-12 bg-muted rounded-lg">
-                <Camera className="w-16 h-16 md:w-20 md:h-20 text-muted-foreground mb-4" />
-                <p className="text-center text-muted-foreground mb-4">
-                  Toca para activar la cámara
-                  <br />
-                  <span className="text-xs">Se pedirá permiso para usar la cámara</span>
-                </p>
-                <Button 
-                  onClick={startCamera} 
-                  size="lg"
-                  data-testid="button-start-camera"
-                  className="min-h-[48px] px-8"
-                >
-                  Iniciar Escáner
-                </Button>
-              </div>
-            )}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="w-5 h-5" />
+                Escáner
+                {isScanning && (
+                  <motion.div
+                    animate={{ opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </motion.div>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Camera View */}
+              <AnimatePresence mode="wait">
+                {!isScanning && (
+                  <motion.div 
+                    key="camera-off"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex flex-col items-center justify-center p-8 md:p-12 bg-muted rounded-lg"
+                  >
+                    <motion.div
+                      animate={{ 
+                        scale: [1, 1.1, 1],
+                      }}
+                      transition={{ 
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <Camera className="w-16 h-16 md:w-20 md:h-20 text-muted-foreground mb-4" />
+                    </motion.div>
+                    <p className="text-center text-muted-foreground mb-4">
+                      Toca para activar la cámara
+                      <br />
+                      <span className="text-xs">Se pedirá permiso para usar la cámara</span>
+                    </p>
+                    <Button 
+                      onClick={startCamera} 
+                      size="lg"
+                      data-testid="button-start-camera"
+                      className="min-h-[48px] px-8"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Iniciar Escáner
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             
             {/* QR Reader element - always rendered but hidden when not scanning */}
             <div className={isScanning ? "block" : "hidden"}>
-              <div 
-                id="qr-reader" 
-                className="w-full rounded-lg overflow-hidden"
-                style={{ minHeight: "300px" }}
-              ></div>
-              <div className="mt-4 flex gap-2">
-                <Button 
-                  onClick={stopCamera} 
-                  variant="outline"
-                  data-testid="button-stop-camera"
-                  className="flex-1 min-h-[48px]"
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div 
+                  id="qr-reader" 
+                  className="w-full rounded-lg overflow-hidden border-4 border-primary shadow-lg"
+                  style={{ minHeight: "300px" }}
+                ></div>
+                <motion.div 
+                  className="mt-2 text-center"
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
                 >
-                  Detener Escáner
-                </Button>
-              </div>
+                  <p className="text-sm text-primary font-medium flex items-center justify-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Escaneando... Mantén el código QR en el cuadro
+                    <Sparkles className="w-4 h-4" />
+                  </p>
+                </motion.div>
+                <div className="mt-4 flex gap-2">
+                  <Button 
+                    onClick={stopCamera} 
+                    variant="outline"
+                    data-testid="button-stop-camera"
+                    className="flex-1 min-h-[48px]"
+                  >
+                    Detener Escáner
+                  </Button>
+                </div>
+              </motion.div>
             </div>
 
             {/* Demo Buttons */}
@@ -401,6 +473,7 @@ export default function QrScanner() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
 
         {/* Scanned Animal Information */}
         {scannedData && (
