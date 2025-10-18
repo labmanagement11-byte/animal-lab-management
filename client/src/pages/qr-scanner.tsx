@@ -211,7 +211,7 @@ export default function QrScanner() {
         disableFlip: false
       };
 
-      // Start camera with simple configuration
+      // Start camera with rear camera
       await qrScanner.start(
         { facingMode: "environment" },
         config,
@@ -220,6 +220,42 @@ export default function QrScanner() {
           // Ignore scan errors - they happen when no QR is visible
         }
       );
+
+      // Intentar mejorar el enfoque después de iniciar
+      setTimeout(async () => {
+        try {
+          const videoElement = document.getElementById("qr-reader")?.querySelector("video");
+          if (videoElement && videoElement instanceof HTMLVideoElement) {
+            const stream = videoElement.srcObject as MediaStream;
+            if (stream) {
+              const videoTrack = stream.getVideoTracks()[0];
+              if (videoTrack) {
+                const capabilities = videoTrack.getCapabilities?.() as any;
+                
+                // Aplicar enfoque continuo si está disponible
+                if (capabilities?.focusMode && Array.isArray(capabilities.focusMode)) {
+                  const constraints: any = {};
+                  
+                  if (capabilities.focusMode.includes("continuous")) {
+                    constraints.focusMode = "continuous";
+                  } else if (capabilities.focusMode.includes("auto")) {
+                    constraints.focusMode = "auto";
+                  }
+                  
+                  if (Object.keys(constraints).length > 0) {
+                    await videoTrack.applyConstraints({
+                      advanced: [constraints]
+                    });
+                    console.log("✓ Enfoque automático activado");
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.log("No se pudo ajustar el enfoque:", e);
+        }
+      }, 500);
 
       toast({
         title: "Cámara Activada",
