@@ -34,8 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **QR Code Integration**:
     - Dynamic QR code generation with metadata.
     - In-app camera-based QR code scanning using `html5-qrcode` to identify and fetch animal/QR data.
-    - **Camera Controls**: Rear camera only (environment facing mode), 30 FPS scanning, adaptive brightness/exposure control to reduce overexposure, 280x280px QR box.
-    - **Adaptive Camera Settings**: Automatically adjusts brightness (30% of range), contrast (70%), and exposure compensation to combat excessive light and improve QR detection.
+    - **Camera Controls**: Rear camera only (environment facing mode), 60 FPS for rapid scanning, 300x300px QR detection box optimized for mobile devices.
     - **Scanner Behavior**: Automatically redirects to animal detail page (`/animal-qr-detail/:id`) after scanning animal QR codes, matching native mobile scanner behavior. Blank QR codes remain on scanner page for cage assignment.
     - **Mobile Optimized Scanner**: Touch-optimized controls (44px+ buttons), dual touch/mouse event support, visual focus indicators, Spanish UI for accessibility.
     - Generation of "blank" QR codes with custom labels for Avery 8160 sheets (30 per batch) with auto-fill option.

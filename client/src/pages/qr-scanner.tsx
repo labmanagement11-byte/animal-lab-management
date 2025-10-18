@@ -205,8 +205,8 @@ export default function QrScanner() {
 
       // Optimized configuration for fast and reliable scanning
       const config = {
-        fps: 10,
-        qrbox: 250,
+        fps: 60, // Máxima velocidad para escaneo rápido
+        qrbox: { width: 300, height: 300 }, // Caja más grande para móvil
         aspectRatio: 1.0,
         disableFlip: false
       };
