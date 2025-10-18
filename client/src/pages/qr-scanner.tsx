@@ -131,7 +131,7 @@ export default function QrScanner() {
         const animal = await animalResponse.json();
         
         if (animal.isBlank) {
-          // Handle blank QR code
+          // Handle blank QR code - stay on scanner to assign to cage
           setBlankQrData({
             id: animal.id,
             qrData: decodedText,
@@ -140,24 +140,26 @@ export default function QrScanner() {
           setScannedData(null);
           setQrClaimed(false);
           
+          await stopCamera();
+          
           toast({
             title: "Código QR en Blanco",
             description: "Este código está disponible para asignar",
           });
         } else {
-          // Handle animal QR code
-          setScannedData(animal);
-          setBlankQrData(null);
-          setQrClaimed(false);
+          // Handle animal QR code - redirect to detail page
+          await stopCamera();
           
           toast({
             title: "Animal Encontrado",
-            description: `Animal ${animal.animalNumber} escaneado`,
+            description: `Redirigiendo a detalles del animal...`,
           });
+          
+          // Redirect to animal detail page (same as mobile scan behavior)
+          setTimeout(() => {
+            setLocation(`/animal-qr-detail/${animal.animalId}`);
+          }, 500);
         }
-        
-        // Stop camera after successful scan
-        await stopCamera();
       } else {
         toast({
           title: "No Encontrado",
