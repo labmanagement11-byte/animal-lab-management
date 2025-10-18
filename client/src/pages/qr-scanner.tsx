@@ -195,32 +195,16 @@ export default function QrScanner() {
       
       setIsScanning(true);
 
-      // Configuration optimized for QR scanning with high resolution
+      // Simple configuration that works on most devices
       const config = {
-        fps: 30, // Higher FPS for better QR detection
-        qrbox: {
-          width: 300,
-          height: 300
-        },
-        aspectRatio: 1.777778, // 16:9 for high-res cameras
-        disableFlip: false,
-        // Request high resolution video
-        videoConstraints: {
-          facingMode: { exact: "environment" },
-          width: { ideal: 1920 }, // Request 1080p resolution
-          height: { ideal: 1080 },
-          aspectRatio: { ideal: 1.777778 },
-          frameRate: { ideal: 30 }
-        },
-        // Use native browser API when available for better performance
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        }
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
       };
 
-      // Start with rear camera and high resolution
+      // Start with rear camera - use 'ideal' instead of 'exact' for better compatibility
       await qrScanner.start(
-        { facingMode: { exact: "environment" } },
+        { facingMode: "environment" },
         config,
         handleQrCodeSuccess,
         (errorMessage) => {
