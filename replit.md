@@ -22,6 +22,10 @@ Preferred communication style: Simple, everyday language.
 - **Backend**: Node.js with Express.js, TypeScript, Drizzle ORM for database interactions.
 - **Database**: PostgreSQL (Neon Database) as the primary data store.
 - **Authentication**: Replit Auth (OpenID Connect) for external users and local email/password authentication for manually created users. Role-based access control (Employee, Director, Admin) with PostgreSQL-backed session management. Admins can manage users and companies.
+- **User Management**: 
+    - Soft delete mechanism for users (marked with `deletedAt` timestamp).
+    - Automatic user restoration: When creating a user with an email that was previously deleted, the system automatically restores and updates the existing user record instead of creating a duplicate.
+    - Permanent deletion after 10 days in trash via automatic cleanup process.
 - **Multi-Tenancy**: Company-based data isolation using `companyId` in all data tables. All operations are filtered or validated by `companyId`, with Admin users having global access.
 - **API**: RESTful design with structured endpoints for authentication, animal, cage, and QR code management, dashboard statistics, and search.
 

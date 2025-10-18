@@ -328,13 +328,38 @@ export class DatabaseStorage implements IStorage {
     companyId: string
   ): Promise<User> {
     const existingUser = await this.getUserByEmail(email);
-    // Only block creation if user exists AND is not deleted
+    
+    // Block creation if user exists AND is not deleted
     if (existingUser && !existingUser.deletedAt) {
       throw new Error(`A user with email "${email}" already exists. Please use a different email address.`);
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     
+    // If user was deleted, restore and update their information
+    if (existingUser && existingUser.deletedAt) {
+      const [restoredUser] = await db
+        .update(users)
+        .set({
+          passwordHash,
+          firstName,
+          lastName,
+          role,
+          companyId,
+          deletedAt: null,
+          deletedBy: null,
+          isBlocked: false,
+          blockedAt: null,
+          blockedBy: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, existingUser.id))
+        .returning();
+      
+      return this.sanitizeUser(restoredUser as User)!;
+    }
+
+    // Create new user if no existing user found
     const [newUser] = await db
       .insert(users)
       .values({
