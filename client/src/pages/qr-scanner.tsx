@@ -214,15 +214,9 @@ export default function QrScanner() {
         }
       };
 
-      // Start with rear camera with optimal video constraints (no strict minimums to avoid OverconstrainedError)
+      // Start with rear camera (facingMode only - other constraints cause errors)
       await qrScanner.start(
-        { 
-          facingMode: "environment",
-          // Request good resolution without forcing minimums
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
+        { facingMode: "environment" },
         config,
         handleQrCodeSuccess,
         (errorMessage) => {
