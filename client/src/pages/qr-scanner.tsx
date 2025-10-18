@@ -3,12 +3,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { QrCode, Camera, CheckCircle, Focus, Zap } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { QrCode, Camera, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Cage, QrCode as QrCodeType } from "@shared/schema";
@@ -41,11 +39,7 @@ export default function QrScanner() {
   const [blankQrData, setBlankQrData] = useState<BlankQrData | null>(null);
   const [selectedCageId, setSelectedCageId] = useState<string>("");
   const [qrClaimed, setQrClaimed] = useState(false);
-  const [focusMode, setFocusMode] = useState<"auto" | "manual">("auto");
-  const [torch, setTorch] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const videoStreamRef = useRef<MediaStream | null>(null);
 
   const { data: cages } = useQuery<Cage[]>({
     queryKey: ['/api/cages'],
@@ -63,15 +57,15 @@ export default function QrScanner() {
       queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
       setQrClaimed(true);
       toast({
-        title: "Success",
-        description: "QR code successfully linked to cage",
+        title: "Éxito",
+        description: "Código QR vinculado a la jaula correctamente",
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "No autorizado",
+          description: "Sesión expirada. Redirigiendo...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -81,7 +75,7 @@ export default function QrScanner() {
       }
       toast({
         title: "Error",
-        description: "Failed to link QR code to cage",
+        description: "Error al vincular código QR",
         variant: "destructive",
       });
     },
@@ -102,219 +96,149 @@ export default function QrScanner() {
     }
   };
 
-  const initializeFocusControl = async () => {
-    // Wait for video element to be ready
-    let video: HTMLVideoElement | null = null;
-    for (let i = 0; i < 20; i++) {
-      video = document.querySelector('#qr-reader video') as HTMLVideoElement;
-      if (video && video.srcObject) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  const handleQrCodeSuccess = async (decodedText: string) => {
+    console.log("QR Code escaneado:", decodedText);
     
-    if (!video || !video.srcObject) {
-      console.log("Video element not found for focus control");
-      return;
-    }
-    
-    // Store video stream reference for focus control
-    videoStreamRef.current = video.srcObject as MediaStream;
-    
-    // Apply initial focus settings
-    const track = videoStreamRef.current.getVideoTracks()[0];
-    const capabilities = track.getCapabilities?.() as any;
-    
-    if (capabilities?.focusMode) {
+    // Stop scanning immediately to prevent multiple scans
+    if (scannerRef.current) {
       try {
-        await track.applyConstraints({
-          advanced: [{ focusMode: focusMode === "auto" ? "continuous" : "manual" } as any]
-        });
+        await scannerRef.current.pause(true);
       } catch (e) {
-        console.log("Focus mode not supported:", e);
+        console.log("Error pausing scanner:", e);
       }
     }
-  };
 
-  const handleScanSuccess = async (decodedText: string) => {
-    // Try to fetch animal/QR data from the scanned URL or ID
     try {
-      // Check if it's a QR code URL or direct ID
-      const qrId = decodedText.includes('/qr/') 
-        ? decodedText.split('/qr/').pop()?.split('?')[0]
-        : decodedText;
+      // Try to fetch animal data
+      const animalResponse = await fetch(`/api/qr-codes/scan/${encodeURIComponent(decodedText)}`, {
+        credentials: 'include'
+      });
 
-      if (!qrId) {
-        toast({
-          title: "Invalid QR Code",
-          description: "Could not extract ID from scanned code",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Try to fetch QR code data
-      const response = await fetch(`/api/qr-codes/${qrId}`, { credentials: 'include' });
-      
-      if (response.ok) {
-        const qrData = await response.json();
+      if (animalResponse.ok) {
+        const animal = await animalResponse.json();
         
-        // Check if it's a blank QR code or linked to animal/cage
-        if (qrData.status === 'available' || qrData.status === 'unused') {
-          // Blank QR code
+        if (animal.isBlank) {
+          // Handle blank QR code
           setBlankQrData({
-            id: qrData.id,
+            id: animal.id,
             qrData: decodedText,
-            isBlank: true,
+            isBlank: true
           });
           setScannedData(null);
           setQrClaimed(false);
-          await stopCamera();
           
           toast({
-            title: "Blank QR Code Scanned",
-            description: "Link this QR code to a cage below",
+            title: "Código QR en Blanco",
+            description: "Este código está disponible para asignar",
           });
-        } else if (qrData.animalId) {
-          // QR linked to animal - fetch animal data
-          const animalResponse = await fetch(`/api/animals/${qrData.animalId}`, { credentials: 'include' });
-          if (animalResponse.ok) {
-            const animalData = await animalResponse.json();
-            setScannedData({
-              animalId: animalData.id,
-              animalNumber: animalData.animalNumber,
-              cageId: animalData.cageId,
-              breed: animalData.breed,
-              age: animalData.age,
-              weight: animalData.weight,
-              gender: animalData.gender,
-              healthStatus: animalData.healthStatus,
-              diseases: animalData.diseases,
-              notes: animalData.notes,
-            });
-            setBlankQrData(null);
-            setQrClaimed(false);
-            await stopCamera();
-            
-            toast({
-              title: "QR Code Scanned",
-              description: "Animal information loaded successfully",
-            });
+        } else {
+          // Handle animal QR code
+          setScannedData(animal);
+          setBlankQrData(null);
+          setQrClaimed(false);
+          
+          toast({
+            title: "Animal Encontrado",
+            description: `Animal ${animal.animalNumber} escaneado`,
+          });
+        }
+        
+        // Stop camera after successful scan
+        await stopCamera();
+      } else {
+        toast({
+          title: "No Encontrado",
+          description: "Este código QR no está registrado",
+          variant: "destructive",
+        });
+        
+        // Resume scanning for new code
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.resume();
+          } catch (e) {
+            console.log("Error resuming scanner:", e);
           }
         }
       }
     } catch (error) {
-      console.error("Error processing scanned QR:", error);
+      console.error("Error fetching QR data:", error);
       toast({
         title: "Error",
-        description: "Failed to process scanned QR code",
+        description: "Error al procesar el código QR",
         variant: "destructive",
       });
+      
+      // Resume scanning
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.resume();
+        } catch (e) {
+          console.log("Error resuming scanner:", e);
+        }
+      }
     }
   };
 
   const startCamera = async () => {
     try {
-      // Make sure any previous scanner is stopped
-      if (scannerRef.current) {
-        try {
-          await scannerRef.current.stop();
-          scannerRef.current.clear();
-        } catch (e) {
-          // Ignore errors when stopping
-        }
-      }
-
-      // First set isScanning to true so the div appears
+      // Create scanner instance first (element always exists now)
+      const qrScanner = new Html5Qrcode("qr-reader");
+      scannerRef.current = qrScanner;
+      
       setIsScanning(true);
 
-      // Wait for React to render the div - check for element existence
-      const waitForElement = async (id: string, maxAttempts = 50) => {
-        for (let i = 0; i < maxAttempts; i++) {
-          if (document.getElementById(id)) {
-            return true;
-          }
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        return false;
-      };
-
-      const elementExists = await waitForElement("qr-reader");
-      if (!elementExists) {
-        setIsScanning(false);
-        throw new Error("Scanner element failed to render");
-      }
-
-      const scanner = new Html5Qrcode("qr-reader");
-      scannerRef.current = scanner;
-
-      // Enhanced camera configuration for better quality and QR detection
-      const config = { 
-        fps: 60, // Higher fps for faster, smoother scanning
-        qrbox: function(viewfinderWidth: number, viewfinderHeight: number) {
-          // Dynamic QR box size - 75% of the smaller dimension
-          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-          const qrboxSize = Math.floor(minEdgeSize * 0.75);
-          return {
-            width: qrboxSize,
-            height: qrboxSize
-          };
+      // Configuration optimized for mobile
+      const config = {
+        fps: 10, // Lower FPS for better performance on mobile
+        qrbox: {
+          width: 250,
+          height: 250
         },
-        aspectRatio: 1.0, // Square aspect ratio for QR codes
-        disableFlip: false, // Enable mirroring if needed
-        videoConstraints: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        }
+        aspectRatio: 1.0
       };
 
-      // Start camera with rear-facing mode only
-      try {
-        const cameraStartPromise = scanner.start(
-          { facingMode: "environment" },
-          config,
-          handleScanSuccess,
-          (errorMessage) => {
-            // Ignore scan errors (they happen frequently when no QR is in view)
-          }
-        );
-
-        await cameraStartPromise;
-        await initializeFocusControl();
-        
-        toast({
-          title: "Escáner Iniciado",
-          description: "Apunta la cámara trasera al código QR",
-        });
-      } catch (error: any) {
-        console.error("Camera error:", error);
-        setIsScanning(false);
-        
-        let errorMessage = "No se pudo acceder a la cámara trasera";
-        
-        if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
-          errorMessage = "Debes permitir el acceso a la cámara en tu navegador. Haz clic en el ícono de candado 🔒 en la barra de direcciones";
-        } else if (error?.name === 'NotFoundError') {
-          errorMessage = "No se encontró ninguna cámara en este dispositivo";
-        } else if (error?.name === 'NotReadableError') {
-          errorMessage = "La cámara está en uso por otra aplicación. Cierra otras apps que usen la cámara";
-        } else if (error?.name === 'NotSupportedError') {
-          errorMessage = "Este navegador no soporta acceso a la cámara. Intenta con Chrome, Firefox o Safari";
-        } else if (error?.message) {
-          errorMessage = `Error: ${error.message}`;
+      // Start with rear camera
+      await qrScanner.start(
+        { facingMode: "environment" }, // Rear camera only
+        config,
+        handleQrCodeSuccess,
+        (errorMessage) => {
+          // Ignore scan errors silently - they happen when no QR is in view
         }
-        
-        toast({
-          title: "Error de Cámara",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
+      );
+
+      toast({
+        title: "Cámara Activada",
+        description: "Apunta la cámara al código QR",
+      });
+      
     } catch (error: any) {
-      console.error("Scanner initialization error:", error);
+      console.error("Error starting camera:", error);
       setIsScanning(false);
       
+      let errorMsg = "No se pudo acceder a la cámara";
+      
+      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
+        errorMsg = "Por favor permite el acceso a la cámara en tu navegador";
+      } else if (error?.name === 'NotFoundError') {
+        errorMsg = "No se encontró ninguna cámara en este dispositivo";
+      } else if (error?.name === 'NotReadableError') {
+        errorMsg = "La cámara está siendo usada por otra aplicación";
+      } else if (error?.message) {
+        errorMsg = error.message;
+      }
+      
       toast({
-        title: "Error de Inicialización",
-        description: "No se pudo inicializar el escáner",
+        title: "Error de Cámara",
+        description: errorMsg,
         variant: "destructive",
       });
     }
@@ -327,513 +251,304 @@ export default function QrScanner() {
         scannerRef.current.clear();
         scannerRef.current = null;
       } catch (error) {
-        console.error("Error stopping scanner:", error);
+        console.error("Error stopping camera:", error);
       }
     }
-    videoStreamRef.current = null;
     setIsScanning(false);
   };
 
-
-  const toggleFocusMode = async () => {
-    if (!videoStreamRef.current) return;
-    
-    const track = videoStreamRef.current.getVideoTracks()[0];
-    const capabilities = track.getCapabilities?.() as any;
-    
-    if (!capabilities?.focusMode) {
-      toast({
-        title: "No disponible",
-        description: "Este dispositivo no soporta control de enfoque",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newMode = focusMode === "auto" ? "manual" : "auto";
-    
-    // Check if manual mode is actually supported
-    if (newMode === "manual" && !capabilities.focusMode.includes("manual")) {
-      toast({
-        title: "No disponible",
-        description: "Enfoque manual no soportado en este dispositivo",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      await track.applyConstraints({
-        advanced: [{ focusMode: newMode === "auto" ? "continuous" : "manual" } as any]
-      });
-      
-      setFocusMode(newMode);
-      
-      toast({
-        title: `Enfoque ${newMode === "auto" ? "Automático" : "Manual"}`,
-        description: newMode === "auto" ? "El enfoque se ajustará automáticamente" : "Toca la pantalla para enfocar",
-      });
-    } catch (e) {
-      toast({
-        title: "Error",
-        description: "No se pudo cambiar el modo de enfoque",
-        variant: "destructive",
+  const handleClaimQr = () => {
+    if (blankQrData && selectedCageId) {
+      claimQrMutation.mutate({
+        qrId: blankQrData.id,
+        cageId: selectedCageId
       });
     }
   };
 
-  const handleFocusTap = async (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-    if (focusMode !== "manual" || !videoStreamRef.current) return;
-    
-    const track = videoStreamRef.current.getVideoTracks()[0];
-    const capabilities = track.getCapabilities?.() as any;
-    
-    // Check if any form of manual focus is supported
-    if (!capabilities?.pointsOfInterest && !capabilities?.focusDistance) {
-      // Fall back to auto focus mode with proper constraints
-      try {
-        await track.applyConstraints({
-          advanced: [{ focusMode: "continuous" } as any]
-        });
-        setFocusMode("auto");
-        toast({
-          title: "Modo Auto",
-          description: "Enfoque manual no soportado. Cambiado a modo automático",
-          variant: "destructive",
-        });
-      } catch (e) {
-        console.log("Failed to revert to auto focus:", e);
-      }
-      return;
-    }
-    
-    try {
-      // Calculate focus point based on tap/touch position
-      const rect = e.currentTarget.getBoundingClientRect();
-      let clientX: number;
-      let clientY: number;
-      
-      if ('touches' in e) {
-        // Touch event
-        const touch = e.touches[0] || e.changedTouches[0];
-        clientX = touch.clientX;
-        clientY = touch.clientY;
-      } else {
-        // Mouse event
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      
-      const x = (clientX - rect.left) / rect.width;
-      const y = (clientY - rect.top) / rect.height;
-      
-      // Try pointsOfInterest first (more precise)
-      if (capabilities?.pointsOfInterest) {
-        await track.applyConstraints({
-          advanced: [{ 
-            focusMode: "manual",
-            pointsOfInterest: [{ x, y }]
-          } as any]
-        });
-      } else if (capabilities?.focusDistance) {
-        // Fallback to focusDistance adjustment
-        const distance = 1.0 - Math.sqrt(x * x + y * y) / Math.sqrt(2);
-        await track.applyConstraints({
-          advanced: [{ 
-            focusMode: "manual",
-            focusDistance: Math.max(0, Math.min(1, distance))
-          } as any]
-        });
-      }
-      
-      toast({
-        title: "Enfocando",
-        description: `Punto ajustado (${Math.round(x * 100)}%, ${Math.round(y * 100)}%)`,
-      });
-    } catch (error) {
-      console.log("Tap-to-focus failed, reverting to auto:", error);
-      // Revert to auto focus on failure
-      try {
-        await track.applyConstraints({
-          advanced: [{ focusMode: "continuous" } as any]
-        });
-        setFocusMode("auto");
-        toast({
-          title: "Modo Auto",
-          description: "Error en enfoque manual. Cambiado a modo automático",
-          variant: "destructive",
-        });
-      } catch (e) {
-        console.log("Failed to revert to auto focus:", e);
-      }
-    }
-  };
-
-  const simulateQrScan = () => {
-    // Simulate QR code scan with sample data
-    const sampleData: ScannedAnimalData = {
-      animalId: "animal-123",
-      animalNumber: "M-247",
-      cageId: "C-089",
-      breed: "C57BL/6",
+  const simulateQrScan = async () => {
+    // Demo function for testing without camera - shows mock data
+    const mockAnimalData: ScannedAnimalData = {
+      animalId: "demo-animal-id",
+      animalNumber: "F-318",
+      cageId: "demo-cage-id",
+      breed: "Baff3",
       age: 12,
-      weight: "23.5",
-      gender: "Male",
+      weight: "25g",
+      gender: "Female",
       healthStatus: "Healthy",
       diseases: "",
-      notes: "Regular health check completed"
+      notes: "Demo animal for testing"
     };
     
-    setScannedData(sampleData);
+    setScannedData(mockAnimalData);
     setBlankQrData(null);
     setQrClaimed(false);
-    stopCamera();
     
     toast({
-      title: "QR Code Scanned",
-      description: "Animal information loaded successfully",
+      title: "Demo: Animal Encontrado",
+      description: `Animal ${mockAnimalData.animalNumber} (demostración)`,
     });
   };
 
-  const simulateBlankQrScan = () => {
-    // Simulate blank QR code scan
-    const blankData: BlankQrData = {
-      id: "blank-qr-" + Math.random().toString(36).substr(2, 9),
-      qrData: `${window.location.origin}/qr/blank/${Math.random().toString(36).substr(2, 9)}`,
-      isBlank: true,
+  const simulateBlankQrScan = async () => {
+    // Demo function for testing blank QR - shows mock blank QR
+    const mockBlankQr: BlankQrData = {
+      id: "demo-blank-qr-id",
+      qrData: "DEMO-BLANK-001",
+      isBlank: true
     };
     
-    setBlankQrData(blankData);
+    setBlankQrData(mockBlankQr);
     setScannedData(null);
     setQrClaimed(false);
-    stopCamera();
     
     toast({
-      title: "Blank QR Code Scanned",
-      description: "Link this QR code to a cage below",
+      title: "Demo: Código QR en Blanco",
+      description: "Este código está disponible para asignar (demostración)",
     });
   };
 
-  const handleClaimQr = () => {
-    if (!blankQrData || !selectedCageId) {
-      toast({
-        title: "Error",
-        description: "Please select a cage",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    claimQrMutation.mutate({ qrId: blankQrData.id, cageId: selectedCageId });
+  const resetScanner = () => {
+    setScannedData(null);
+    setBlankQrData(null);
+    setSelectedCageId("");
+    setQrClaimed(false);
   };
 
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
-
   return (
-    <div className="px-4 md:px-6 pb-4 md:pb-6 pt-1 md:pt-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-8">
-        <div>
-          <h2 className="text-lg md:text-2xl font-semibold text-foreground">Escáner de Código QR</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">Escanea códigos QR para ver información de animales</p>
+    <div className="min-h-screen bg-background p-4 md:p-6">
+      <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <QrCode className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+          <div>
+            <h1 className="text-xl md:text-3xl font-bold" data-testid="text-page-title">Escáner de Código QR</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Escanea códigos QR para ver información de animales
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Scanner */}
+        {/* Scanner Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <QrCode className="w-5 h-5 mr-2" />
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5" />
               Escáner
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {!isScanning ? (
-                <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-                  <div className="text-center px-4">
-                    <Camera className="w-12 h-12 md:w-16 md:h-16 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-sm md:text-base text-muted-foreground mb-2">Toca para activar la cámara</p>
-                    <p className="text-xs text-muted-foreground mb-4">Se te pedirá permiso para usar la cámara</p>
-                    <Button 
-                      onClick={startCamera} 
-                      data-testid="button-start-camera"
-                      className="min-h-[44px] px-6 touch-manipulation font-medium"
-                      size="lg"
-                    >
-                      Iniciar Escáner
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div 
-                    id="qr-reader" 
-                    className="w-full relative touch-manipulation"
-                    onClick={handleFocusTap}
-                    onTouchStart={handleFocusTap}
-                  ></div>
-                  {focusMode === "manual" && (
-                    <div className="absolute bottom-2 left-0 right-0 text-center">
-                      <p className="text-xs text-white bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full inline-block">
-                        👆 Toca la pantalla para enfocar
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {isScanning && (
-                <div className="space-y-2">
-                  <div className="flex gap-2 items-stretch">
-                    <Button 
-                      variant={focusMode === "auto" ? "default" : "outline"} 
-                      onClick={toggleFocusMode}
-                      className="flex-1 min-h-[44px] touch-manipulation"
-                      data-testid="button-toggle-focus"
-                    >
-                      <Focus className="w-5 h-5 mr-2" />
-                      <span className="font-medium">{focusMode === "auto" ? "Auto" : "Manual"}</span>
-                    </Button>
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 rounded-md min-w-[70px]">
-                      <Zap className="w-4 h-4 text-amber-500" />
-                      <span className="font-semibold">60fps</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex flex-col space-y-2">
-                {isScanning ? (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      onClick={stopCamera} 
-                      data-testid="button-stop-camera"
-                      className="min-h-[44px] touch-manipulation"
-                    >
-                      Detener Escáner
-                    </Button>
-                    <div className="flex space-x-2">
-                      <Button 
-                        onClick={simulateQrScan} 
-                        data-testid="button-simulate-scan" 
-                        className="flex-1 min-h-[44px] touch-manipulation"
-                      >
-                        Demo Animal QR
-                      </Button>
-                      <Button 
-                        onClick={simulateBlankQrScan} 
-                        data-testid="button-simulate-blank-qr" 
-                        className="flex-1 min-h-[44px] touch-manipulation" 
-                        variant="secondary"
-                      >
-                        Demo Blank QR
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex space-x-2">
-                    <Button 
-                      onClick={simulateQrScan} 
-                      variant="outline" 
-                      data-testid="button-demo-scan" 
-                      className="flex-1 min-h-[44px] touch-manipulation"
-                    >
-                      Demo Animal QR
-                    </Button>
-                    <Button 
-                      onClick={simulateBlankQrScan} 
-                      variant="outline" 
-                      data-testid="button-demo-blank-scan" 
-                      className="flex-1 min-h-[44px] touch-manipulation"
-                    >
-                      Demo Blank QR
-                    </Button>
-                  </div>
-                )}
+          <CardContent className="space-y-4">
+            {/* Camera View */}
+            {!isScanning && (
+              <div className="flex flex-col items-center justify-center p-8 md:p-12 bg-muted rounded-lg">
+                <Camera className="w-16 h-16 md:w-20 md:h-20 text-muted-foreground mb-4" />
+                <p className="text-center text-muted-foreground mb-4">
+                  Toca para activar la cámara
+                  <br />
+                  <span className="text-xs">Se pedirá permiso para usar la cámara</span>
+                </p>
+                <Button 
+                  onClick={startCamera} 
+                  size="lg"
+                  data-testid="button-start-camera"
+                  className="min-h-[48px] px-8"
+                >
+                  Iniciar Escáner
+                </Button>
+              </div>
+            )}
+            
+            {/* QR Reader element - always rendered but hidden when not scanning */}
+            <div className={isScanning ? "block" : "hidden"}>
+              <div 
+                id="qr-reader" 
+                className="w-full rounded-lg overflow-hidden"
+                style={{ minHeight: "300px" }}
+              ></div>
+              <div className="mt-4 flex gap-2">
+                <Button 
+                  onClick={stopCamera} 
+                  variant="outline"
+                  data-testid="button-stop-camera"
+                  className="flex-1 min-h-[48px]"
+                >
+                  Detener Escáner
+                </Button>
+              </div>
+            </div>
+
+            {/* Demo Buttons */}
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground mb-2">Funciones de demostración:</p>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={simulateQrScan} 
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-demo-scan"
+                  className="flex-1"
+                >
+                  Demo Animal QR
+                </Button>
+                <Button 
+                  onClick={simulateBlankQrScan} 
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-demo-blank-scan"
+                  className="flex-1"
+                >
+                  Demo Blank QR
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Scanned Data */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {blankQrData ? "Link Blank QR Code" : "Scanned Animal Information"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {blankQrData ? (
-              <div className="space-y-4" data-testid="blank-qr-data">
-                {qrClaimed ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">QR Code Successfully Linked!</h3>
-                    <p className="text-muted-foreground mb-4">
-                      This QR code is now linked to the selected cage
-                    </p>
-                    <Button 
-                      onClick={() => {
-                        setBlankQrData(null);
-                        setQrClaimed(false);
-                        setSelectedCageId("");
-                      }}
-                      data-testid="button-scan-another"
-                    >
-                      Scan Another QR
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <Label className="text-sm font-medium text-muted-foreground">QR Code ID</Label>
-                      <p className="text-foreground font-medium mt-1" data-testid="text-blank-qr-id">
-                        {blankQrData.id}
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="cage-select">Select Cage to Link</Label>
-                      <Select
-                        value={selectedCageId}
-                        onValueChange={setSelectedCageId}
-                      >
-                        <SelectTrigger id="cage-select" data-testid="select-cage-for-qr">
-                          <SelectValue placeholder="Select a cage" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cages?.filter(c => c.isActive).map((cage) => (
-                            <SelectItem key={cage.id} value={cage.id}>
-                              {cage.cageNumber} - {cage.roomNumber} ({cage.location})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col space-y-2 pt-4">
-                      <Button 
-                        onClick={handleClaimQr}
-                        disabled={!selectedCageId || claimQrMutation.isPending}
-                        data-testid="button-link-qr"
-                      >
-                        {claimQrMutation.isPending ? "Linking..." : "Link to Cage"}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setLocation(`/cages?createNew=true&qrId=${blankQrData.id}`)}
-                        data-testid="button-create-new-cage"
-                      >
-                        Create New Cage
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => setBlankQrData(null)}
-                        data-testid="button-cancel-claim"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </>
-                )}
+        {/* Scanned Animal Information */}
+        {scannedData && (
+          <Card className="border-green-500">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  Información del Animal
+                </CardTitle>
+                <Button 
+                  onClick={resetScanner}
+                  variant="ghost"
+                  size="sm"
+                  data-testid="button-reset-scanner"
+                  className="min-h-[48px]"
+                >
+                  Escanear Otro
+                </Button>
               </div>
-            ) : scannedData ? (
-              <div className="space-y-4" data-testid="scanned-data">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Animal ID</label>
-                    <p className="text-foreground font-medium" data-testid="text-scanned-animal-id">
-                      {scannedData.animalNumber}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Cage ID</label>
-                    <p className="text-foreground" data-testid="text-scanned-cage-id">
-                      {scannedData.cageId || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Breed</label>
-                    <p className="text-foreground" data-testid="text-scanned-breed">
-                      {scannedData.breed}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Age</label>
-                    <p className="text-foreground" data-testid="text-scanned-age">
-                      {scannedData.age ? `${scannedData.age} weeks` : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Weight</label>
-                    <p className="text-foreground" data-testid="text-scanned-weight">
-                      {scannedData.weight ? `${scannedData.weight}g` : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Gender</label>
-                    <p className="text-foreground" data-testid="text-scanned-gender">
-                      {scannedData.gender || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-                
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Health Status</label>
-                  <div className="mt-1">
-                    <Badge className={getStatusColor(scannedData.healthStatus || 'Healthy')} data-testid="status-scanned">
-                      {scannedData.healthStatus}
-                    </Badge>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Número de Animal</p>
+                  <p className="text-lg font-semibold" data-testid="animal-number">
+                    {scannedData.animalNumber}
+                  </p>
                 </div>
-
-                {scannedData.diseases && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Diseases/Conditions</label>
-                    <p className="text-foreground mt-1" data-testid="text-scanned-diseases">
-                      {scannedData.diseases}
-                    </p>
-                  </div>
-                )}
-
-                {scannedData.notes && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Notes</label>
-                    <p className="text-foreground mt-1" data-testid="text-scanned-notes">
-                      {scannedData.notes}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex space-x-2 pt-4">
-                  <Button variant="outline" onClick={() => setScannedData(null)} data-testid="button-clear-data">
-                    Clear Data
-                  </Button>
-                  <Button 
-                    onClick={() => setLocation(`/animals`)}
-                    data-testid="button-view-full-record"
-                  >
-                    View Full Record
-                  </Button>
+                <div>
+                  <p className="text-sm text-muted-foreground">Raza</p>
+                  <p className="text-lg font-semibold">{scannedData.breed || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Género</p>
+                  <p className="text-lg font-semibold">{scannedData.gender || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Peso</p>
+                  <p className="text-lg font-semibold">{scannedData.weight || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado de Salud</p>
+                  <Badge className={getStatusColor(scannedData.healthStatus || 'Healthy')}>
+                    {scannedData.healthStatus || 'Healthy'}
+                  </Badge>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <QrCode className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground" data-testid="text-no-scan">
-                  No QR code scanned yet. Use the scanner to scan an animal QR code.
-                </p>
+
+              {scannedData.diseases && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Enfermedades</p>
+                  <p className="text-sm">{scannedData.diseases}</p>
+                </div>
+              )}
+
+              {scannedData.notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Notas</p>
+                  <p className="text-sm">{scannedData.notes}</p>
+                </div>
+              )}
+
+              <Button 
+                onClick={() => setLocation(`/animal-qr-detail/${scannedData.animalId}`)}
+                className="w-full min-h-[48px]"
+                data-testid="button-view-full-record"
+              >
+                Ver Registro Completo
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Blank QR Code Assignment */}
+        {blankQrData && !qrClaimed && (
+          <Card className="border-blue-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-500" />
+                Código QR en Blanco Detectado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Este código QR está disponible. Asígnalo a una jaula:
+              </p>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Seleccionar Jaula</label>
+                <Select value={selectedCageId} onValueChange={setSelectedCageId}>
+                  <SelectTrigger data-testid="select-cage" className="min-h-[48px]">
+                    <SelectValue placeholder="Selecciona una jaula" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cages?.filter(c => c.status === 'Active').map((cage) => (
+                      <SelectItem key={cage.id} value={cage.id}>
+                        Jaula {cage.cageNumber} - {cage.location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleClaimQr}
+                  disabled={!selectedCageId || claimQrMutation.isPending}
+                  className="flex-1 min-h-[48px]"
+                  data-testid="button-claim-qr"
+                >
+                  {claimQrMutation.isPending ? "Asignando..." : "Asignar a Jaula"}
+                </Button>
+                <Button
+                  onClick={resetScanner}
+                  variant="outline"
+                  className="min-h-[48px]"
+                  data-testid="button-cancel-claim"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Success Message for Claimed QR */}
+        {qrClaimed && (
+          <Card className="border-green-500 bg-green-50 dark:bg-green-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                <CheckCircle className="w-5 h-5" />
+                <p className="font-medium">Código QR asignado correctamente</p>
+              </div>
+              <Button
+                onClick={resetScanner}
+                variant="outline"
+                className="mt-4 w-full min-h-[48px]"
+                data-testid="button-scan-another"
+              >
+                Escanear Otro Código
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
