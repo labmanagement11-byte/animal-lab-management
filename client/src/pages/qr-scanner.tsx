@@ -387,7 +387,7 @@ export default function QrScanner() {
                   variant="outline"
                   size="sm"
                   data-testid="button-demo-scan"
-                  className="flex-1"
+                  className="flex-1 min-h-[48px]"
                 >
                   Demo Animal QR
                 </Button>
@@ -396,7 +396,7 @@ export default function QrScanner() {
                   variant="outline"
                   size="sm"
                   data-testid="button-demo-blank-scan"
-                  className="flex-1"
+                  className="flex-1 min-h-[48px]"
                 >
                   Demo Blank QR
                 </Button>
