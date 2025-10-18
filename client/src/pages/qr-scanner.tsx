@@ -3,15 +3,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { QrCode, Camera, CheckCircle, AlertCircle, Sparkles, Zap, ZoomIn, ZoomOut, Focus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Cage, QrCode as QrCodeType } from "@shared/schema";
+import type { QrCode as QrCodeType } from "@shared/schema";
 import { Html5Qrcode } from "html5-qrcode";
 
 interface ScannedAnimalData {
@@ -27,20 +24,12 @@ interface ScannedAnimalData {
   notes?: string;
 }
 
-interface BlankQrData {
-  id: string;
-  qrData: string;
-  isBlank: boolean;
-}
 
 export default function QrScanner() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedAnimalData | null>(null);
-  const [blankQrData, setBlankQrData] = useState<BlankQrData | null>(null);
-  const [selectedCageId, setSelectedCageId] = useState<string>("");
-  const [qrClaimed, setQrClaimed] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   
@@ -51,46 +40,6 @@ export default function QrScanner() {
   const [focusDistance, setFocusDistance] = useState(0.5);
   const [supportsZoom, setSupportsZoom] = useState(false);
   const [supportsFocus, setSupportsFocus] = useState(false);
-
-  const { data: cages } = useQuery<Cage[]>({
-    queryKey: ['/api/cages'],
-  });
-
-  const claimQrMutation = useMutation({
-    mutationFn: async ({ qrId, cageId }: { qrId: string; cageId: string }) => {
-      return await apiRequest(`/api/qr-codes/${qrId}/claim`, {
-        method: "POST",
-        body: JSON.stringify({ cageId }),
-        headers: { "Content-Type": "application/json" }
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/qr-codes'] });
-      setQrClaimed(true);
-      toast({
-        title: "Éxito",
-        description: "Código QR vinculado a la jaula correctamente",
-      });
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Sesión expirada. Redirigiendo...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Error al vincular código QR",
-        variant: "destructive",
-      });
-    },
-  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -138,21 +87,16 @@ export default function QrScanner() {
         const animal = await animalResponse.json();
         
         if (animal.isBlank) {
-          // Handle blank QR code - stay on scanner to assign to cage
-          setBlankQrData({
-            id: animal.id,
-            qrData: decodedText,
-            isBlank: true
+          // Handle blank QR code - redirect to create new cage
+          toast({
+            title: "Código QR en Blanco",
+            description: "Redirigiendo para crear nueva jaula...",
           });
-          setScannedData(null);
-          setQrClaimed(false);
           
           await stopCamera();
           
-          toast({
-            title: "Código QR en Blanco",
-            description: "Este código está disponible para asignar",
-          });
+          // Redirect to cages page with QR ID to create new cage and link it
+          setLocation(`/cages?createNew=true&qrId=${animal.id}`);
         } else {
           // Handle animal QR code - redirect to detail page immediately
           toast({
@@ -384,14 +328,6 @@ export default function QrScanner() {
     }
   };
 
-  const handleClaimQr = () => {
-    if (blankQrData && selectedCageId) {
-      claimQrMutation.mutate({
-        qrId: blankQrData.id,
-        cageId: selectedCageId
-      });
-    }
-  };
 
   const simulateQrScan = async () => {
     // Demo function for testing without camera - shows mock data
@@ -409,8 +345,6 @@ export default function QrScanner() {
     };
     
     setScannedData(mockAnimalData);
-    setBlankQrData(null);
-    setQrClaimed(false);
     
     toast({
       title: "Demo: Animal Encontrado",
@@ -419,28 +353,18 @@ export default function QrScanner() {
   };
 
   const simulateBlankQrScan = async () => {
-    // Demo function for testing blank QR - shows mock blank QR
-    const mockBlankQr: BlankQrData = {
-      id: "demo-blank-qr-id",
-      qrData: "DEMO-BLANK-001",
-      isBlank: true
-    };
-    
-    setBlankQrData(mockBlankQr);
-    setScannedData(null);
-    setQrClaimed(false);
-    
+    // Demo function - redirects to cage creation
     toast({
       title: "Demo: Código QR en Blanco",
-      description: "Este código está disponible para asignar (demostración)",
+      description: "Redirigiendo para crear nueva jaula (demostración)...",
     });
+    
+    // Redirect to cages page with demo QR ID
+    setLocation(`/cages?createNew=true&qrId=demo-blank-qr-id`);
   };
 
   const resetScanner = () => {
     setScannedData(null);
-    setBlankQrData(null);
-    setSelectedCageId("");
-    setQrClaimed(false);
   };
 
   return (
@@ -753,83 +677,6 @@ export default function QrScanner() {
           </Card>
         )}
 
-        {/* Blank QR Code Assignment */}
-        {blankQrData && !qrClaimed && (
-          <Card className="border-blue-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-blue-500" />
-                Código QR en Blanco Detectado
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Este código QR está disponible. Asígnalo a una jaula:
-              </p>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Seleccionar Jaula</label>
-                <Select value={selectedCageId} onValueChange={setSelectedCageId}>
-                  <SelectTrigger data-testid="select-cage" className="min-h-[48px]">
-                    <SelectValue placeholder="Selecciona una jaula" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cages && cages.length > 0 ? (
-                      cages.map((cage) => (
-                        <SelectItem key={cage.id} value={cage.id}>
-                          Jaula {cage.cageNumber} - {cage.location} {cage.status !== 'Active' && `(${cage.status})`}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-cages" disabled>
-                        No hay jaulas disponibles
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleClaimQr}
-                  disabled={!selectedCageId || claimQrMutation.isPending}
-                  className="flex-1 min-h-[48px]"
-                  data-testid="button-claim-qr"
-                >
-                  {claimQrMutation.isPending ? "Asignando..." : "Asignar a Jaula"}
-                </Button>
-                <Button
-                  onClick={resetScanner}
-                  variant="outline"
-                  className="min-h-[48px]"
-                  data-testid="button-cancel-claim"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Success Message for Claimed QR */}
-        {qrClaimed && (
-          <Card className="border-green-500 bg-green-50 dark:bg-green-950">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                <CheckCircle className="w-5 h-5" />
-                <p className="font-medium">Código QR asignado correctamente</p>
-              </div>
-              <Button
-                onClick={resetScanner}
-                variant="outline"
-                className="mt-4 w-full min-h-[48px]"
-                data-testid="button-scan-another"
-              >
-                Escanear Otro Código
-              </Button>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

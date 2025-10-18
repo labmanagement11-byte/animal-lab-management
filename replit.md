@@ -36,7 +36,7 @@ Preferred communication style: Simple, everyday language.
     - In-app camera-based QR code scanning using `html5-qrcode` to identify and fetch animal/QR data.
     - **Camera Controls**: Rear camera only (environment facing mode), 60 FPS for rapid scanning, 300x300px QR detection box optimized for mobile devices, continuous autofocus for sharp QR code detection.
     - **Advanced Camera Controls**: Zoom control with slider (if camera supports zoom), manual/auto focus toggle with distance slider for precise focusing, real-time camera capability detection.
-    - **Scanner Behavior**: Automatically redirects to animal detail page (`/animal-qr-detail/:id`) after scanning animal QR codes, matching native mobile scanner behavior. Blank QR codes remain on scanner page for cage assignment.
+    - **Scanner Behavior**: Automatically redirects to animal detail page (`/animal-qr-detail/:id`) after scanning animal QR codes. Blank QR codes redirect to cage creation page (`/cages?createNew=true&qrId=<id>`) where users can create a new cage, automatically link the QR, and then add animals to the newly created cage.
     - **Mobile Optimized Scanner**: Touch-optimized controls (44px+ buttons), dual touch/mouse event support, visual focus indicators, Spanish UI for accessibility.
     - Generation of "blank" QR codes with custom labels for Avery 8160 sheets (30 per batch) with auto-fill option.
     - **Dashboard**: Summary cards for "Used", "Blank", and "Deleted" QR codes with real-time counts and interactive selection for export. "Used" and "Blank" counts differentiate between `status='used'` and `status='unused'/'available'`.
