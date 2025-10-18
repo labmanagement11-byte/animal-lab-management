@@ -202,26 +202,25 @@ export default function QrScanner() {
           width: 300,
           height: 300
         },
-        aspectRatio: 1.0,
+        aspectRatio: 1.777778, // 16:9 for high-res cameras
+        disableFlip: false,
         // Request high resolution video
         videoConstraints: {
-          facingMode: "environment",
-          aspectRatio: 1.0
+          facingMode: { exact: "environment" },
+          width: { ideal: 1920 }, // Request 1080p resolution
+          height: { ideal: 1080 },
+          aspectRatio: { ideal: 1.777778 },
+          frameRate: { ideal: 30 }
+        },
+        // Use native browser API when available for better performance
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
         }
-      };
-
-      // Camera constraints for high resolution
-      const cameraConstraints = {
-        facingMode: "environment",
-        advanced: [
-          { focusMode: "continuous" },
-          { zoom: 1.0 }
-        ]
       };
 
       // Start with rear camera and high resolution
       await qrScanner.start(
-        cameraConstraints,
+        { facingMode: { exact: "environment" } },
         config,
         handleQrCodeSuccess,
         (errorMessage) => {
