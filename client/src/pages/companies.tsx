@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Building2, Edit, Trash2 } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
+import { useCompany } from "@/contexts/company-context";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ interface Company {
 
 export default function Companies() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { enterCompany } = useCompany();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [formData, setFormData] = useState({
@@ -138,6 +141,11 @@ export default function Companies() {
     }
   };
 
+  const handleEnterCompany = (company: Company) => {
+    enterCompany(company.id, company.name);
+    setLocation('/');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -169,7 +177,11 @@ export default function Companies() {
           {companies.map((company) => (
             <Card key={company.id} className="p-6 hover:shadow-lg transition-shadow" data-testid={`card-company-${company.id}`}>
               <div className="flex items-start justify-between">
-                <Link href={`/companies/${company.id}`} className="flex-1 cursor-pointer" data-testid={`link-company-${company.id}`}>
+                <div 
+                  onClick={() => handleEnterCompany(company)} 
+                  className="flex-1 cursor-pointer" 
+                  data-testid={`link-company-${company.id}`}
+                >
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 hover:text-primary transition-colors" data-testid={`text-company-name-${company.id}`}>
                     {company.name}
                   </h3>
@@ -183,7 +195,7 @@ export default function Companies() {
                       {company.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                </Link>
+                </div>
                 <div className="flex gap-2 ml-4">
                   <Button
                     variant="ghost"

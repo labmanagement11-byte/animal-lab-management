@@ -16,12 +16,33 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+function getActiveCompanyId(): string | null {
+  try {
+    const stored = sessionStorage.getItem('activeCompany');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.id || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export async function apiRequest(
   url: string,
   options?: RequestInit,
 ): Promise<Response> {
+  const activeCompanyId = getActiveCompanyId();
+  const headers = new Headers(options?.headers);
+  
+  if (activeCompanyId) {
+    headers.set('X-Company-Id', activeCompanyId);
+  }
+
   const res = await fetch(url, {
     ...options,
+    headers,
     credentials: "include",
   });
 
@@ -35,7 +56,15 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const activeCompanyId = getActiveCompanyId();
+    const headers = new Headers();
+    
+    if (activeCompanyId) {
+      headers.set('X-Company-Id', activeCompanyId);
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
+      headers,
       credentials: "include",
     });
 

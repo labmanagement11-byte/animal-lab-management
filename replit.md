@@ -27,6 +27,13 @@ Preferred communication style: Simple, everyday language.
     - Automatic user restoration: When creating a user with an email that was previously deleted, the system automatically restores and updates the existing user record instead of creating a duplicate.
     - Permanent deletion after 10 days in trash via automatic cleanup process.
 - **Multi-Tenancy**: Company-based data isolation using `companyId` in all data tables. All operations are filtered or validated by `companyId`, with Admin users having global access.
+- **Company View Mode** (Admin Only): Admin users can enter a specific company context to view the entire system (dashboard, animals, cages, QR codes, etc.) filtered to that company's data. Features:
+    - Click on any company card to enter company view mode and navigate to dashboard
+    - Visual banner showing active company name with "Exit Company View" button
+    - Sidebar badge indicating active company under user information
+    - All API requests automatically include `X-Company-Id` header when in company view
+    - Backend middleware validates company override and enforces Admin-only access
+    - Automatic cache invalidation when entering/exiting company view for data freshness
 - **API**: RESTful design with structured endpoints for authentication, animal, cage, and QR code management, dashboard statistics, and search.
 
 ### Feature Specifications

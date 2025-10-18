@@ -15,12 +15,17 @@ function getUserIdFromSession(sessionUser: any): string {
 }
 
 // Helper function to safely get companyId with security check
-function getCompanyIdForUser(user: any | null | undefined): string | undefined {
+function getCompanyIdForUser(user: any | null | undefined, companyIdOverride?: string): string | undefined {
   if (!user) {
     throw new Error('User not found');
   }
   
-  // Admin users can access all companies
+  // If Admin provides a company override, use it
+  if (user.role === 'Admin' && companyIdOverride) {
+    return companyIdOverride;
+  }
+  
+  // Admin users can access all companies when no override
   if (user.role === 'Admin') {
     return undefined;
   }
@@ -33,9 +38,39 @@ function getCompanyIdForUser(user: any | null | undefined): string | undefined {
   return user.companyId;
 }
 
+// Middleware to handle company context override for Admin users
+async function handleCompanyContext(req: any, res: any, next: any) {
+  try {
+    const companyIdHeader = req.headers['x-company-id'];
+    
+    // Ensure header is a string, not an array
+    if (companyIdHeader && typeof companyIdHeader === 'string' && req.user) {
+      const userId = getUserIdFromSession(req.user);
+      const user = await storage.getUser(userId);
+      
+      // Only Admin users can override company context
+      if (user?.role === 'Admin') {
+        // Validate that the company exists
+        const company = await storage.getCompany(companyIdHeader);
+        if (company) {
+          req.companyIdOverride = companyIdHeader;
+        }
+      }
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Error in company context middleware:', error);
+    next(); // Continue even if there's an error
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Company context middleware (must be after auth)
+  app.use(handleCompanyContext);
 
   // Local authentication login endpoint
   app.post('/api/login/local', (req, res, next) => {
@@ -119,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -144,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -167,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -205,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -223,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -245,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -262,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -422,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -468,7 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -503,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -547,7 +582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to this resource
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -588,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -646,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -664,7 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -682,7 +717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -745,7 +780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -790,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -826,7 +861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -870,7 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to this resource
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -911,7 +946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -998,7 +1033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1051,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1087,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has company assigned
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1136,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1190,7 +1225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1213,7 +1248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1255,7 +1290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1297,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1320,7 +1355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to this resource
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1361,7 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1426,7 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1452,7 +1487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1493,7 +1528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1525,7 +1560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1545,7 +1580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1574,7 +1609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1618,7 +1653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin can see all logs, Success Manager only sees logs from their company
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1650,7 +1685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1703,7 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1721,7 +1756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1755,7 +1790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1795,7 +1830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to this resource
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1836,7 +1871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate user has access to resources
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -1993,7 +2028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2011,7 +2046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2053,7 +2088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2073,7 +2108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2128,7 +2163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(getUserIdFromSession(req.user));
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2167,7 +2202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin can see all users, other roles only see users from their company
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2483,7 +2518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin can see all deleted users, others only see their company's deleted users
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }
@@ -2683,7 +2718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin can see all invitations, Director only sees invitations from their company
       let companyId: string | undefined;
       try {
-        companyId = getCompanyIdForUser(user);
+        companyId = getCompanyIdForUser(user, req.companyIdOverride);
       } catch (error) {
         return res.status(403).json({ message: "User has no company assigned" });
       }

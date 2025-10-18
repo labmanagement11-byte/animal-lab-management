@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { 
   LayoutDashboard, 
   QrCode, 
@@ -20,6 +21,7 @@ import {
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/theme-context";
 import { useLanguage } from "@/contexts/language-context";
+import { useCompany } from "@/contexts/company-context";
 
 interface SidebarProps {
   onNavigate: (page: string) => void;
@@ -32,6 +34,7 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
+  const { isInCompanyView, activeCompanyName } = useCompany();
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';
@@ -124,6 +127,12 @@ export default function Sidebar({ onNavigate, isOpen, onClose }: SidebarProps) {
                 <p className="text-sm text-muted-foreground truncate" data-testid="text-user-role">
                   {(user as any).role || 'Employee'}
                 </p>
+                {isInCompanyView && (
+                  <Badge variant="secondary" className="mt-1 text-xs truncate max-w-full" data-testid="badge-active-company">
+                    <Building2 className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span className="truncate">{activeCompanyName}</span>
+                  </Badge>
+                )}
               </div>
             </div>
           )}

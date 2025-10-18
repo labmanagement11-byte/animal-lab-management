@@ -32,9 +32,11 @@ import MobileHeader from "@/components/mobile-header";
 import MobileBottomNav from "@/components/mobile-bottom-nav";
 import MobileMenu from "@/components/mobile-menu";
 import FloatingActionButton from "@/components/floating-action-button";
+import CompanyViewBanner from "@/components/company-view-banner";
 import { useLocation } from "wouter";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { LanguageProvider } from "@/contexts/language-context";
+import { CompanyProvider } from "@/contexts/company-context";
 import { useState } from "react";
 import { QrCode } from "lucide-react";
 
@@ -111,6 +113,9 @@ function AppContent() {
             onNavigate={handleNavigate}
           />
         </div>
+
+        {/* Company View Banner - Shows when viewing a specific company */}
+        <CompanyViewBanner />
         
         <div className="flex-1 overflow-y-auto pb-20 md:pb-0 md:pt-0">
           <Switch>
@@ -172,10 +177,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AppContent />
-          </TooltipProvider>
+          <CompanyProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AppContent />
+            </TooltipProvider>
+          </CompanyProvider>
         </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
