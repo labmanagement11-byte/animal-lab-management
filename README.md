@@ -86,4 +86,34 @@ Variables recomendadas:
 - Revisar las dependencias y ajustar scripts si quieres simplificar el arranque.
 - Añadir instrucciones de deploy (Vercel, Render, Railway, etc).
 
+## Deployment Instructions
+
+### Deploy to Render
+
+1. Create a new Web Service on [Render](https://render.com)
+2. Connect your GitHub repository
+3. Configure the service:
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Environment**: Node
+4. Add environment variables:
+   - `PORT` (automatically set by Render)
+   - `DATABASE_URL`
+   - `SESSION_SECRET`
+   - Any other required variables from `.env.example`
+5. Deploy! Your app will be available at the Render-provided URL
+
+### Deploy to Replit
+
+1. Import your GitHub repository into [Replit](https://replit.com)
+2. Replit will automatically detect the Node.js environment
+3. Set up Secrets (environment variables) in the Replit sidebar:
+   - `DATABASE_URL`
+   - `SESSION_SECRET`
+   - Any other required variables from `.env.example`
+4. Click the "Run" button - Replit will execute `npm start`
+5. Your app will be available at the Replit-provided URL
+
+**Note**: The server is configured to bind to `0.0.0.0` and use `process.env.PORT` for compatibility with cloud platforms.
+
 ---
