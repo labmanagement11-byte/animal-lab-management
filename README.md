@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Esto ejecuta `NODE_ENV=development tsx server/index.ts`.
+Esto ejecuta `tsx server/index.ts`.
 
 - Si usas Windows y `npm run dev` falla por la variable NODE_ENV, puedes:
   - Usar PowerShell:
@@ -79,6 +79,28 @@ Variables recomendadas:
 - SESSION_SECRET
 - RESEND_API_KEY (si usas Resend)
 - GOOGLE_APPLICATION_CREDENTIALS o GCP_STORAGE_BUCKET (si usas Google Cloud Storage)
+
+## Deployment Instructions
+
+### Deploy to Render
+
+1. Create a new Web Service on [Render](https://render.com)
+2. Connect your GitHub repository
+3. Configure the service:
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Environment**: Add environment variables (PORT, DATABASE_URL, SESSION_SECRET, etc.)
+4. Deploy! Render will automatically detect and use the PORT environment variable.
+
+### Deploy to Replit
+
+1. Import your GitHub repository into [Replit](https://replit.com)
+2. Replit will automatically detect the configuration from `.replit` file
+3. Add environment variables in the Secrets tab (DATABASE_URL, SESSION_SECRET, etc.)
+4. Click "Run" to start the application
+5. Replit will use the `npm start` command and automatically assign a PORT
+
+**Note**: Both platforms will automatically set the PORT environment variable. The application is configured to bind to `0.0.0.0` to accept external connections.
 
 ## Siguientes pasos sugeridos
 - Añadir `.gitignore` para evitar subir node_modules y archivos sensibles.
