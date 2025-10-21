@@ -86,4 +86,25 @@ Variables recomendadas:
 - Revisar las dependencias y ajustar scripts si quieres simplificar el arranque.
 - Añadir instrucciones de deploy (Vercel, Render, Railway, etc).
 
+## Deployment
+
+### Render Deployment Instructions
+
+To deploy this application on Render:
+
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Configure the service:
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+4. Set the following environment variables:
+   - `DATABASE_URL`: Your PostgreSQL database connection string
+   - `SESSION_SECRET`: A random secret string for session management
+   - `NODE_ENV=production`
+   - Other optional variables as needed (see `.env.example`)
+
+The `postinstall` script will automatically build the client during deployment.
+
+For more details, see the PR: [fix/deploy-render branch](https://github.com/labmanagement11-byte/animal-lab-management/tree/fix/deploy-render)
+
 ---
