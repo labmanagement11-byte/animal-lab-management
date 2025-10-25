@@ -69,6 +69,34 @@ npm run db:push
 
 Nota: `db:push` requiere la variable de entorno de conexión a la base de datos (ver .env.example).
 
+## Crear usuario administrador
+
+Para crear un usuario administrador en la base de datos, utiliza el script `create-admin.js`:
+
+```bash
+node create-admin.js <email> <password>
+```
+
+Ejemplo:
+```bash
+node create-admin.js admin@example.com mypassword
+```
+
+**Requisitos:**
+- La variable de entorno `DATABASE_URL` debe estar configurada
+- El script requiere acceso a una base de datos PostgreSQL
+
+**Características:**
+- Hash seguro de contraseñas usando bcryptjs
+- Detección automática de nombres de columnas (password_hash o password)
+- Mensajes de error descriptivos para problemas comunes
+- Verificación de emails duplicados
+
+**Notas:**
+- El usuario se crea con rol 'Admin' y auth_provider 'local'
+- Si el email ya existe, el script mostrará un error
+- Si la estructura de la base de datos difiere, se mostrarán instrucciones útiles
+
 ## Variables de entorno (ejemplo)
 Crea un archivo `.env` en la raíz con las variables necesarias (no lo subas al repo). Usa `.env.example` como plantilla.
 
