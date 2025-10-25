@@ -1,6 +1,5 @@
 import { Client } from 'pg';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 
 const [,, email, password] = process.argv;
 if (!email || !password) {
@@ -37,19 +36,16 @@ async function createAdminUser() {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
     
-    // Generate a UUID for the user
-    const userId = crypto.randomUUID();
-    
     // Try to insert with password_hash column first (most common)
+    // Let the database generate the UUID using its default gen_random_uuid()
     try {
       const insertQuery = `
-        INSERT INTO users (id, email, password_hash, role, auth_provider, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        INSERT INTO users (email, password_hash, role, auth_provider, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, NOW(), NOW())
         RETURNING id, email, role
       `;
       
       const result = await client.query(insertQuery, [
-        userId,
         email,
         passwordHash,
         'Admin',
@@ -69,13 +65,12 @@ async function createAdminUser() {
         // Try with 'password' column instead
         try {
           const altInsertQuery = `
-            INSERT INTO users (id, email, password, role, auth_provider, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+            INSERT INTO users (email, password, role, auth_provider, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, NOW(), NOW())
             RETURNING id, email, role
           `;
           
           const result = await client.query(altInsertQuery, [
-            userId,
             email,
             passwordHash,
             'Admin',
