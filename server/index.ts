@@ -1,47 +1,24 @@
 import express from "express";
-import cors from "cors";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-const HOST = process.env.HOST || '0.0.0.0';
-
-// Enable CORS for all origins (adjust in production if needed)
-app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-// Determine static folder: prefer client/dist or client/build if present, otherwise repository root
-const clientDist = path.join(__dirname, '..', 'client', 'dist');
-const clientBuild = path.join(__dirname, '..', 'client', 'build');
-let staticRoot = path.join(__dirname, '..');
-if (fs.existsSync(clientDist)) {
-  staticRoot = clientDist;
-} else if (fs.existsSync(clientBuild)) {
-  staticRoot = clientBuild;
-}
+const isDevelopment = process.env.NODE_ENV === "development";
 
-app.use(express.static(staticRoot));
+(async () => {
+  const server = await registerRoutes(app);
 
-// Health endpoint
-app.get('/api/ping', (req, res) => {
-  res.json({ ok: true, msg: 'pong', time: new Date().toISOString() });
-});
-
-// For SPA fallback: serve index.html for other GET requests
-app.get('*', (req, res) => {
-  const indexPath = path.join(staticRoot, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
+  if (isDevelopment) {
+    await setupVite(app, server);
   } else {
-    res.status(404).send('Not Found');
+    serveStatic(app);
   }
-});
 
-app.listen(PORT, HOST, () => {
-  console.log(`[express] serving on http://${HOST}:${PORT}`);
-});
+  const PORT = Number(process.env.PORT || 5000);
+  server.listen(PORT, "0.0.0.0", () => {
+    log(`serving on port ${PORT}`);
+  });
+})();
